@@ -45,12 +45,22 @@
     ;; (format t "New deltas: ~a" deltas)
     deltas))
 
+(let ((stream nil))
+  (defun init-output ()
+    (setf stream (open "~/data/knot-primary-hypercube" :direction :output :if-exists :supersede)))
+  (defun output-hypercube-vertex (choices num-circles)
+    (let ((*print-pretty* nil))
+      (format stream "~a~%" num-circles)))
+  (defun close-output ()
+    (close stream)
+    (setf stream nil)))
+
 (defun %primary-hypercube (choices-acc deltas lst)
   (if (not lst)
-      (progn (if (equal 0 (mod (incf output-count) 1000))
-		 (format t "processed ~a entries~%" output-count))
-	     (push (list choices-acc (or (cdr (assoc 'num-circles deltas)) 0))
-		   primary-hypercube))
+      (progn (when (equal 0 (mod (incf output-count) 1000))
+	       (format t "processed ~a entries~%" output-count)
+	       (sb-ext:gc))
+	     (output-hypercube-vertex choices-acc (or (cdr (assoc 'num-circles deltas)) 0)))
       (cond ((eq 'v (caar lst))
 	     (destructuring-bind (v a b c d) (car lst)
 	       (declare (ignore v))
@@ -67,10 +77,11 @@
 				   (new-deltas deltas a b)
 				   (cdr lst)))))))
 			
-      
 
 (defun primary-hypercube (lst)
-  (let ((primary-hypercube nil)
-	(output-count 0))
-    (%primary-hypercube nil nil lst)
-    primary-hypercube))
+  (let ((output-count 0))
+    (unwind-protect (progn (init-output)
+			   (%primary-hypercube nil nil lst))
+      (close-output))))
+			   
+      
