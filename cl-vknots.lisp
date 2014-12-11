@@ -84,4 +84,35 @@
 			   (%primary-hypercube nil nil lst))
       (close-output))))
 			   
-      
+
+(defparameter *sample-braid* "6 2 1 3 2 4 3 5 4 2 1 3 2 f5 4 3 5 4")
+
+(defun deserialize-braid-rep (str)
+  (mapcar (lambda (x)
+	    (if (char= #\f (char x 0))
+		`(flip ,(parse-integer (subseq x 1)))
+		(parse-integer x)))
+	  (cl-ppcre:split " " (string-trim '(#\space #\newline) str))))
+
+(defun braid->bw (lst)
+  (destructuring-bind (total . rmats) lst
+    (let ((br-hash (make-hash-table :test #'equal))
+	  (maxnum total))
+      (iter (for i from 1 to total)
+	    (setf (gethash i br-hash) i))
+      (iter (for elt in rmats)
+	    (let ((letter (if (atom elt) (if (> elt 0)
+					     'b
+					     'w)
+			      'f))
+		  (number (if (atom elt) elt (cadr elt))))
+	      (collect `(,letter
+			 ,(gethash (abs number) br-hash)
+			 ,(gethash (1+ (abs number)) br-hash)
+			 ,(+ 1 maxnum)
+			 ,(+ 2 maxnum)))
+	      (setf (gethash (abs number) br-hash) (incf maxnum)
+		    (gethash (1+ (abs number)) br-hash) (incf maxnum)))))))
+		
+
+
