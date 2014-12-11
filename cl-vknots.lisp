@@ -100,19 +100,78 @@
 	  (maxnum total))
       (iter (for i from 1 to total)
 	    (setf (gethash i br-hash) i))
-      (iter (for elt in rmats)
-	    (let ((letter (if (atom elt) (if (> elt 0)
-					     'b
-					     'w)
-			      'f))
-		  (number (if (atom elt) elt (cadr elt))))
-	      (collect `(,letter
-			 ,(gethash (abs number) br-hash)
-			 ,(gethash (1+ (abs number)) br-hash)
-			 ,(+ 1 maxnum)
-			 ,(+ 2 maxnum)))
-	      (setf (gethash (abs number) br-hash) (incf maxnum)
-		    (gethash (1+ (abs number)) br-hash) (incf maxnum)))))))
+      (append (iter (for elt in rmats)
+		    (let ((letter (if (atom elt) (if (> elt 0)
+						     'b
+						     'w)
+				      'f))
+			  (number (if (atom elt) elt (cadr elt))))
+		      (collect `(,letter
+				 ,(gethash (abs number) br-hash)
+				 ,(gethash (1+ (abs number)) br-hash)
+				 ,(+ 1 maxnum)
+				 ,(+ 2 maxnum)))
+		      (setf (gethash (abs number) br-hash) (incf maxnum)
+			    (gethash (1+ (abs number)) br-hash) (incf maxnum))))
+	      (iter (for i from 1 to total)
+		    (collect `(d ,i ,(gethash i br-hash))))))))
+
+
+
+
+(defclass leg ()
+  ((number :initarg :number)
+   (direction :initarg :direction :initform :unspecified)))
+
+(defclass junction ()
+  ())
+
+(defclass delta (junction)
+  ((left-leg :initarg :leftleg)
+   (right-leg :initarg :rightleg)))
+
+(defclass r-matrix (junction)
+  ((left-bottom-leg :initarg :lb)
+   (right-bottom-leg :initarg :rb)
+   (left-top-leg :initarg :lt)
+   (right-top-let :initarg :rt)
+   (type :initarg :type)))
+
+
+(defclass flip (junction)
+  ((left-bottom-leg :initarg :lb)
+   (right-bottom-leg :initarg :rb)
+   (left-top-leg :initarg :lt)
+   (right-top-let :initarg :rt)))
+
+
+(defun bw->hash (lst)
+  (let ((res (make-hash-table :test #'equal)))
+    (iter (for elt in lst)
+	  (cond ((eq 'd (car elt))
+		 (let ((delta (make-instance 'delta
+					     :leftleg (make-instance 'leg :number (cadr elt))
+					     :rightleg (make-instance 'leg :number (caddr elt)))))
+		   (setf (gethash (cadr elt) res) delta
+			 (gethash (caddr elt) res) delta)))
+		((eq 'f (car elt))
+		 (destructuring-bind (lb rb lt rt) (cdr elt)
+		   (let ((flip (make-instance 'flip
+					      :lb (make-instance 'leg :number lb)
+					      :rb (make-instance 'leg :number rb)
+					      :rt (make-instance 'leg :number lt)
+					      :rb (make-instance 'leg :number rt))))
+		     (setf (gethash lb res) flip (gethash rb res) flip
+			   (gethash lt res) flip (gethash rt res) flip))))
+		(t (destructuring-bind (letter lb rb lt rt) elt
+		     (let ((rmat (make-instance 'r-matrix
+						:type letter
+						:lb (make-instance 'leg :number lb)
+						:rb (make-instance 'leg :number rb)
+						:rt (make-instance 'leg :number lt)
+						:rb (make-instance 'leg :number rt))))
+		       (setf (gethash lb res) rmat (gethash rb res) rmat
+			     (gethash lt res) rmat (gethash rt res) rmat))))))
+    res))
+		     
 		
-
-
