@@ -274,3 +274,70 @@
 	      (the-step-over))))
     hash))
 
+(defgeneric listize (junc)
+  (:documentation "Convert oriented junction into list-form"))
+
+(defmethod listize ((delta delta))
+  (with-slots (left-leg right-leg) delta
+    (with-slots ((number-l number)) left-leg
+      (with-slots ((number-r number)) right-leg
+	`((d ,number-l ,number-r))))))
+
+(defmethod listize ((flip flip))
+  (with-slots (left-bottom-leg right-bottom-leg left-top-leg right-top-leg) flip
+    (with-slots ((number-left-bottom number)) left-bottom-leg
+      (with-slots ((number-right-bottom number)) right-bottom-leg
+	(with-slots ((number-left-top number)) left-top-leg
+	  (with-slots ((number-right-top number)) right-top-leg
+	    (list `(d ,number-left-bottom ,number-right-bottom)
+		  `(d ,number-left-top ,number-right-top))))))))
+
+(defun antitype (type)
+  (cond ((eq 'b type) 'w)
+	((eq 'w type) 'b)
+	(t (error "Unknown r-matrix type ~a" type))))
+
+
+(defun oriented-r-matrix (type lb rb lt rt)
+  (make-instance 'r-matrix
+		 :type type
+		 :lb (make-instance 'leg :number lb :direction :in)
+		 :rb (make-instance 'leg :number rb :direction :in)
+		 :lt (make-instance 'leg :number lt :direction :out)
+		 :rt (make-instance 'leg :number rt :direction :out)))
+
+
+(defun normalize-r-matrix (rmat)
+  "Rotate R-matrix such that in legs are bottom ones."
+  (with-slots (left-bottom-leg right-bottom-leg left-top-leg right-top-leg type) rmat
+    (with-slots ((a number) (dir-left-bottom direction)) left-bottom-leg
+      (with-slots ((b number) (dir-right-bottom direction)) right-bottom-leg
+	(with-slots ((c number) (dir-left-top direction)) left-top-leg
+	  (with-slots ((d number) (dir-right-top direction)) right-top-leg
+	    (cond ((and (eq :in dir-right-bottom) (eq :in dir-left-bottom))
+		   rmat)
+		  ((and (eq :in dir-left-bottom) (eq :in dir-left-top))
+		   (oriented-r-matrix (antitype type) c a d b))
+		  ((and (eq :in dir-left-top) (eq :in dir-right-top))
+		   (oriented-r-matrix type d c b a))
+		  ((and (eq :in dir-right-top) (eq :in dir-right-bottom))
+		   (oriented-r-matrix (antitype type) b d a c))
+		  (t (error "Something wrong with orientation guessing of r-matrix")))))))))
+
+(defmethod listize ((rmat r-matrix))
+  (let ((rmat (normalize-r-matrix rmat)))
+    (with-slots (left-bottom-leg right-bottom-leg left-top-leg right-top-leg type) rmat
+      (with-slots ((a number)) left-bottom-leg
+	(with-slots ((b number)) right-bottom-leg
+	  (with-slots ((c number)) left-top-leg
+	    (with-slots ((d number)) right-top-leg
+	      (list (list type a b c d)))))))))
+
+(defun oriented-hash->bw (hash)
+  (let ((single-juncs (make-hash-table)))
+    (iter (for (nil val) in-hashtable hash)
+	  (iter (for elt in val)
+		(setf (gethash elt single-juncs) t)))
+    (iter (for (key nil) in-hashtable single-juncs)
+	  (appending (listize key)))))
+
