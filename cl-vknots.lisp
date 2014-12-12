@@ -134,7 +134,7 @@
   ((left-bottom-leg :initarg :lb)
    (right-bottom-leg :initarg :rb)
    (left-top-leg :initarg :lt)
-   (right-top-let :initarg :rt)
+   (right-top-leg :initarg :rt)
    (type :initarg :type)))
 
 
@@ -142,8 +142,76 @@
   ((left-bottom-leg :initarg :lb)
    (right-bottom-leg :initarg :rb)
    (left-top-leg :initarg :lt)
-   (right-top-let :initarg :rt)))
+   (right-top-leg :initarg :rt)))
 
+
+(defun croaky-setf-type (leg type)
+  (if (eq :unspecified (slot-value leg 'direction))
+      (setf (slot-value leg 'direction) type)
+      (error "Visited the given leg twice: previous type is ~a" (slot-value leg 'direction))))
+
+(defgeneric step-over (junction number)
+  (:documentation "Main function, which modifies stepped-over junction by side effect, giving orientations"))
+
+(defparameter junctions (make-hash-table :test #'equal)
+  "Variable to hold the set of junctions we are currently work with")
+
+(defmethod step-over ((junc junction) number)
+  (multiple-value-bind (in-leg out-leg) (route junc number)
+    (croaky-setf-type in-leg :in)
+    (croaky-setf-type out-leg :out)
+    (slot-value out-leg 'number)))
+
+(defgeneric route (junction number)
+  (:documentation "Given the number of the in-leg return pair of objects - in-leg and out-leg"))
+
+(defmethod route ((delta delta) number)
+  (with-slots (left-leg right-leg) delta
+    (with-slots ((number-l number)) left-leg
+      (with-slots ((number-r number)) right-leg
+	(if (equal number-l number-r)
+	    (error "Got short-circuiting delta")
+	    (cond ((equal number number-l) (values left-leg right-leg))
+		  ((equal number number-r) (values right-leg left-leg))
+		  (t (error "This delta does not have leg with requested number, can't route"))))))))
+
+(defmethod route ((flip flip) number)
+  (with-slots (left-bottom-leg right-bottom-leg left-top-leg right-top-leg) flip
+    (with-slots ((number-left-bottom number)) left-bottom-leg
+      (with-slots ((number-right-bottom number)) right-bottom-leg
+	(with-slots ((number-left-top number)) left-top-leg
+	  (with-slots ((number-right-top number)) right-top-leg
+	    (if (not (equal 4 (length (remove-duplicates (list number-left-bottom
+							       number-right-bottom
+							       number-left-top
+							       number-right-top)
+							 :test #'equal))))
+		(error "Got short-circuiting flip"))
+	    (cond ((equal number number-left-bottom) (values left-bottom-leg right-bottom-leg))
+		  ((equal number number-right-bottom) (values right-bottom-leg left-bottom-leg))
+		  ((equal number number-left-top) (values left-top-leg right-top-leg))
+		  ((equal number number-right-top) (values right-top-leg left-top-leg))
+		  (t (error "This flip does not have leg with requested number, can't route")))))))))
+
+(defmethod route ((rmat r-matrix) number)
+  (with-slots (left-bottom-leg right-bottom-leg left-top-leg right-top-leg) rmat
+    (with-slots ((number-left-bottom number)) left-bottom-leg
+      (with-slots ((number-right-bottom number)) right-bottom-leg
+	(with-slots ((number-left-top number)) left-top-leg
+	  (with-slots ((number-right-top number)) right-top-leg
+	    (if (not (equal 4 (length (remove-duplicates (list number-left-bottom
+							       number-right-bottom
+							       number-left-top
+							       number-right-top)
+							 :test #'equal))))
+		(error "Got short-circuiting r-matrix"))
+	    (cond ((equal number number-left-bottom) (values left-bottom-leg right-top-leg))
+		  ((equal number number-right-bottom) (values right-bottom-leg left-top-leg))
+		  ((equal number number-left-top) (values left-top-leg right-bottom-leg))
+		  ((equal number number-right-top) (values right-top-leg left-bottom-leg))
+		  (t (error "This r-matrix does not have leg with requested number, can't route")))))))))
+  
+  
 
 (defun bw->hash (lst)
   (let ((res (make-hash-table :test #'equal)))
@@ -152,26 +220,57 @@
 		 (let ((delta (make-instance 'delta
 					     :leftleg (make-instance 'leg :number (cadr elt))
 					     :rightleg (make-instance 'leg :number (caddr elt)))))
-		   (setf (gethash (cadr elt) res) delta
-			 (gethash (caddr elt) res) delta)))
+		   (push delta (gethash (cadr elt) res))
+		   (push delta (gethash (caddr elt) res))))
 		((eq 'f (car elt))
 		 (destructuring-bind (lb rb lt rt) (cdr elt)
 		   (let ((flip (make-instance 'flip
 					      :lb (make-instance 'leg :number lb)
 					      :rb (make-instance 'leg :number rb)
-					      :rt (make-instance 'leg :number lt)
-					      :rb (make-instance 'leg :number rt))))
-		     (setf (gethash lb res) flip (gethash rb res) flip
-			   (gethash lt res) flip (gethash rt res) flip))))
+					      :lt (make-instance 'leg :number lt)
+					      :rt (make-instance 'leg :number rt))))
+		     (push flip (gethash lb res))
+		     (push flip (gethash rb res))
+		     (push flip (gethash lt res))
+		     (push flip (gethash rt res)))))
 		(t (destructuring-bind (letter lb rb lt rt) elt
 		     (let ((rmat (make-instance 'r-matrix
 						:type letter
 						:lb (make-instance 'leg :number lb)
 						:rb (make-instance 'leg :number rb)
-						:rt (make-instance 'leg :number lt)
-						:rb (make-instance 'leg :number rt))))
-		       (setf (gethash lb res) rmat (gethash rb res) rmat
-			     (gethash lt res) rmat (gethash rt res) rmat))))))
+						:lt (make-instance 'leg :number lt)
+						:rt (make-instance 'leg :number rt))))
+		       (push rmat (gethash lb res))
+		       (push rmat (gethash rb res))
+		       (push rmat (gethash lt res))
+		       (push rmat (gethash rt res)))))))
     res))
+
+(defun get-other-junction (last-junction number)
+  (let ((fit-juncs (gethash number junctions)))
+    (if (not (equal 2 (length fit-juncs)))
+	(error "More than two junctions lead to same number"))
+    (let ((filter-junctions (remove-if (if (not last-junction)
+					   (lambda (x)
+					     (typep x 'delta))
+					   (lambda (x)
+					     (eq x last-junction)))
+				       fit-juncs)))
+      (if (not (equal 1 (length filter-junctions)))
+	  (error "Number of junctions after filtration not equal to 1")
+	  (car filter-junctions)))))
+	
 		     
-		
+(defun ndetermine-orientations (hash)
+  (let ((junctions hash))
+    (macrolet ((the-step-over ()
+		 `(let ((new-junction (get-other-junction last-junction number)))
+		    (setf number (step-over new-junction number)
+			  last-junction new-junction))))
+      (let ((number 1)
+	    (last-junction nil))
+	(the-step-over)
+	(iter (while (not (equal number 1)))
+	      (the-step-over))))
+    hash))
+
