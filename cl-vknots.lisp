@@ -95,6 +95,8 @@
 
 (defparameter *sample-braid* "6 2 1 3 2 4 3 5 4 2 1 3 2 f5 4 3 5 4")
 
+(defparameter *2-strand-trefoil* "2 1 1 1")
+
 (defun deserialize-braid-rep (str)
   (mapcar (lambda (x)
 	    (if (char= #\f (char x 0))
@@ -355,6 +357,12 @@
 		   (ndetermine-orientations
 		    (bw->hash (braid->bw (deserialize-braid-rep *sample-braid*))))))
 
+(defparameter *2-strand-trefoil-orient*
+  (oriented-hash->bw 
+   (ndetermine-orientations
+    (bw->hash (braid->bw (deserialize-braid-rep *2-strand-trefoil*))))))
+
+
 
 (defgeneric choices->number (obj)
   )
@@ -390,6 +398,9 @@
 	(%primary-hypercube decolored :outputter #'outputter))
       (list init-vertex res))))
 
+(defparameter *2-strand-trefoil-primary-hypercube*
+  (cadr (marked-primary-hypercube-for-bw *2-strand-trefoil-orient*)))
+
 (defun n-poly-snippet (sgn power)
   #?"$((if (< 0 sgn) "+" "-")) N^$(power)")
 
@@ -416,8 +427,8 @@
 
 (let ((cache (make-hash-table :test #'equal)))
   (defun make-bw-subseqs (n)
-    (cond ((equal n 0) nil)
-	  ((equal n 1) '((b) (w)))
+    (cond ((equal n 0) '(()))
+	  ;; ((equal n 1) '((b) (w)))
 	  (t (or (gethash n cache)
 		 (setf (gethash n cache)
 		       (iter (for subsubseq in (make-bw-subseqs (1- n)))
@@ -441,7 +452,7 @@
   
 
 (defun primary-hypercube->secondary-hypercube (cube)
-  (let ((dim (log (length cube) 2))
+  (let ((dim (floor (log (length cube) 2)))
 	(res (make-array (length cube))))
     (iter (for i from 0 to (1- (length cube)))
 	  (setf (elt res i)
@@ -451,3 +462,5 @@
     res))
 		
 
+(defparameter *2-strand-trefoil-secondary-hypercube*
+  (primary-hypercube->secondary-hypercube *2-strand-trefoil-primary-hypercube*))
