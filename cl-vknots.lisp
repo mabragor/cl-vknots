@@ -3,6 +3,12 @@
 (in-package #:cl-vknots)
 
 (enable-read-macro-tokens)
+(cl-interpol:enable-interpol-syntax)
+
+(defun joinl (joinee lst)
+  (format nil (concatenate 'string "~{~a~^" joinee "~}") lst))
+(defun join (joinee &rest lst)
+  (joinl joinee lst))
 
 (defun read-knot (fname)
   (iter (for line in-file fname using #'read-line)
@@ -55,33 +61,35 @@
     (close stream)
     (setf stream nil)))
 
-(defun %primary-hypercube (choices-acc deltas lst)
-  (if (not lst)
-      (progn (when (equal 0 (mod (incf output-count) 1000))
-	       (format t "processed ~a entries~%" output-count)
-	       (sb-ext:gc))
-	     (output-hypercube-vertex choices-acc (or (cdr (assoc 'num-circles deltas)) 0)))
-      (cond ((eq 'v (caar lst))
-	     (destructuring-bind (v a b c d) (car lst)
-	       (declare (ignore v))
-	       (%primary-hypercube (cons 'b choices-acc)
-				   (new-deltas (new-deltas deltas a c) b d)
-				   (cdr lst))
-	       (%primary-hypercube (cons 'w choices-acc)
-				   (new-deltas (new-deltas deltas a d) b c)
-				   (cdr lst))))
-	    ((eq 'd (caar lst))
-	     (destructuring-bind (d a b) (car lst)
-	       (declare (ignore d))
-	       (%primary-hypercube choices-acc
-				   (new-deltas deltas a b)
-				   (cdr lst)))))))
+(defun %primary-hypercube (lst &key outputter)
+  (labels ((rec (choices-acc deltas lst)
+	     (if (not lst)
+		 (progn (when (equal 0 (mod (incf output-count) 1000))
+			  (format t "processed ~a entries~%" output-count)
+			  (sb-ext:gc))
+			(funcall outputter choices-acc (or (cdr (assoc 'num-circles deltas)) 0)))
+		 (cond ((eq 'v (caar lst))
+			(destructuring-bind (v a b c d) (car lst)
+			  (declare (ignore v))
+			  (rec (cons 'b choices-acc)
+			       (new-deltas (new-deltas deltas a c) b d)
+			       (cdr lst))
+			  (rec (cons 'w choices-acc)
+			       (new-deltas (new-deltas deltas a d) b c)
+			       (cdr lst))))
+		       ((eq 'd (caar lst))
+			(destructuring-bind (d a b) (car lst)
+			  (declare (ignore d))
+			  (rec choices-acc
+			       (new-deltas deltas a b)
+			       (cdr lst))))))))
+    (rec nil nil lst)))
 			
 
 (defun primary-hypercube (lst)
   (let ((output-count 0))
     (unwind-protect (progn (init-output)
-			   (%primary-hypercube nil nil lst))
+			   (%primary-hypercube lst :outputter #'output-hypercube-vertex))
       (close-output))))
 			   
 
@@ -340,4 +348,106 @@
 		(setf (gethash elt single-juncs) t)))
     (iter (for (key nil) in-hashtable single-juncs)
 	  (appending (listize key)))))
+
+
+
+(defparameter *a* (oriented-hash->bw 
+		   (ndetermine-orientations
+		    (bw->hash (braid->bw (deserialize-braid-rep *sample-braid*))))))
+
+
+(defgeneric choices->number (obj)
+  )
+
+(defmethod choices->number ((lst list))
+  (iter (for elt in lst)
+	(for i from 0)
+	(if (eq 'w elt)
+	    (summing (expt 2 i)))))
+
+
+(defmethod choices->number ((lst vector))
+  (iter (for elt in-vector lst)
+	(for i from 0)
+	(if (eq 'w elt)
+	    (summing (expt 2 i)))))
+
+
+(defun marked-primary-hypercube-for-bw (bw)
+  (multiple-value-bind (dim init-vertex decolored)
+      (iter (for elt in bw)
+	    (if (or (eq 'b (car elt)) (eq 'w (car elt)))
+		(progn (summing 1 into dim)
+		       (collect (car elt) into init-vertex)
+		       (collect (cons 'v (cdr elt)) into decolored))
+		(collect elt into decolored))
+	    (finally (return (values dim init-vertex decolored))))
+    (let ((res (make-array (expt 2 dim)
+			   :element-type 'integer
+			   :initial-element 0)))
+      (flet ((outputter (choices num-circles)
+	       (setf (elt res (choices->number choices)) num-circles)))
+	(%primary-hypercube decolored :outputter #'outputter))
+      (list init-vertex res))))
+
+(defun n-poly-snippet (sgn power)
+  #?"$((if (< 0 sgn) "+" "-")) N^$(power)")
+
+(defun num->bw (num dim)
+  (let ((res (make-list dim :initial-element 'b)))
+    (iter (for char in-string (reverse (format nil "~b" num)))
+	  (for place on res)
+	  (if (char= #\1 char)
+	      (setf (car place) 'w)))
+    res))
+				
+(defun bw->white-places (bw-num)
+  (iter (for elt in bw-num)
+	(for i from 0)
+	(if (eq 'w elt)
+	    (collect i))))
+
+(defun enlarge-subseq (subseq dim white-places)
+  (let ((res (make-array dim :element-type 'symbol :initial-element 'b)))
+    (iter (for b/w in subseq)
+	  (for num in white-places)
+	  (setf (elt res num) b/w))
+    res))
+
+(let ((cache (make-hash-table :test #'equal)))
+  (defun make-bw-subseqs (n)
+    (cond ((equal n 0) nil)
+	  ((equal n 1) '((b) (w)))
+	  (t (or (gethash n cache)
+		 (setf (gethash n cache)
+		       (iter (for subsubseq in (make-bw-subseqs (1- n)))
+			     (collect (cons 'b subsubseq))
+			     (collect (cons 'w subsubseq)))))))))
+		      
+	      
+      
+(defun sign-of-choice (choice)
+  (expt -1
+	(iter (for elt in choice)
+	      (if (eq 'w elt)
+		  (summing 1)))))
+
+(defun subnumbers (i dim)
+  (let ((white-places (bw->white-places (num->bw i dim))))
+    (mapcar (lambda (x)
+	      (list (choices->number (enlarge-subseq x dim white-places))
+		    (sign-of-choice x)))
+	    (make-bw-subseqs (length white-places)))))
+  
+
+(defun primary-hypercube->secondary-hypercube (cube)
+  (let ((dim (log (length cube) 2))
+	(res (make-array (length cube))))
+    (iter (for i from 0 to (1- (length cube)))
+	  (setf (elt res i)
+		(joinl " " (cons "0"
+				 (iter (for (j sgn) in (subnumbers i dim))
+				       (collect (n-poly-snippet sgn (elt cube j))))))))
+    res))
+		
 
