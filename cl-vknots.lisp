@@ -464,3 +464,44 @@
 
 (defparameter *2-strand-trefoil-secondary-hypercube*
   (primary-hypercube->secondary-hypercube *2-strand-trefoil-primary-hypercube*))
+
+(defparameter *mathematica-kernel-process* nil)
+
+(defparameter *sigkill* 9)
+(defparameter *sigint* 2)
+
+(defun kill-mathematica ()
+  (sb-ext:process-kill *mathematica-kernel-process* *sigkill*)
+  (setf *mathematica-kernel-process* nil))
+
+(defun abort-calculation ()
+  (sb-ext:process-kill *mathematica-kernel-process* *sigint*))
+
+(defun read-current-mathematica-output ()
+  (let ((stream (sb-ext:process-output *mathematica-kernel-process*)))
+    (if (listen stream)
+	(let ((res ""))
+	  (iter (while (listen stream))
+		(setf res (concatenate 'string res (string (read-char stream)))))
+	  res))))
+
+(defun mathematica-perl (cmd)
+  "Print-Eval-Read-Loop with Mathematica"
+  (let ((remnant (read-current-mathematica-output)))
+    (when remnant
+      (format t "Remnant of output: ~a" remnant))
+    (let ((input (sb-ext:process-input *mathematica-kernel-process*)))
+      (write-line cmd input)
+      (finish-output input))))
+
+
+(defun start-mathematica ()
+  (when (and *mathematica-kernel-process*
+	     (sb-ext:process-p *mathematica-kernel-process*))
+    (kill-mathematica))
+  (setf *mathematica-kernel-process*
+	(sb-ext:run-program "math" '() :search t :wait nil :input :stream :output :stream :error :stream))
+  t)
+  
+
+      
