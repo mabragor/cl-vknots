@@ -477,23 +477,98 @@
 (defun abort-calculation ()
   (sb-ext:process-kill *mathematica-kernel-process* *sigint*))
 
-(defun read-current-mathematica-output ()
+(defrule integer ()
+  (postimes (character-ranges (#\0 #\9))))
+
+(defrule reverse-in ()
+  " =:]" integer "[nI" #\newline
+  :correct)
+
+(defun join-continued-lines (lst)
+  (let ((curline (car lst)))
+    (iter (for line in (cdr lst))
+	  (for i from 1)
+	  (if (char= #\\ (char curline (1- (length curline))))
+	      (setf curline (concatenate 'string
+					 (subseq curline 0 (- (length curline) 2))
+					 line))
+	      (progn (collect curline)
+		     (setf curline line)))
+	  (if (equal (length (cdr lst)) i)
+	      (progn (collect curline))))))
+
+(defrule out-record ()
+  "Out[" integer "]"
+  (? (prog1 "//" (postimes (character-ranges (#\a #\z) (#\A #\Z)))))
+  "= "
+  t)
+		     
+(defun trim-out-record (str)
+  (multiple-value-bind (head head-end-pos) (parse 'out-record str :junk-allowed t)
+    (if head
+	(subseq str head-end-pos))))
+						  
+
+(defun parse-output (str)
+  (destructuring-bind (first . rest) (butlast (cdr (cl-ppcre:split "\\n" str)))
+    (joinl "~%" (join-continued-lines (cons (trim-out-record first)
+					    rest)))))
+
+
+(defun output-complete-p (str)
+  (parse 'reverse-in 
+	 (reverse (if (> (length str) 100)
+		      (subseq str (- (length str) 100))
+		      str))
+	 :junk-allowed t))
+
+(defun %read-current-mathematica-output (stream &key wait)
+  (if (and (not wait) (not (listen stream)))
+      nil
+      (progn ;; (format t "Waiting for bytes to appear~%")
+	     (iter (while (not (listen stream))))
+	     ;; (format t "Reading bytes~%")
+	     (setf kernel-status :spewing-output)
+	     (let ((res ""))
+	       (iter (while (listen stream))
+		     (setf res (concatenate 'string res (string (read-char stream)))))
+	       res))))
+
+(defun mathematica-read (&optional skip-status-check)
+  (if (and (not skip-status-check)
+	   (not (eq :calculating kernel-status)))
+      (error "Nothing to read - kernel had no task to calculate"))
   (let ((stream (sb-ext:process-output *mathematica-kernel-process*)))
-    (if (listen stream)
-	(let ((res ""))
-	  (iter (while (listen stream))
-		(setf res (concatenate 'string res (string (read-char stream)))))
-	  res))))
+    (let ((res (%read-current-mathematica-output stream :wait t)))
+      ;; (format t "Res is ~a" res)
+      (iter (while (not (output-complete-p res)))
+	    (setf res (concatenate 'string res (%read-current-mathematica-output stream :wait t))))
+      (setf kernel-status :idle)
+      res)))
+      
+
+(defparameter kernel-status :idle)
+
+(defun mathematica-write (cmd &key (form :input))
+  (if (not (eq :idle kernel-status))
+      (error "Kernel is currently still doing something, but you can restart it, of course, if you so wish"))
+  (let ((input (sb-ext:process-input *mathematica-kernel-process*)))
+    (write-string cmd input)
+    (cond ((eq :input form) (write-string " // InputForm" input))
+	  ((eq :full form) (write-string " // FullForm" input)))
+    (write-string #?"\n" input)
+    (finish-output input)
+    (setf kernel-status :calculating)))
+
+(defun ensure-mathematica-is-running ()
+  (if (not *mathematica-kernel-process*)
+      (start-mathematica)))
 
 (defun mathematica-perl (cmd)
-  "Print-Eval-Read-Loop with Mathematica"
-  (let ((remnant (read-current-mathematica-output)))
-    (when remnant
-      (format t "Remnant of output: ~a" remnant))
-    (let ((input (sb-ext:process-input *mathematica-kernel-process*)))
-      (write-line cmd input)
-      (finish-output input))))
-
+  "Print-Eval-Read-Loop of Mathematica"
+  (ensure-mathematica-is-running)
+  (mathematica-write cmd)
+  (mathematica-read))
 
 (defun start-mathematica ()
   (when (and *mathematica-kernel-process*
@@ -501,6 +576,8 @@
     (kill-mathematica))
   (setf *mathematica-kernel-process*
 	(sb-ext:run-program "math" '() :search t :wait nil :input :stream :output :stream :error :stream))
+  (mathematica-read t)
+  (setf kernel-status :idle)
   t)
   
 
