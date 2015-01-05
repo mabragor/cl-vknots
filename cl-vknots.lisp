@@ -362,6 +362,22 @@
    (ndetermine-orientations
     (bw->hash (braid->bw (deserialize-braid-rep *2-strand-trefoil*))))))
 
+(defun str->marked-secondary-hypercube (str)
+  (destructuring-bind (vertex cube)
+      (marked-primary-hypercube-for-bw
+       (oriented-hash->bw 
+	(ndetermine-orientations
+	 (bw->hash (braid->bw (deserialize-braid-rep str))))))
+    (list vertex (primary-hypercube->secondary-hypercube cube))))
+
+(defun serialize-marked-hypercube (x &optional (fname "~/out.txt"))
+  (destructuring-bind (vertex cube) x
+    (with-open-file (stream fname :direction :output :if-exists :supersede)
+      (format stream "~{~a~^ ~}~%" vertex)
+      (iter (for poly in-vector cube)
+	    (write-line poly stream))))
+  :success)
+
 
 
 (defgeneric choices->number (obj)
