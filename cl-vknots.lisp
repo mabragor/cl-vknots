@@ -378,6 +378,10 @@
 	    (write-line poly stream))))
   :success)
 
+(defun digest (&key (in "~/in.txt") (out "~/out.txt"))
+  (serialize-marked-hypercube (str->marked-secondary-hypercube (with-open-file (stream in)
+								 (read-line stream)))
+			      out))
 
 
 (defgeneric choices->number (obj)
