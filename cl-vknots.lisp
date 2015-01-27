@@ -284,11 +284,75 @@
 	      (the-step-over))))
     hash))
 
+(defun segment-numbers (bw)
+  (let ((res (make-hash-table :test #'equal)))
+    (iter (for elt in bw)
+	  (iter (for num in (cdr elt))
+		(setf (gethash num res) t)))
+    (iter (for (key nil) in-hashtable res)
+	  (collect key))))
+
+(defun follow-up-hash (bw)
+  (let ((follow-ups (make-hash-table :test #'equal)))
+    (iter (for (type . nums) in bw)
+	  (if (eq 'd type)
+	      (setf (gethash (car nums) follow-ups) (cadr nums))
+	      (setf (gethash (car nums) follow-ups) (caddr nums)
+		    (gethash (cadr nums) follow-ups) (cadddr nums))))
+    follow-ups))
+
+(defun cycle-join-hash (bw)
+  (let ((joins (make-hash-table :test #'equal)))
+    (iter (for (type . nums) in bw)
+	  (if (not (eq 'd type))
+	      (setf (gethash (car nums) joins) (cadr nums)
+		    (gethash (cadr nums) joins) (car nums))))
+    joins))
+
+
+(defun seifert-segments (bw)
+  (let ((follow-ups (follow-up-hash bw)))
+    (let ((segment-numbers (segment-numbers bw))
+	  (seifert-segments nil)
+	  (cur-cycle 0)
+	  (cur-segment 0)
+	  (begin-segment 0)
+	  (cur-segment-sequence nil))
+      (iter (while segment-numbers)
+	    (incf cur-cycle)
+	    ;; (format t "Searching cycle ~a~%" cur-cycle)
+	    (setf cur-segment (car segment-numbers))
+	    (setf begin-segment cur-segment
+		  cur-segment-sequence nil)
+	    (format t "Searching cycle ~a, begin segment is ~a, cur segment is ~a~%"
+		    cur-cycle begin-segment cur-segment)
+	    (pop segment-numbers)
+	    (push cur-segment cur-segment-sequence)
+	    (let ((next-segment (gethash cur-segment follow-ups)))
+	      (iter (while (not (equal next-segment begin-segment)))
+		    (format t "Found next segment ~a~%" next-segment)
+		    (push next-segment cur-segment-sequence)
+		    (setf segment-numbers (delete next-segment segment-numbers :test #'equal)
+			  cur-segment next-segment)
+		    (setf next-segment (gethash cur-segment follow-ups)))
+	      (push (cons cur-cycle cur-segment-sequence) seifert-segments)))
+      seifert-segments)))
+		
+(defun dessin-denfant (bw)
+  (let ((seifert-segments (seifert-segments bw))
+	(joins (cycle-join-hash bw)))
+    (cl-yy:hash->assoc joins)))
+    
+      
+      
+	    
+  
+
 (defgeneric listize (junc)
   (:documentation "Convert oriented junction into list-form"))
 
 (defmethod listize ((delta delta))
-  (with-slots (left-leg right-leg) delta
+  (with-slots (left-leg right-leg) (normalize-delta delta)
     (with-slots ((number-l number)) left-leg
       (with-slots ((number-r number)) right-leg
 	`((d ,number-l ,number-r))))))
@@ -315,6 +379,17 @@
 		 :rb (make-instance 'leg :number rb :direction :in)
 		 :lt (make-instance 'leg :number lt :direction :out)
 		 :rt (make-instance 'leg :number rt :direction :out)))
+
+(defun normalize-delta (delta)
+  "Rotate delta such that in-leg is the left one."
+  (with-slots (left-leg right-leg) delta
+    (with-slots ((number-l number) (dir-l direction)) left-leg
+      (with-slots ((number-r number) (dir-r direction)) right-leg
+	(if (eq :in dir-l)
+	    delta
+	    (make-instance 'delta
+			   :leftleg right-leg
+			   :rightleg left-leg))))))
 
 
 (defun normalize-r-matrix (rmat)
@@ -362,7 +437,19 @@
    (ndetermine-orientations
     (bw->hash (braid->bw (deserialize-braid-rep *2-strand-trefoil*))))))
 
+(defun braid->oriented-bw (braid)
+  (oriented-hash->bw 
+   (ndetermine-orientations
+    (bw->hash (braid->bw (deserialize-braid-rep braid))))))
 
+(defun braid->secondary-hypercube (braid)
+  (destructuring-bind (initial-vertex hypercube)
+      (marked-primary-hypercube-for-bw
+       (oriented-hash->bw 
+	(ndetermine-orientations
+	 (bw->hash (braid->bw (deserialize-braid-rep braid))))))))
+    
+      
 
 (defgeneric choices->number (obj)
   )
