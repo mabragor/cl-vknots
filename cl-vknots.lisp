@@ -337,11 +337,31 @@
 		    (setf next-segment (gethash cur-segment follow-ups)))
 	      (push (cons cur-cycle cur-segment-sequence) seifert-segments)))
       seifert-segments)))
+
+(defclass dessin-node ()
+  ((edges :initarg :edges)))
+
+(defclass dessin-edge ()
+  ((nodes)))
+(defun mk-dessin-edge ()
+  (let ((it (make-instance 'dessin-edge)))
+    (with-slots (nodes) it
+      (setf nodes (list nil nil)))))
+
+(defun connect-left (edge node)
+  (with-slots (nodes) edge
+    (setf (car nodes) node)))
+(defun connect-right ()
+  )
+	
+
+(defclass dessin-denfant ()
+  ((edges) (nodes)))
 		
 (defun dessin-denfant (bw)
   (let ((seifert-segments (seifert-segments bw))
 	(joins (cycle-join-hash bw)))
-    (cl-yy:hash->assoc joins)))
+    (list seifert-segments (cl-yy:hash->assoc joins))))
     
       
       
