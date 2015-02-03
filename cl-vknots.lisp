@@ -100,6 +100,8 @@
 (defparameter *2-strand-unknot* "2 1")
 (defparameter *double-eight* "3 1 2")
 
+(defparameter *3-strand-trefoil* "3 1 2 1 2")
+
 (defun deserialize-braid-rep (str)
   (mapcar (lambda (x)
 	    (if (char= #\f (char x 0))
@@ -847,7 +849,7 @@
       (iter (for edge in edges)
 	    (if (not (alive-p edge))
 		(next-iteration))
-	    (push res edge)))
+	    (push edge res)))
     res))
 
 
@@ -1010,6 +1012,8 @@
   (let (dessin1 touch)
     (with-slots (nodes edges factors) dessin
       (iter (for node in nodes)
+	    (for i from 1)
+	    (format t "Considering node ~a~%" i)
 	    (when (and (equal 2 (valency node))
 		       (not (looped-2-valent-vertex-p node)))
 	      (setf touch t)
