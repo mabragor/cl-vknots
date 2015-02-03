@@ -102,6 +102,9 @@
 
 (defparameter *3-strand-trefoil* "3 1 2 1 2")
 
+(defparameter *3-4-knot* "3 1 2 1 2 1 2 1 2")
+
+
 (defun deserialize-braid-rep (str)
   (mapcar (lambda (x)
 	    (if (char= #\f (char x 0))
@@ -1046,6 +1049,8 @@
 		 `(multiple-value-bind (res done) (,x thing)
 		    (setf step-done (or step-done done)
 			  thing res))))
+      (frob n-fat-edges-recursion)
+      (format t "dessin state after stage -1: ~a~%" (serialize thing))
       (frob n-0-dessin-recursion)
       (format t "dessin state after stage 0: ~a~%" (serialize thing))
       (frob n-1-dessin-recursion)
@@ -1071,6 +1076,20 @@
 ;; TODO: compact human-writable notation for dessins, to be able to calculate dessins on demand,
 ;; without explicitly constructing knot for them
 
+(defun next-alive-edge (node edge-lst)
+  (let (following-edge)
+    (iter (for edge in (cdr edge-lst))
+	  (when (alive-p edge)
+	    (setf following-edge edge)
+	    (terminate)))
+    (or following-edge
+	(first-edge node))))
+
+(defun fast-forward-to-edge (node edge)
+  (iter (for cur-edge on (slot-value node 'edges))
+	(if (eq edge (car cur-edge))
+	    (return cur-edge))))
+
 (defun n-fat-edges-node-recursion (dessin node)
   (let (step-done)
     (iter (generate edge on (slot-value node 'edges))
@@ -1087,8 +1106,10 @@
 		(next edge)
 		(let ((other-node (other-node (car edge) node)))
 		  (if (eq following-edge
-			  ..
-		
+			  (next-alive-edge other-node (fast-forward-to-edge other-node (car edge))))
+		      (progn (setf (slot-value following-edge 'alive) nil)
+			     (push "[2]" (slot-value dessin 'factors)))
+		      (next edge))))))
     step-done))
 
 (defun n-fat-edges-recursion (dessin)
