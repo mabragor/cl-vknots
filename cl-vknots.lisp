@@ -1066,3 +1066,35 @@
 	      (terminate))))
   (mapcar #'serialize dessin))
 
+
+
+;; TODO: compact human-writable notation for dessins, to be able to calculate dessins on demand,
+;; without explicitly constructing knot for them
+
+(defun n-fat-edges-node-recursion (dessin node)
+  (let (step-done)
+    (iter (generate edge on (slot-value node 'edges))
+	  (if-first-time (next edge))
+	  (when (not (alive-p (car edge)))
+	    (next edge)
+	    (next-iteration))
+	  (let ((following-edge (next-alive-edge node edge)))
+	    (if (or (not (eq (other-node (car edge) node)
+			     (other-node following-edge node)))
+		    (eq (car edge) following-edge)
+		    ;; This is temporary for simplicity
+		    (eq node (other-node (car edge) node)))
+		(next edge)
+		(let ((other-node (other-node (car edge) node)))
+		  (if (eq following-edge
+			  ..
+		
+    step-done))
+
+(defun n-fat-edges-recursion (dessin)
+  (let (step-done)
+    (iter (for node in (slot-value dessin 'nodes))
+	  (if (not (alive-p node))
+	      (next-iteration))
+	  (setf step-done (or step-done (n-fat-edges-node-recursion dessin node))))
+    (values dessin step-done)))
