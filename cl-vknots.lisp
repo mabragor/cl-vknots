@@ -938,6 +938,7 @@
   (setf (slot-value thing 'alive) (pop (slot-value thing 'alive-stack))))
 
 
+
 (defmacro! with-saved-node-state (node &body body)
   `(progn (push-alive ,node)
 	  (iter (for edge in (slot-value ,node 'edges))
@@ -946,7 +947,14 @@
 	    (pop-alive ,node)
 	    (iter (for edge in (slot-value ,node 'edges))
 		  (pop-alive edge)))))
-  
+
+(defmacro! with-saved-edge-state (edge &body body)
+  `(progn (push-alive ,edge)
+	  (unwind-protect (progn ,@body)
+	    (pop-alive ,edge))))
+
+(defun kill-edge (edge)
+  (setf (slot-value edge 'alive) nil))
 
 (defun dessin-with-killed-node (dessin node)
   (with-saved-node-state node
@@ -1119,3 +1127,31 @@
 	      (next-iteration))
 	  (setf step-done (or step-done (n-fat-edges-node-recursion dessin node))))
     (values dessin step-done)))
+
+
+
+;; Ok, now I need to calculate expressions for all the subgraphs,
+;; such that this won't be necessary to do by hand.
+
+(defparameter cube (make-hash-table :test #'equal))
+
+(defun calculate-cube-vertex (dessin level)
+  (format t "Calculating cube vertex for ~a~%" (serialize dessin))
+  (let ((it (gethash level cube)))
+    (when (not it)
+      (setf it
+	    (setf (gethash level cube) (make-hash-table :test #'equal))))
+    (incf (gethash (n-dessin-recursion (copy-dessin dessin)) it 0))))
+
+(defun cube-for-dessin (dessin)
+  (let ((cube (make-hash-table :test #'equal)))
+    (labels ((rec (left-edges level)
+	       (if (not left-edges)
+		   (calculate-cube-vertex dessin level)
+		   (progn (rec (cdr left-edges) level)
+			  (with-saved-edge-state (car left-edges)
+			    (kill-edge (car left-edges))
+			    (rec (cdr left-edges) (1+ level)))))))
+      (rec (slot-value dessin 'edges) 0))
+    cube))
+
