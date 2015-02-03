@@ -97,6 +97,9 @@
 
 (defparameter *2-strand-trefoil* "2 1 1 1")
 
+(defparameter *2-strand-unknot* "2 1")
+(defparameter *double-eight* "3 1 2")
+
 (defun deserialize-braid-rep (str)
   (mapcar (lambda (x)
 	    (if (char= #\f (char x 0))
@@ -338,12 +341,16 @@
 	      (push (cons cur-cycle cur-segment-sequence) seifert-segments)))
       seifert-segments)))
 
-(defclass dessin-node ()
+(defclass living-thing ()
+  ((alive :initform t)
+   (alive-stack :initform nil)))
+
+(defclass dessin-node (living-thing)
   ((edges :initarg :edges :initform nil)))
 (defun mk-dessin-node ()
   (make-instance 'dessin-node))
 
-(defclass dessin-edge ()
+(defclass dessin-edge (living-thing)
   ((nodes)))
 (defun mk-dessin-edge ()
   (let ((it (make-instance 'dessin-edge)))
@@ -359,8 +366,8 @@
     (setf (cadr nodes) node)))
 (defun connect-node-free (edge node)
   (with-slots (nodes) edge
-    (cond ((not (car nodes)) (connect-left edge node))
-	  ((not (cadr nodes)) (connect-right edge node))
+    (cond ((not (car nodes)) (connect-node-left edge node))
+	  ((not (cadr nodes)) (connect-node-right edge node))
 	  (t (error "No place on this edge to connect nodes to")))))
 
 (defun connect-edge-begin (node edge)
@@ -379,12 +386,14 @@
 
 	
 (defclass dessin-denfant ()
-  ((edges :initarg :edges) (nodes :initarg :nodes)))
+  ((edges :initarg :edges)
+   (nodes :initarg :nodes)
+   (factors :initarg :factors)))
 
 (defun bw->dessin (bw)
   (deserialize (seifert-segments bw) (cl-yy::hash->assoc (cycle-join-hash bw))))
 		
-(defun deserialize (seifert-segments joins)
+(defun deserialize (seifert-segments joins &rest factors)
   (let (all-edges all-nodes)
     (let ((edge-hash (make-hash-table :test #'equal)))
       (format t "About to pre-connect edges~%")
@@ -406,31 +415,45 @@
 			(connect-node-free edge new-node)
 			(connect-edge-begin new-node edge)
 			))))))
-    (make-instance 'dessin-denfant :edges all-edges :nodes all-nodes)))
+    (make-instance 'dessin-denfant :edges all-edges :nodes all-nodes
+		   :factors (copy-list factors))))
 
+(defgeneric serialize (x))
 
-(defun serialize (dessin)
-  (with-slots (nodes edges) dessin
+(defmethod serialize ((x list))
+  (mapcar #'serialize x))
+
+(defmethod serialize ((dessin dessin-denfant))
+  (with-slots (nodes edges factors) dessin
     (let ((junc-hash (make-hash-table :test #'equal))
 	  (i 0)
+	  (j 0)
 	  serialized-nodes
 	  serialized-edges)
       (iter (for node in nodes)
-	    (for j from 1)
+	    (if (not (alive-p node))
+		(next-iteration))
+	    (incf j)
 	    (let ((serialized-node (list j)))
 	      (with-slots ((node-edges edges)) node
 		(iter (for edge in node-edges)
+		      (if (not (slot-value edge 'alive))
+			  (next-iteration))
 		      (incf i)
 		      (setf (gethash (list node edge) junc-hash) i)
 		      (push i serialized-node)))
 	      (push (nreverse serialized-node) serialized-nodes)))
       (iter (for edge in edges)
+	    (if (not (slot-value edge 'alive))
+		(next-iteration))
 	    (with-slots ((edge-nodes nodes)) edge
 	      (let ((junc-left (gethash (list (car edge-nodes) edge) junc-hash))
 		    (junc-right (gethash (list (cadr edge-nodes) edge) junc-hash)))
 		(push (cons junc-left junc-right) serialized-edges)
 		(push (cons junc-right junc-left) serialized-edges))))
-      (list serialized-nodes serialized-edges))))
+      (cons serialized-nodes
+	    (cons serialized-edges
+		  (copy-list factors))))))
 	    
 
 (defun copy-dessin (dessin)
@@ -789,3 +812,253 @@
   
 
       
+;; Here I'll write the recursion for calculation of dessins in fundamental representation
+
+(defgeneric alive-p (x))
+
+(defmethod alive-p ((x living-thing))
+  (slot-value x 'alive))
+
+(defmethod alive-p ((x dessin-denfant))
+  (let (res)
+    (iter (for node in (slot-value x 'nodes))
+	  (when (alive-p node)
+	    (setf res t)
+	    (terminate)))
+    res))
+
+(defun valency (node)
+  (with-slots (edges) node
+    (iter (for edge in edges)
+	  (if (not (alive-p edge))
+	      (next-iteration))
+	  (summing 1))))
+
+(defun first-edge (node)
+  (with-slots (edges) node
+    (iter (for edge in edges)
+	  (if (not (alive-p edge))
+	      (next-iteration))
+	  (return edge))))
+
+(defun alive-edges (node)
+  (let (res)
+    (with-slots (edges) node
+      (iter (for edge in edges)
+	    (if (not (alive-p edge))
+		(next-iteration))
+	    (push res edge)))
+    res))
+
+
+(defun n-0-dessin-recursion (dessin)
+  (let (touch)
+    (with-slots (nodes edges factors) dessin
+      (iter (for node in nodes)
+	    (if (not (alive-p node))
+		(next-iteration))
+	    (when (equal 0 (valency node))
+	      (format t "applying 0-valent recursion~%")
+	      (kill-node node)
+	      (setf touch t)
+	      (push "[N]" factors))))
+    (values dessin touch)))
+  
+
+(defun n-1-dessin-recursion (dessin)
+  (let (touch)
+    (with-slots (nodes edges factors) dessin
+      (iter (for node in nodes)
+	    (if (not (alive-p node))
+		(next-iteration))
+	    (when (equal 1 (valency node))
+	      (format t "applying 1-valent recursion~%")
+	      (kill-node node)
+	      (setf touch t)
+	      (push "[N-1]" factors))))
+    (values dessin touch)))
+
+(defmacro! with-disabled-components ((&rest components) &body body)
+  `(let ((,g!-saved-states (mapcar (lambda (x)
+				     (slot-value x 'alive))
+				   (list ,@components))))
+     (unwind-protect (progn ,@(mapcar (lambda (x)
+					`(setf ,x nil))
+				      components)
+			    ,@body)
+       (iter (for component in (list ,@components))
+	     (for state in ,g!-saved-states)
+	     (setf (slot-value component 'alive) state)))))
+
+(defun looped-2-valent-vertex-p (node)
+  (destructuring-bind (edge1 edge2) (alive-edges node)
+    (with-slots ((nodes1 nodes)) edge1
+      (with-slots ((nodes2 nodes)) edge2
+	(and (eq (car nodes1) (cadr nodes1))
+	     (eq (car nodes1) (car nodes2))
+	     (eq (car nodes2) (cadr nodes2)))))))
+
+(defun other-node (edge node)
+  (with-slots (nodes) edge
+    (iter (for inner-node in nodes)
+	  (if (not (eq node inner-node))
+	      (return inner-node))
+	  (finally (error "Should not reach here")))))
+    
+(defun edges-to-different-nodes-p (node edges)
+  (let ((lst (mapcar (lambda (x)
+		       (other-node x node))
+		     edges)))
+    (equal (length lst) (length (remove-duplicates lst :test #'eq)))))
+
+(defun edges-to-same-node-p (node edges)
+  (let ((lst (mapcar (lambda (x)
+		       (other-node x node))
+		     edges)))
+    (equal 1 (length (remove-duplicates lst :test #'eq)))))
+
+(defun subs-node-with-another (edge old-node new-node)
+  (iter (for node on (slot-value edge 'nodes))
+	(if (eq old-node (car node))
+	    (setf (car node) new-node))))
+	    
+(defun kill-node (node)
+  (setf (slot-value node 'alive) nil)
+  (iter (for edge in (slot-value node 'edges))
+	(setf (slot-value edge 'alive) nil)))
+	
+(defun push-alive (thing)
+  (push (slot-value thing 'alive) (slot-value thing 'alive-stack)))
+(defun pop-alive (thing)
+  (setf (slot-value thing 'alive) (pop (slot-value thing 'alive-stack))))
+
+
+(defmacro! with-saved-node-state (node &body body)
+  `(progn (push-alive ,node)
+	  (iter (for edge in (slot-value ,node 'edges))
+		(push-alive edge))
+	  (unwind-protect (progn ,@body)
+	    (pop-alive ,node)
+	    (iter (for edge in (slot-value ,node 'edges))
+		  (pop-alive edge)))))
+  
+
+(defun dessin-with-killed-node (dessin node)
+  (with-saved-node-state node
+    (kill-node node)
+    (copy-dessin dessin)))
+
+
+
+(defun njoin-move (dessin node alive-edges)
+  (let ((n1 (other-node (car alive-edges) node))
+	(n2 (other-node (cadr alive-edges) node)))
+    (let (block1 block2 block3 block4)
+      (flet ((the-edge-p (x)
+	       (iter (for edge in alive-edges)
+		     (if (eq edge x)
+			 (return-from the-edge-p t)))
+	       nil))
+	(let ((pos1 (position-if #'the-edge-p (slot-value n1 'edges)))
+	      (pos2 (position-if #'the-edge-p (slot-value n2 'edges))))
+	  (setf block1 (subseq (slot-value n1 'edges) 0 pos1)
+		block2 (subseq (slot-value n1 'edges) (1+ pos1))
+		block3 (subseq (slot-value n2 'edges) 0 pos2)
+		block4 (subseq (slot-value n2 'edges) (1+ pos2))))
+	(iter (for edge in block3)
+	      (subs-node-with-another edge n2 n1))
+	(iter (for edge in block4)
+	      (subs-node-with-another edge n2 n1)))
+      (setf (slot-value n1 'edges) (append block1 block4 block3 block2))
+      (kill-node node)
+      dessin)))
+
+(defun ncut-move (dessin node alive-edges)
+  (let ((n1 (other-node (car alive-edges) node)))
+    (let (block1 block2 block3)
+      (let ((pos (position-if (lambda (x)
+				(or (eq (car alive-edges) x) (eq (cadr alive-edges) x)))
+			      (slot-value n1 'edges))))
+	(setf block1 (subseq (slot-value n1 'edges) 0 pos)
+	      block3 (subseq (slot-value n1 'edges) (1+ pos)))
+	(let ((pos1 (position-if (lambda (x)
+				   (or (eq (car alive-edges) x) (eq (cadr alive-edges) x)))
+				 block3)))
+	  (setf block2 (subseq block3 0 pos1)
+		block3 (subseq block3 (1+ pos1)))))
+      ;; OK, let's first do it the dumb way
+      (setf (slot-value n1 'edges) (append block1 block3))
+      (let ((new-node (mk-dessin-node)))
+	(setf (slot-value new-node 'edges) block2)
+	(iter (for edge in block2)
+	      (subs-node-with-another edge n1 new-node))
+	(push new-node (slot-value dessin 'nodes)))
+      (kill-node node)
+      dessin)))
+
+
+
+(defun ncut-or-join-move (dessin node alive-edges)
+  (cond ((edges-to-different-nodes-p node alive-edges)
+	 (njoin-move dessin node alive-edges))
+	((edges-to-same-node-p node alive-edges)
+	 (ncut-move dessin node alive-edges))
+	(t (error "Should not reach this branch"))))
+
+
+(defun n-2-dessin-recursion (dessin)
+  (let (dessin1 touch)
+    (with-slots (nodes edges factors) dessin
+      (iter (for node in nodes)
+	    (when (and (equal 2 (valency node))
+		       (not (looped-2-valent-vertex-p node)))
+	      (setf touch t)
+	      (let ((my-edges (alive-edges node)))
+		;; forget the vertex
+		(setf dessin1 (dessin-with-killed-node dessin node))
+		(push "[N-2]" (slot-value dessin1 'factors))
+		;; contract the vertex
+		(setf dessin (ncut-or-join-move dessin node my-edges))
+		(terminate)))))
+    (values (list dessin1 dessin) touch)))
+		
+
+;; OK, what to do with this lump of code now? How to melt it?
+;; It doesn't even compile...
+
+(defgeneric n-recursion-step (thing))
+
+(defmethod n-recursion-step ((thing list))
+  (let (step-done res)
+    (iter (for elt in thing)
+	  (multiple-value-bind (elt-res done) (n-recursion-step elt)
+	    (setf step-done (or step-done done))
+	    (push elt-res res)))
+    (values (remove-if-not #'identity (alexandria:flatten res)) step-done)))
+
+(defmethod n-recursion-step ((thing dessin-denfant))
+  (let (step-done)
+    (macrolet ((frob (x)
+		 `(multiple-value-bind (res done) (,x thing)
+		    (setf step-done (or step-done done)
+			  thing res))))
+      (frob n-0-dessin-recursion)
+      (format t "dessin state after stage 0: ~a~%" (serialize thing))
+      (frob n-1-dessin-recursion)
+      (format t "dessin state after stage 1: ~a~%" (serialize thing))
+      (frob n-2-dessin-recursion)
+      (format t "dessin state after stage 2: ~a~%" (serialize thing)))
+    (format t "step done is ~a~%" step-done)
+    (values thing step-done)))
+  
+	      
+(defun n-dessin-recursion (dessin)
+  (iter (while t)
+	(multiple-value-bind (res done) (n-recursion-step dessin)
+	  (if (listp res)
+	      (setf dessin (remove-if-not #'identity res))
+	      (setf dessin res))
+	  (if (not done)
+	      (terminate))))
+  (mapcar #'serialize dessin))
+
