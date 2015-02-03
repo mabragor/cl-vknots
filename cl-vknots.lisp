@@ -356,7 +356,7 @@
   (make-instance 'dessin-node))
 
 (defclass dessin-edge (living-thing)
-  ((nodes)))
+  ((nodes) (color :initform :b)))
 (defun mk-dessin-edge ()
   (let ((it (make-instance 'dessin-edge)))
     (with-slots (nodes) it
@@ -393,7 +393,7 @@
 (defclass dessin-denfant ()
   ((edges :initarg :edges)
    (nodes :initarg :nodes)
-   (factors :initarg :factors)))
+   (factors :initarg :factors :initform nil)))
 
 (defun bw->dessin (bw)
   (deserialize (seifert-segments bw) (cl-yy::hash->assoc (cycle-join-hash bw))))
@@ -422,6 +422,35 @@
 			))))))
     (make-instance 'dessin-denfant :edges all-edges :nodes all-nodes
 		   :factors (copy-list factors))))
+
+(defun deserialize2 (lst)
+  (let (all-edges all-nodes)
+    (let ((edge-hash (make-hash-table :test #'equal)))
+      (iter (for (num . edge-specs) in lst)
+	    (let ((cur-node (mk-dessin-node)))
+	      (push cur-node all-nodes)
+	      (let ((num-edge 0)
+		    (edge-color :b))
+		(iter (for edge-spec in edge-specs)
+		      (if (atom edge-spec)
+			  (progn (setf num-edge edge-spec
+				       edge-color :b))
+			  (progn (setf num-edge (car edge-spec)
+				       edge-color (cadr edge-spec))))
+		      (format t "Connecting edge ~a to node ~a~%" num-edge num)
+		      (let ((it (gethash num-edge edge-hash)))
+			(when (not it)
+			  (let ((cur-edge (mk-dessin-edge)))
+			    (setf it (setf (gethash num-edge edge-hash) cur-edge)
+				  (slot-value cur-edge 'color) edge-color)
+			    (push it all-edges)))
+			(connect-node-free it cur-node)
+			(connect-edge-begin cur-node it)))))))
+    (make-instance 'dessin-denfant :edges all-edges :nodes all-nodes)))
+			
+			    
+				
+			
 
 (defgeneric serialize (x))
 
