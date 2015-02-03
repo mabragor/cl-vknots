@@ -339,33 +339,113 @@
       seifert-segments)))
 
 (defclass dessin-node ()
-  ((edges :initarg :edges)))
+  ((edges :initarg :edges :initform nil)))
+(defun mk-dessin-node ()
+  (make-instance 'dessin-node))
 
 (defclass dessin-edge ()
   ((nodes)))
 (defun mk-dessin-edge ()
   (let ((it (make-instance 'dessin-edge)))
     (with-slots (nodes) it
-      (setf nodes (list nil nil)))))
+      (setf nodes (list nil nil)))
+    it))
 
-(defun connect-left (edge node)
+(defun connect-node-left (edge node)
   (with-slots (nodes) edge
     (setf (car nodes) node)))
-(defun connect-right ()
-  )
-	
+(defun connect-node-right (edge node)
+  (with-slots (nodes) edge
+    (setf (cadr nodes) node)))
+(defun connect-node-free (edge node)
+  (with-slots (nodes) edge
+    (cond ((not (car nodes)) (connect-left edge node))
+	  ((not (cadr nodes)) (connect-right edge node))
+	  (t (error "No place on this edge to connect nodes to")))))
 
+(defun connect-edge-begin (node edge)
+  (with-slots (edges) node
+    (push edge edges)))
+(defun connect-edge-end (node edge)
+  (with-slots (edges) node
+    (setf edges (append edges (list edge)))))
+(defun connect-edge (node edge n)
+  (with-slots (edges) node
+    (setf (nth n edges) edge)))
+(defun reverse-node (node)
+  (with-slots (edges) node
+    (setf edges (nreverse edges))))
+  
+
+	
 (defclass dessin-denfant ()
-  ((edges) (nodes)))
+  ((edges :initarg :edges) (nodes :initarg :nodes)))
+
+(defun bw->dessin (bw)
+  (deserialize (seifert-segments bw) (cl-yy::hash->assoc (cycle-join-hash bw))))
 		
-(defun dessin-denfant (bw)
-  (let ((seifert-segments (seifert-segments bw))
-	(joins (cycle-join-hash bw)))
-    (list seifert-segments (cl-yy:hash->assoc joins))))
-    
-      
-      
+(defun deserialize (seifert-segments joins)
+  (let (all-edges all-nodes)
+    (let ((edge-hash (make-hash-table :test #'equal)))
+      (format t "About to pre-connect edges~%")
+      (iter (for (from . to) in joins)
+	    (format t "Considering edge (~a ~a)~%" from to)
+	    (if (not (gethash from edge-hash))
+		(let ((new-edge (mk-dessin-edge)))
+		  (setf (gethash from edge-hash) new-edge
+			(gethash to edge-hash) new-edge)
+		  (push new-edge all-edges))))
+      (format t "Pre-connected all edges~%")
+      (iter (for (num . segments) in seifert-segments)
+	    (format t "Connecting node ~a~%" num)
+	    (let ((new-node (mk-dessin-node)))
+	      (push new-node all-nodes)
+	      (iter (for segment in segments)
+		    (let ((edge (gethash segment edge-hash)))
+		      (when edge
+			(connect-node-free edge new-node)
+			(connect-edge-begin new-node edge)
+			))))))
+    (make-instance 'dessin-denfant :edges all-edges :nodes all-nodes)))
+
+
+(defun serialize (dessin)
+  (with-slots (nodes edges) dessin
+    (let ((junc-hash (make-hash-table :test #'equal))
+	  (i 0)
+	  serialized-nodes
+	  serialized-edges)
+      (iter (for node in nodes)
+	    (for j from 1)
+	    (let ((serialized-node (list j)))
+	      (with-slots ((node-edges edges)) node
+		(iter (for edge in node-edges)
+		      (incf i)
+		      (setf (gethash (list node edge) junc-hash) i)
+		      (push i serialized-node)))
+	      (push (nreverse serialized-node) serialized-nodes)))
+      (iter (for edge in edges)
+	    (with-slots ((edge-nodes nodes)) edge
+	      (let ((junc-left (gethash (list (car edge-nodes) edge) junc-hash))
+		    (junc-right (gethash (list (cadr edge-nodes) edge) junc-hash)))
+		(push (cons junc-left junc-right) serialized-edges)
+		(push (cons junc-right junc-left) serialized-edges))))
+      (list serialized-nodes serialized-edges))))
 	    
+
+(defun copy-dessin (dessin)
+  (apply #'deserialize (serialize dessin)))
+      
+(defun min-valency (dessin)
+  (iter (for node in (slot-value dessin 'nodes))
+	(minimizing (length (slot-value node 'edges)))))
+(defun max-valency (dessin)
+  (iter (for node in (slot-value dessin 'nodes))
+	(maximizing (length (slot-value node 'edges)))))
+(defun num-nodes (dessin)
+  (length (slot-value dessin 'nodes)))
+(defun num-edges (dessin)
+  (length (slot-value dessin 'edges)))
   
 
 (defgeneric listize (junc)
