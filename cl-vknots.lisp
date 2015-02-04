@@ -65,7 +65,7 @@
   (labels ((rec (choices-acc deltas lst)
 	     (if (not lst)
 		 (progn (when (equal 0 (mod (incf output-count) 1000))
-			  (format t "processed ~a entries~%" output-count)
+			  ;; (format t "processed ~a entries~%" output-count)
 			  (sb-ext:gc))
 			(funcall outputter choices-acc (or (cdr (assoc 'num-circles deltas)) 0)))
 		 (cond ((eq 'v (caar lst))
@@ -332,13 +332,13 @@
 	    (setf cur-segment (car segment-numbers))
 	    (setf begin-segment cur-segment
 		  cur-segment-sequence nil)
-	    (format t "Searching cycle ~a, begin segment is ~a, cur segment is ~a~%"
-		    cur-cycle begin-segment cur-segment)
+	    ;; (format t "Searching cycle ~a, begin segment is ~a, cur segment is ~a~%"
+	    ;; cur-cycle begin-segment cur-segment)
 	    (pop segment-numbers)
 	    (push cur-segment cur-segment-sequence)
 	    (let ((next-segment (gethash cur-segment follow-ups)))
 	      (iter (while (not (equal next-segment begin-segment)))
-		    (format t "Found next segment ~a~%" next-segment)
+		    ;; (format t "Found next segment ~a~%" next-segment)
 		    (push next-segment cur-segment-sequence)
 		    (setf segment-numbers (delete next-segment segment-numbers :test #'equal)
 			  cur-segment next-segment)
@@ -401,17 +401,17 @@
 (defun deserialize (seifert-segments joins &rest factors)
   (let (all-edges all-nodes)
     (let ((edge-hash (make-hash-table :test #'equal)))
-      (format t "About to pre-connect edges~%")
+      ;; (format t "About to pre-connect edges~%")
       (iter (for (from . to) in joins)
-	    (format t "Considering edge (~a ~a)~%" from to)
+	    ;; (format t "Considering edge (~a ~a)~%" from to)
 	    (if (not (gethash from edge-hash))
 		(let ((new-edge (mk-dessin-edge)))
 		  (setf (gethash from edge-hash) new-edge
 			(gethash to edge-hash) new-edge)
 		  (push new-edge all-edges))))
-      (format t "Pre-connected all edges~%")
+      ;; (format t "Pre-connected all edges~%")
       (iter (for (num . segments) in seifert-segments)
-	    (format t "Connecting node ~a~%" num)
+	    ;; (format t "Connecting node ~a~%" num)
 	    (let ((new-node (mk-dessin-node)))
 	      (push new-node all-nodes)
 	      (iter (for segment in segments)
@@ -437,7 +437,7 @@
 				       edge-color :b))
 			  (progn (setf num-edge (car edge-spec)
 				       edge-color (cadr edge-spec))))
-		      (format t "Connecting edge ~a to node ~a~%" num-edge num)
+		      ;; (format t "Connecting edge ~a to node ~a~%" num-edge num)
 		      (let ((it (gethash num-edge edge-hash)))
 			(when (not it)
 			  (let ((cur-edge (mk-dessin-edge)))
@@ -448,7 +448,27 @@
 			(connect-edge-begin cur-node it)))))))
     (make-instance 'dessin-denfant :edges all-edges :nodes all-nodes)))
 			
-			    
+(defun serialize2 (dessin)
+  (let ((edge-hash (make-hash-table :test #'eq)))
+    (with-slots (nodes edges) dessin
+      (iter (for edge in edges)
+	    (for i from 1)
+	    (setf (gethash edge edge-hash) i))
+      (iter (for node in nodes)
+	    (if (not (alive-p node))
+		(next-iteration))
+	    (generate i from 1)
+	    (collect (cons (next i)
+			   (iter (for edge in (slot-value node 'edges))
+				 (if (not (alive-p edge))
+				     (next-iteration))
+				 (collect (gethash edge edge-hash)))))))))
+
+
+
+
+
+
 				
 			
 
@@ -892,7 +912,7 @@
 	    (if (not (alive-p node))
 		(next-iteration))
 	    (when (equal 0 (valency node))
-	      (format t "applying 0-valent recursion~%")
+	      ;; (format t "applying 0-valent recursion~%")
 	      (kill-node node)
 	      (setf touch t)
 	      (push "[N]" factors))))
@@ -906,7 +926,7 @@
 	    (if (not (alive-p node))
 		(next-iteration))
 	    (when (equal 1 (valency node))
-	      (format t "applying 1-valent recursion~%")
+	      ;; (format t "applying 1-valent recursion~%")
 	      (kill-node node)
 	      (setf touch t)
 	      (push "[N-1]" factors))))
@@ -1053,7 +1073,7 @@
     (with-slots (nodes edges factors) dessin
       (iter (for node in nodes)
 	    (for i from 1)
-	    (format t "Considering node ~a~%" i)
+	    ;; (format t "Considering node ~a~%" i)
 	    (when (and (equal 2 (valency node))
 		       (not (looped-2-valent-vertex-p node)))
 	      (setf touch t)
@@ -1087,14 +1107,15 @@
 		    (setf step-done (or step-done done)
 			  thing res))))
       (frob n-fat-edges-recursion)
-      (format t "dessin state after stage -1: ~a~%" (serialize thing))
+      ;; (format t "dessin state after stage -1: ~a~%" (serialize thing))
       (frob n-0-dessin-recursion)
-      (format t "dessin state after stage 0: ~a~%" (serialize thing))
+      ;; (format t "dessin state after stage 0: ~a~%" (serialize thing))
       (frob n-1-dessin-recursion)
-      (format t "dessin state after stage 1: ~a~%" (serialize thing))
+      ;; (format t "dessin state after stage 1: ~a~%" (serialize thing))
       (frob n-2-dessin-recursion)
-      (format t "dessin state after stage 2: ~a~%" (serialize thing)))
-    (format t "step done is ~a~%" step-done)
+      ;; (format t "dessin state after stage 2: ~a~%" (serialize thing))
+      )
+    ;; (format t "step done is ~a~%" step-done)
     (values thing step-done)))
   
 	      
@@ -1165,7 +1186,7 @@
 (defparameter cube (make-hash-table :test #'equal))
 
 (defun calculate-cube-vertex (dessin level)
-  (format t "Calculating cube vertex for ~a~%" (serialize dessin))
+  ;; (format t "Calculating cube vertex for ~a~%" (serialize dessin))
   (let ((it (gethash level cube)))
     (when (not it)
       (setf it
@@ -1194,25 +1215,52 @@
 		     1
 		     -1))))
 
-(defun ask-user-for-clue (nodes edges)
-  (declare (ignore nodes edges))
-  (error "Sorry, so far interaction is not implemented"))
+(defun ask-user-for-clue (dessin)
+  ;; (declare (ignore nodes edges))
+  (format t "Can you, please, provide value for the graph~%~a >>>~%" (serialize2 dessin))
+  (read-line))
+
+(defparameter *3-3-dessin* '((1 1 2 3) (2 1 4 2 5 3 6) (3 4 5 6)))
+
+(defun torus-range (start length)
+  (iter (for i from start to (+ start (1- length)))
+	(collect i)))
+
+(defun intersperse (lst1 lst2)
+  (iter (for elt1 in lst1)
+	(for elt2 in lst2)
+	(collect elt1)
+	(collect elt2)))
+
+(defun torus-dessin (n m)
+  (let ((torus-ranges (iter (for i from 1 to (* n (1- m)) by n)
+			    (collect (torus-range i n)))))
+    (let ((pre-res (iter (for lst1 in torus-ranges)
+			 (for lst2 previous lst1)
+			 (for i from 1)
+			 (collect (cons i (intersperse lst2 lst1))))))
+      (setf (car pre-res) (cons 1 (car torus-ranges)))
+      (append pre-res
+	      (list (cons (1+ (length torus-ranges))
+			  (car (last torus-ranges))))))))
+
+  
 
 (defun homfly-for-dessin (dessin)
   (let ((cube (cube-for-dessin dessin))
 	(total-charge (color-charge dessin)))
     (with-output-to-string (stream)
-      (format stream "(-q)^(~a N) (0 " total-charge)
+      (format stream "(-q^N)^(~a) (0 " total-charge)
       (iter (for (charge polys) in-hashtable cube)
 	    (iter (for (poly coeff) in-hashtable polys)
 		  (format stream "+ (-1/q)^(~a) ~a (0 " charge coeff)
 		  (iter (for (nodes edges . factors) in poly)
 			;; (format t "Nodes ~a edges ~a factors ~a~%" nodes edges factors)
-			(format stream "+ ~{qnum~a~^ ~} ~a"
+			(format stream "+ ~{qnum~a~^ ~} (~a)"
 				factors
 				(if (null nodes)
 				    "1"
-				    (ask-user-for-clue nodes edges))))
+				    (cl-ppcre:regex-replace-all "\\[" (ask-user-for-clue (deserialize nodes edges)) "qnum["))))
 		  (format stream ")")))
       (format stream ")"))))
 		
