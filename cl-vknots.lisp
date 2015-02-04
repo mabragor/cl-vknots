@@ -1180,7 +1180,41 @@
 		   (progn (rec (cdr left-edges) level)
 			  (with-saved-edge-state (car left-edges)
 			    (kill-edge (car left-edges))
-			    (rec (cdr left-edges) (1+ level)))))))
+			    (rec (cdr left-edges) (if (eq :b (slot-value (car left-edges) 'color))
+						      (1+ level)
+						      (1- level))))))))
       (rec (slot-value dessin 'edges) 0))
     cube))
+
+(defun color-charge (dessin)
+  (iter (for edge in (slot-value dessin 'edges))
+	(if (not (alive-p edge))
+	    (next-iteration))
+	(summing (if (eq :b (slot-value edge 'color))
+		     1
+		     -1))))
+
+(defun ask-user-for-clue (nodes edges)
+  (declare (ignore nodes edges))
+  (error "Sorry, so far interaction is not implemented"))
+
+(defun homfly-for-dessin (dessin)
+  (let ((cube (cube-for-dessin dessin))
+	(total-charge (color-charge dessin)))
+    (with-output-to-string (stream)
+      (format stream "(-q)^(~a N) (0 " total-charge)
+      (iter (for (charge polys) in-hashtable cube)
+	    (iter (for (poly coeff) in-hashtable polys)
+		  (format stream "+ (-1/q)^(~a) ~a (0 " charge coeff)
+		  (iter (for (nodes edges . factors) in poly)
+			;; (format t "Nodes ~a edges ~a factors ~a~%" nodes edges factors)
+			(format stream "+ ~{qnum~a~^ ~} ~a"
+				factors
+				(if (null nodes)
+				    "1"
+				    (ask-user-for-clue nodes edges))))
+		  (format stream ")")))
+      (format stream ")"))))
+		
+    
 
