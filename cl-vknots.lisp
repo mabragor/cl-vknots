@@ -1266,3 +1266,12 @@
 		
     
 
+;; Ok, I need to generate code for expressions for many HOMFLY of 3-sausages
+
+
+(defun 3-sausage-homflies (n-max &optional (fname "~/code/superpolys/ThreeSausageHOMFLIES.m"))
+  (with-open-file (stream fname :direction :output :if-exists :supersede)
+    (iter (for n from 2 to n-max)
+	  (format stream "ThreeSausageHOMFLY[~a] := ~a~%~%"
+		  n (homfly-for-dessin (deserialize2 (torus-dessin 3 n))))))
+  :success!)
