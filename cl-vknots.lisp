@@ -1217,8 +1217,12 @@
 
 (defun ask-user-for-clue (dessin)
   ;; (declare (ignore nodes edges))
-  (format t "Can you, please, provide value for the graph~%~a >>>~%" (serialize2 dessin))
-  (read-line))
+  (let ((s-dessin (serialize2 dessin)))
+    (let ((it (torus-dessin-p s-dessin)))
+      (if it
+	  (format nil "torusDessin[~a,~a]" (car it) (cadr it))
+	  (progn (format t "Can you, please, provide value for the graph~%~a >>>~%" (serialize2 dessin))
+		 (read-line))))))
 
 (defparameter *3-3-dessin* '((1 1 2 3) (2 1 4 2 5 3 6) (3 4 5 6)))
 
@@ -1266,3 +1270,45 @@
 		
     
 
+;; OK, I need a way to persistently store values for graphs
+;; Or, a way to recognize torusDessin
+;; Or both
+
+(defun correct-poses-p (poses)
+  (let ((i (car poses)))
+    (if (or (equal i 0) (equal i 1))
+	(iter (for pose in (cdr poses))
+	      (if (not (equal (incf i 2) pose))
+		  (return nil))
+	      (finally (return t))))))
+
+(defun generate-new-toric-top-lst (lst)
+  (let ((first (cdar lst))
+	(second (cdadr lst)))
+    (let ((poses (mapcar (lambda (x)
+			   (position x second :test #'equal))
+			 first)))
+      ;; (format t "Poses are ~a~%" poses)
+      (if (correct-poses-p poses)
+	  (cons (caadr lst)
+		(if (evenp (car poses))
+		    (iter (for elt in (cdr second) by #'cddr)
+			  (collect elt))
+		    (iter (for elt in second by 'cddr)
+			  (collect elt))))))))
+
+(defun torus-dessin-p (lst)
+  (cond ((equal 1 (length lst)) (equal 1 (length (car lst))))
+	(t (labels ((rec (lst n m)
+		      ;; (format t "Lst is ~a n is ~a m is ~a~%" lst n m)
+		      (cond ((equal 1 (length lst)) (if (equal 1 (length (car lst)))
+							(list n (1+ m))))
+			    ((equal 2 (length lst)) (if (and (equal (1+ n) (length (cadr lst)))
+							     (equal (cdar lst) (cdadr lst)))
+							(list n (+ 2 m))))
+			    (t (if (equal (1+ n) (length (car lst)))
+				   (let ((new-lst (generate-new-toric-top-lst lst)))
+				     ;; (format t "  New lst is ~a~%" new-lst)
+				     (if new-lst
+					 (rec (cons new-lst (cddr lst)) n (1+ m)))))))))
+	     (rec lst (length (cdar lst)) 0)))))
