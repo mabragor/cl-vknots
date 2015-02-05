@@ -1276,8 +1276,10 @@
 (defun 3-sausage-homflies (n-max &optional (fname "~/code/superpolys/ThreeSausageHOMFLIES.m"))
   (with-open-file (stream fname :direction :output :if-exists :supersede)
     (iter (for n from 2 to n-max)
-	  (format stream "ThreeSausageHOMFLY[~a] := ~a~%~%"
-		  n (homfly-for-dessin (deserialize2 (torus-dessin 3 n))))))
+	  (format stream "ThreeSausageHOMFLY[~a] := ~a;~%~%"
+		  n (homfly-for-dessin (deserialize2 (torus-dessin 3 n))))
+	  (format stream "FatSausageHOMFLY[~a] := ~a;~%~%"
+		  n (homfly-for-dessin (deserialize2 (torus-dessin n 3))))))
   :success!)
 
 ;; OK, I need a way to persistently store values for graphs
