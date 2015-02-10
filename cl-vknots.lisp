@@ -1261,7 +1261,18 @@
 	      (list (cons (1+ (length torus-ranges))
 			  (car (last torus-ranges))))))))
 
-  
+(defun print-dessin-poly (stream poly)  
+  (iter (for (nodes edges . factors) in poly)
+	;; (format t "Nodes ~a edges ~a factors ~a~%" nodes edges factors)
+	(format stream "+ ~{qnum~a~^ ~} (~a)"
+		factors
+		(if (null nodes)
+		    "1"
+		    (cl-ppcre:regex-replace-all "\\[" (ask-user-for-clue (deserialize nodes edges)) "qnum[")))))
+
+(defun frnl-dessin-poly (poly)
+  (with-output-to-string (stream)
+    (print-dessin-poly stream poly)))
 
 (defun homfly-for-dessin (dessin)
   (let ((cube (cube-for-dessin dessin))
@@ -1271,13 +1282,7 @@
       (iter (for (charge polys) in-hashtable cube)
 	    (iter (for (poly coeff) in-hashtable polys)
 		  (format stream "+ (-1/q)^(~a) ~a (0 " charge coeff)
-		  (iter (for (nodes edges . factors) in poly)
-			;; (format t "Nodes ~a edges ~a factors ~a~%" nodes edges factors)
-			(format stream "+ ~{qnum~a~^ ~} (~a)"
-				factors
-				(if (null nodes)
-				    "1"
-				    (cl-ppcre:regex-replace-all "\\[" (ask-user-for-clue (deserialize nodes edges)) "qnum["))))
+		  (print-dessin-poly stream poly)
 		  (format stream ")")))
       (format stream ")"))))
 		
@@ -1338,21 +1343,9 @@
 					 (rec (cons new-lst (cddr lst)) n (1+ m)))))))))
 	     (rec lst (length (cdar lst)) 0)))))
 
+(defparameter *5-dessin-1* '((1 1 2) (2 1 3 2 4 5) (3 3 6 4 7 5 8) (4 6 9 7 10 8) (5 9 10)))
+(defparameter *5-dessin-2* '((1 1 2) (2 1 3 2 4) (3 3 5 4 6 7) (4 5 8 6 9 7 10) (5 8 9 10)))
 
-(defun braidable-dessin-p (lst)
-  (cond ((equal 1 (length lst)) (equal 1 (length (car lst))))
-	(t (labels ((rec (lst n m)
-		      ;; (format t "Lst is ~a n is ~a m is ~a~%" lst n m)
-		      (cond ((equal 1 (length lst)) (if (equal 1 (length (car lst)))
-							(list n (1+ m))))
-			    ((equal 2 (length lst)) (if (and (equal (1+ n) (length (cadr lst)))
-							     (equal (cdar lst) (cdadr lst)))
-							(list n (+ 2 m))))
-			    (t (if (equal (1+ n) (length (car lst)))
-				   (let ((new-lst (generate-new-toric-top-lst lst)))
-				     ;; (format t "  New lst is ~a~%" new-lst)
-				     (if new-lst
-					 (rec (cons new-lst (cddr lst)) n (1+ m)))))))))
-	     (rec lst (length (cdar lst)) 0)))))
-  
+(defparameter *4-dessin-1* '((1 1 2 3) (2 1 4 2 5 3 6) (3 4 7 5 8 6) (4 7 8)))
+(defparameter *4-dessin-2* '((1 1 2 3 4) (2 1 5 2 6 3 7 4 8) (3 5 9 6 10 7 8) (4 9 10)))
 
