@@ -1216,13 +1216,26 @@
 		     -1))))
 
 (defun ask-user-for-clue (dessin)
+  (format t "Can you, please, provide value for the graph~%~a >>>~%" (serialize2 dessin))
+  (read-line))
+
+(defun format-torus-dessin (lst)
+  (if (equal 3 (cadr lst))
+      (format nil "[N][N-1]^2 + [N][N-1][N-2] (~a)"
+	      (joinl " + " (cons "0"
+				 (iter (for i from 1 to (1- (car lst)))
+				       (collect (format nil "[2]^~a" (1- (* 2 i))))))))
+      (format nil "torusDessin[~a,~a]" (car lst) (cadr lst))))
+
+
+
+(defun guess-the-dessin (dessin)
   ;; (declare (ignore nodes edges))
   (let ((s-dessin (serialize2 dessin)))
     (let ((it (torus-dessin-p s-dessin)))
       (if it
-	  (format nil "torusDessin[~a,~a]" (car it) (cadr it))
-	  (progn (format t "Can you, please, provide value for the graph~%~a >>>~%" (serialize2 dessin))
-		 (read-line))))))
+	  (format-torus-dessin it)
+	  (ask-user-for-clue dessin)))))
 
 (defparameter *3-3-dessin* '((1 1 2 3) (2 1 4 2 5 3 6) (3 4 5 6)))
 
@@ -1324,4 +1337,22 @@
 				     (if new-lst
 					 (rec (cons new-lst (cddr lst)) n (1+ m)))))))))
 	     (rec lst (length (cdar lst)) 0)))))
+
+
+(defun braidable-dessin-p (lst)
+  (cond ((equal 1 (length lst)) (equal 1 (length (car lst))))
+	(t (labels ((rec (lst n m)
+		      ;; (format t "Lst is ~a n is ~a m is ~a~%" lst n m)
+		      (cond ((equal 1 (length lst)) (if (equal 1 (length (car lst)))
+							(list n (1+ m))))
+			    ((equal 2 (length lst)) (if (and (equal (1+ n) (length (cadr lst)))
+							     (equal (cdar lst) (cdadr lst)))
+							(list n (+ 2 m))))
+			    (t (if (equal (1+ n) (length (car lst)))
+				   (let ((new-lst (generate-new-toric-top-lst lst)))
+				     ;; (format t "  New lst is ~a~%" new-lst)
+				     (if new-lst
+					 (rec (cons new-lst (cddr lst)) n (1+ m)))))))))
+	     (rec lst (length (cdar lst)) 0)))))
+  
 
