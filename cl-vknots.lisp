@@ -1357,10 +1357,11 @@
     (iter (for i from 1 to (- (* 2 n) 2))
 	  (push i (elt pre-res (mod (1- i) (1- n))))
 	  (push i (elt pre-res (1+ (mod (1- i) (1- n))))))
-    (push (1- (* 2 n)) (elt pre-res shift))
-    (push (1- (* 2 n)) (elt pre-res (1+ shift)))
-    (push (* 2 n) (elt pre-res (1+ shift)))
-    (push (* 2 n) (elt pre-res (+ 2 shift)))
+    (when shift
+      (push (1- (* 2 n)) (elt pre-res shift))
+      (push (1- (* 2 n)) (elt pre-res (1+ shift)))
+      (push (* 2 n) (elt pre-res (1+ shift)))
+      (push (* 2 n) (elt pre-res (+ 2 shift))))
     (iter (for j from 1)
 	  (for elt in-vector pre-res)
 	  (collect (cons j (nreverse elt))))))
@@ -1368,8 +1369,12 @@
 (defun velo-tori-file (nmax &optional (fname "~/code/superpolys/veloTori.m"))
   (with-open-file (stream fname :direction :output :if-exists :supersede)
     (iter (for n from 3 to nmax)
+	  (format stream "veloToriDessin[~a] := ~a;~%" n
+		  (frnl-dessin-poly
+		   (n-dessin-recursion
+		    (deserialize2 (m-2-with-2-torus-blob n nil)))))
 	  (iter (for shift from 0 to (- n 3))
-		(format stream "veloToriDessin~an~a = ~a;~%" n shift
+		(format stream "veloToriDessin[~a, ~a] = ~a;~%" n shift
 			(frnl-dessin-poly
 			 (n-dessin-recursion
 			  (deserialize2 (m-2-with-2-torus-blob n shift)))))))))
