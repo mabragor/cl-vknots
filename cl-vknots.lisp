@@ -1262,13 +1262,14 @@
 			  (car (last torus-ranges))))))))
 
 (defun print-dessin-poly (stream poly)  
+  (format stream "0 ")
   (iter (for (nodes edges . factors) in poly)
 	;; (format t "Nodes ~a edges ~a factors ~a~%" nodes edges factors)
 	(format stream "+ ~{qnum~a~^ ~} (~a)"
 		factors
 		(if (null nodes)
 		    "1"
-		    (cl-ppcre:regex-replace-all "\\[" (ask-user-for-clue (deserialize nodes edges)) "qnum[")))))
+		    (cl-ppcre:regex-replace-all "\\[" (guess-the-dessin (deserialize nodes edges)) "qnum[")))))
 
 (defun frnl-dessin-poly (poly)
   (with-output-to-string (stream)
@@ -1278,7 +1279,7 @@
   (let ((cube (cube-for-dessin dessin))
 	(total-charge (color-charge dessin)))
     (with-output-to-string (stream)
-      (format stream "(-q^N)^(~a) (0 " total-charge)
+      (format stream "(-q^N)^(~a) (" total-charge)
       (iter (for (charge polys) in-hashtable cube)
 	    (iter (for (poly coeff) in-hashtable polys)
 		  (format stream "+ (-1/q)^(~a) ~a (0 " charge coeff)
@@ -1348,4 +1349,29 @@
 
 (defparameter *4-dessin-1* '((1 1 2 3) (2 1 4 2 5 3 6) (3 4 7 5 8 6) (4 7 8)))
 (defparameter *4-dessin-2* '((1 1 2 3 4) (2 1 5 2 6 3 7 4 8) (3 5 9 6 10 7 8) (4 9 10)))
+
+
+
+(defun m-2-with-2-torus-blob (n shift)
+  (let ((pre-res (make-array n :initial-element nil)))
+    (iter (for i from 1 to (- (* 2 n) 2))
+	  (push i (elt pre-res (mod (1- i) (1- n))))
+	  (push i (elt pre-res (1+ (mod (1- i) (1- n))))))
+    (push (1- (* 2 n)) (elt pre-res shift))
+    (push (1- (* 2 n)) (elt pre-res (1+ shift)))
+    (push (* 2 n) (elt pre-res (1+ shift)))
+    (push (* 2 n) (elt pre-res (+ 2 shift)))
+    (iter (for j from 1)
+	  (for elt in-vector pre-res)
+	  (collect (cons j (nreverse elt))))))
+
+(defun velo-tori-file (nmax &optional (fname "~/code/superpolys/veloTori.m"))
+  (with-open-file (stream fname :direction :output :if-exists :supersede)
+    (iter (for n from 3 to nmax)
+	  (iter (for shift from 0 to (- n 3))
+		(format stream "veloToriDessin~an~a = ~a;~%" n shift
+			(frnl-dessin-poly
+			 (n-dessin-recursion
+			  (deserialize2 (m-2-with-2-torus-blob n shift)))))))))
+    
 
