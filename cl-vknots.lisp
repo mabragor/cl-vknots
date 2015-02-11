@@ -1380,3 +1380,4 @@
 			  (deserialize2 (m-2-with-2-torus-blob n shift)))))))))
     
 
+(defparameter *weird-graph-1* '((1 1 2) (2 1 3 4 2 5) (3 3 6 4 7 5) (4 6 7)))
