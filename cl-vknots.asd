@@ -8,5 +8,7 @@
   :depends-on (#:iterate #:cl-ppcre #:cl-interpol #:lol-re #:esrap-liquid #:cl-yaclyaml #:defmacro-enhance
 			 #:alexandria)
   :components ((:file "package")
+	       (:file "qed-cells")
                (:file "cl-vknots")))
+
 

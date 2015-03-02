@@ -1086,6 +1086,9 @@
 		(terminate)))))
     (values (list dessin1 dessin) touch)))
 		
+;; (defun n-3-dessin-recursion (dessin)
+;;   (with-slots (nodes edges factors) dessin
+    
 
 ;; OK, what to do with this lump of code now? How to melt it?
 ;; It doesn't even compile...
@@ -1114,6 +1117,7 @@
       ;; (format t "dessin state after stage 1: ~a~%" (serialize thing))
       (frob n-2-dessin-recursion)
       ;; (format t "dessin state after stage 2: ~a~%" (serialize thing))
+      ;; (frob n-3-dessin-recursion)
       )
     ;; (format t "step done is ~a~%" step-done)
     (values thing step-done)))
