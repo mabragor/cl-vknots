@@ -3,6 +3,8 @@
 
 ;; TADA!
 
+(cl-interpol:enable-interpol-syntax)
+
 (defclass qed-dessin ()
   ((qed-cells :initarg :cells)))
 
@@ -236,11 +238,65 @@ if cells QD-loop has E-loops"
 
 ;; OK, now it's time to actually write the decomposer
 
-(defmacro with-removed-nodes (nodes dessin &body body)
-  nil)
+(defmacro with-removed-nodes ((&rest nodes) dessin &body body)
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "REM-NODE")) nodes))
+	(g-dessin (gensym "DESSIN")))
+    `(let ,(mapcar (lambda (x y)
+		     `(,x ,y))
+		   gensyms nodes)
+       (let ((,g-dessin ,dessin))
+	 (setf (slot-value ,g-dessin 'qed-cells)
+	       (remove-if (lambda (x)
+			    (or ,@(mapcar (lambda (x)
+					    `(eq ,x x))
+					  gensyms)))
+			  (slot-value ,g-dessin 'qed-cells)))
+	 ;; TODO: shouldn't I propagate values from the body?
+	 ,@body
+	 ,@(mapcar (lambda (x)
+		     `(push ,x (slot-value ,g-dessin 'qed-cells)))
+		   gensyms)))))
+
 
 (defmacro with-severed-links ((&rest link-specs) &body body)
-  nil)
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "REM-NODE")) link-specs)))
+    `(let ,(mapcar (lambda (x y)
+		     `(,x ,(cadr y)))
+		   gensyms link-specs)
+       (let ,(mapcar (lambda (x y)
+		       `(,(caddr x) (,(intern #?"$((string (car x)))-UNLINK") ,y)))
+		     link-specs gensyms)
+	 ;; TODO: shouldn't I propagate values from the body?
+	 ,@body
+	 ,@(mapcar (lambda (x y)
+		     (let ((op (cond ((eq 'q (car x)) 'dq)
+				     ((eq 'd (car x)) 'qd)
+				     ((eq 'e (car x)) 'ee)
+				     (t (error "Unknown type of linking: ~a" (car x))))))
+		       `(,(intern #?"$((string op))-LINK") ,(caddr x) ,y)))
+		   link-specs gensyms)))))
+
+    
+(defmacro with-added-nodes ((&rest nodes) dessin &body body)
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "REM-NODE")) nodes))
+	(g-dessin (gensym "DESSIN")))
+    `(let ,(mapcar (lambda (x y)
+		     `(,x ,y))
+		   gensyms nodes)
+       (let ((,g-dessin ,dessin))
+	 ,@(mapcar (lambda (x)
+		     `(push ,x (slot-value ,g-dessin 'qed-cells)))
+		   gensyms)
+	 ;; TODO: shouldn't I propagate values from the body?
+	 ,@body
+	 (setf (slot-value ,g-dessin 'qed-cells)
+	       (remove-if (lambda (x)
+			    (or ,@(mapcar (lambda (x)
+					    `(eq ,x x))
+					  gensyms)))
+			  (slot-value ,g-dessin 'qed-cells)))))))
+  
+
 
 
 (defun do-1-reidemeister (qed-dessin node)
