@@ -259,26 +259,30 @@ if cells QD-loop has E-loops"
 
 
 (defmacro with-severed-links ((&rest link-specs) &body body)
-  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "REM-NODE")) link-specs)))
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "THIS-LINK-END")) link-specs))
+	(vars (mapcar (lambda (x)
+			(or (caddr x)
+			    (gensym "OTHER-LINK-END")))
+		      link-specs)))
     `(let ,(mapcar (lambda (x y)
 		     `(,x ,(cadr y)))
 		   gensyms link-specs)
-       (let ,(mapcar (lambda (x y)
-		       `(,(caddr x) (,(intern #?"$((string (car x)))-UNLINK") ,y)))
-		     link-specs gensyms)
+       (let ,(mapcar (lambda (x y z)
+		       `(,z (,(intern #?"$((string (car x)))-UNLINK") ,y)))
+		     link-specs gensyms vars)
 	 ;; TODO: shouldn't I propagate values from the body?
 	 ,@body
-	 ,@(mapcar (lambda (x y)
+	 ,@(mapcar (lambda (x y z)
 		     (let ((op (cond ((eq 'q (car x)) 'dq)
 				     ((eq 'd (car x)) 'qd)
 				     ((eq 'e (car x)) 'ee)
 				     (t (error "Unknown type of linking: ~a" (car x))))))
-		       `(,(intern #?"$((string op))-LINK") ,(caddr x) ,y)))
-		   link-specs gensyms)))))
+		       `(,(intern #?"$((string op))-LINK") ,z ,y)))
+		   link-specs gensyms vars)))))
 
     
 (defmacro with-added-nodes ((&rest nodes) dessin &body body)
-  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "REM-NODE")) nodes))
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "NEW-NODE")) nodes))
 	(g-dessin (gensym "DESSIN")))
     `(let ,(mapcar (lambda (x y)
 		     `(,x ,y))
@@ -297,6 +301,31 @@ if cells QD-loop has E-loops"
 			  (slot-value ,g-dessin 'qed-cells)))))))
   
 
+(defmacro with-tmp-links ((&rest link-specs) &body body)
+  (let ((gensyms (mapcar (lambda (x)
+			   (declare (ignore x))
+			   (list (gensym "LEFT-NODE") (gensym "RIGHT-NODE")))
+			 link-specs)))
+    `(let ;; OK, I know it's lame and ineffective, but it's in a macroexpansion, so
+	 ;; makes little or no difference, right?
+	 (,@(mapcar (lambda (x y)
+		      `(,(car x) ,(cadr y)))
+		    gensyms link-specs)
+	  ,@(mapcar (lambda (x y)
+		      `(,(cadr x) ,(caddr y)))
+		    gensyms link-specs))
+       ,@(mapcar (lambda (x y)
+		   `(,(intern #?"$((string (car x)))-LINK") ,(car y) ,(cadr y)))
+		 link-specs gensyms)
+       ;; TODO: shouldn't I propagate values from the body?
+       ,@body
+       ,@(mapcar (lambda (x y)
+		   (let ((op (cond ((eq 'qd (car x)) 'q)
+				   ((eq 'dq (car x)) 'd)
+				   ((eq 'ee (car x)) 'e)
+				   (t (error "Unknown type of linking: ~a" (car x))))))
+		     `(,(intern #?"$((string op))-UNLINK") ,(car y))))
+		 link-specs gensyms))))
 
 
 (defun do-1-reidemeister (qed-dessin node)
