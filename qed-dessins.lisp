@@ -416,3 +416,34 @@ if cells QD-loop has E-loops"
 	`(+ ,(do-3.1-reidemeisters-then-something-else qed-dessin (cdr plan))
 	    ,res-leave-left
 	    (- ,res-leave-right))))))
+
+
+;; So, now I need to find a way to *completely* decompose qed-dessin
+;; not make just one step.
+
+(defparameter *accumulator* nil)
+
+(defun %find-cons-dessins (poly)
+  (if (typep (car poly) 'qed-dessin)
+      (push poly *accumulator*)
+      (if (consp (car poly))
+	  (%find-cons-dessins (car poly))))
+  (%find-cons-dessins (cdr poly)))
+      
+
+(defun find-cons-dessins (dessin-poly)
+  (let ((*accumulator* nil))
+    (%find-cons-dessins dessin-poly)
+    *accumulator*))
+
+(defun decomposition-step (cons-of-dessin)
+  (let ((plan (depth-first-3.1-drift-to-simplifiable (car cons-of-dessin))))
+    (if (not plan)
+	(error "Unable to find a decomposition plan!")
+	(let ((new-stuff (do-3.1-reidemeisters-then-something-else (car cons-of-dessin) plan)))
+	  (let ((cons-dessins (find-cons-dessins new-stuff)))
+	    (setf (car cons-of-dessin) new-stuff)
+	    cons-dessins)))))
+
+(defun decompose (dessin)
+  ...)
