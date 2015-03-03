@@ -201,7 +201,7 @@ if cells QD-loop has E-loops"
     (labels ((rec (path)
 	       (let ((it (simplifiable-p dessin)))
 		 (if it
-		     (list :yes! path)
+		     (list :yes! (nreverse (cons it path)))
 		     (iter over-drift-points
 			   (for drift-point in (3.1-drift-points dessin used-points))
 			   (with-used-point (drift-point)
@@ -232,3 +232,101 @@ if cells QD-loop has E-loops"
 
 ;; (defmethod find-3.1-drift-to-simplifiable ((dessin qed-dessin))
 ;;   (find-3.1-drift-to-simplifiable (list (cons dessin (make-hash-table)))))
+
+
+;; OK, now it's time to actually write the decomposer
+
+(defmacro with-removed-nodes (nodes dessin &body body)
+  nil)
+
+(defmacro with-severed-links ((&rest link-specs) &body body)
+  nil)
+
+
+(defun do-1-reidemeister (qed-dessin node)
+  (with-slots (qed-dessins) qed-dessin
+    (let ((res nil))
+      (with-severed-links ((e node))
+	(with-removed-nodes (node) qed-dessin
+	  (setf res `(* (q "N-1") ,(copy-dessin qed-dessin)))))
+      res)))
+
+(defun do-2.1-reidemeister (qed-dessin node)
+  (with-slots (qed-dessins) qed-dessin
+    (let ((res nil))
+      (with-severed-links ((q (cqrr node) lt-node)
+			   (d node lb-node)
+			   (q (ceqrr node) rt-node)
+			   (d (cerr node) rb-node))
+	(with-removed-nodes (node (cqrr node) (ceqrr node) (cerr node)) qed-dessin
+	  (let ((tmp-l-node (qed nil))
+		(tmp-r-node (qed nil)))
+	    (ee-link tmp-l-node tmp-r-node)
+	    (with-added-nodes (tmp-l-node tmp-r-node) qed-dessin
+              (with-tmp-links ((dq lt-node tmp-l-node)
+			       (dq rt-node tmp-r-node)
+			       (dq tmp-l-node lb-node)
+			       (dq tmp-r-node rb-node))
+		(setf res `(* (q "2") ,(copy-dessin qed-dessin))))))))
+      res)))
+
+(defun do-2.2-reidemeister (qed-dessin node)
+  (with-slots (qed-dessins) qed-dessin
+    (let ((res-forget nil)
+	  (res-contract nil))
+      (with-severed-links ((q (cerr node) lt-node)
+			   (d (cerr node) lb-node)
+			   (q (ceqrr node) rt-node)
+			   (d (ceqrr node) rb-node))
+	(with-removed-nodes (node (cqrr node) (cerr node) (ceqrr node)) qed-dessin
+	  (with-tmp-links ((dq lt-node lb-node)
+			   (dq rt-node rb-node))
+	    (setf res-forget (copy-dessin qed-dessin)))
+	  (with-tmp-links ((dq lt-node rb-node)
+			   (dq rt-node lb-node))
+	    (setf res-contract (copy-dessin qed-dessin)))))
+      `(+ (* (q "N-2") ,res-forget)
+	  ,res-contract))))
+
+
+
+(defun do-3.1-reidemeister (qed-dessin node)
+  (with-slots (qed-dessins) qed-dessin
+    (let ((res-flip nil)
+	  (res-leave-left nil)
+	  (res-leave-right nil))
+      (with-severed-links ((q (cqrr node) lt-node)
+			   (d node lb-node)
+			   (q (ceqrr node) ct-node)
+			   (d (cerr node) cb-node)
+			   (q (ceqerr node) rt-node)
+			   (d (ceqerr node) rb-node))
+	(with-tmp-links ((dq lt-node (ceqerr node))
+			 (dq ct-node (ceqrr node))
+			 (dq rt-node (cqrr node))
+			 (qd lb-node (ceqerr node))
+			 (qd cb-node (cerr node))
+			 (qd rb-node node))
+	  (setf res-flip (copy-dessin qed-dessin)))
+	(with-removed-nodes (node (cqrr node)
+				  (cerr node) (cqerr node) (cqqerr node)
+				  (ceqerr ndoe)) qed-dessin
+	  (let ((tmp-l-node (qed nil))
+		(tmp-r-node (qed nil)))
+	    (ee-link tmp-l-node tmp-r-node)
+	    (with-added-nodes (tmp-l-node tmp-r-node) qed-dessin
+	      (with-tmp-links ((dq lt-node tmp-l-node)
+			       (dq ct-node tmp-r-node)
+			       (qd lb-node tmp-l-node)
+			       (qd cb-node tmp-r-node)
+			       (dq rt-node rb-node))
+		(setf res-leave-left (copy-dessin qed-dessin)))
+	      (with-tmp-links ((dq ct-node tmp-l-node)
+			       (dq rt-node tmp-r-node)
+			       (qd cb-node tmp-l-node)
+			       (qd rb-node tmp-r-node)
+			       (dq lt-node lb-node))
+		(setf res-leave-right (copy-dessin qed-dessin)))))))
+      `(+ ,res-flip
+	  ,res-leave-left
+	  (- ,res-leave-right)))))
