@@ -9,6 +9,7 @@
 			 #:alexandria)
   :components ((:file "package")
 	       (:file "qed-cells")
-               (:file "cl-vknots")))
+               (:file "cl-vknots")
+	       (:file "qed-dessins")))
 
 

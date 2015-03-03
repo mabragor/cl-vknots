@@ -16,11 +16,11 @@
 (defun qed (q &optional e d)
   (make-instance 'qed-cell :q q :e e :d d))
 
-(defun cart-power (lst power)
-  (let ((elts (coerce lst 'vector)))
-    (let ((res (make-array (make-list power (length elts)))))
-      (iter (for indices from 1 to (length elts) to-the-power power)
-	    (setf (apply #'aref res indices) (iter (for index in-vector indices)
+;; (defun cart-power (lst power)
+;;   (let ((elts (coerce lst 'vector)))
+;;     (let ((res (make-array (make-list power (length elts)))))
+;;       (iter (for indices from 1 to (length elts) to-the-power power)
+;; 	    (setf (apply #'aref res indices) (iter (for index in-vector indices)
 					
 
 (defmacro define-qed-reader (symbol)
@@ -68,5 +68,72 @@
 		      ddq dde ddd)
 
 
+;; (defparameter *a* (qed (qed 'a 'b 'c) (qed 'd 'e 'f) (qed 'g 'h 'i)))
 
-(defparameter *a* (qed (qed 'a 'b 'c) (qed 'd 'e 'f) (qed 'g 'h 'i)))
+(define-condition link-error (error)
+  ())
+
+(defun dq-link (cell1 cell2)
+  (if (cdrr cell1)
+      (error 'link-error "CELL1 D place is non-nil"))
+  (if (cqrr cell2)
+      (error 'link-error "CELL2 Q place is non-nil"))
+  (dq-link! cell1 cell2))
+(defun dq-link! (cell1 cell2)
+  (setf (cdrr cell1) cell2)
+  (if cell2
+      (setf (cqrr cell2) cell1))
+  cell1)
+
+(defun qd-link (cell1 cell2)
+  (if (cqrr cell1)
+      (error 'link-error "CELL1 Q place is non-nil"))
+  (if (cdrr cell2)
+      (error 'link-error "CELL2 D place is non-nil"))
+  (qd-link! cell1 cell2))
+(defun qd-link! (cell1 cell2)
+  (setf (cqrr cell1) cell2)
+  (if cell2
+      (setf (cqrr cell2) cell1))
+  cell1)
+
+
+(defun ee-link (cell1 cell2)
+  (if (cerr cell1)
+      (error 'link-error "CELL1 E place is non-nil"))
+  (if (cerr cell2)
+      (error 'link-error "CELL2 E place is non-nil"))
+  (ee-link! cell1 cell2))
+(defun ee-link! (cell1 cell2)
+  (setf (cerr cell2) cell1
+	(cerr cell1) cell2)
+  cell1)
+  
+
+(defun d-unlink (cell)
+  (if (not (cdrr cell))
+      (error 'link-error "CELL's D place is nil - nothing to unlink"))
+  (d-unlink! cell))
+(defun d-unlink! (cell)
+  (let ((it (cdrr cell)))
+    (setf (cdrr cell) nil)
+    it))
+
+(defun q-unlink (cell)
+  (if (not (cqrr cell))
+      (error 'link-error "CELL's Q place is nil - nothing to unlink"))
+  (q-unlink! cell))
+(defun q-unlink! (cell)
+  (let ((it (cqrr cell)))
+    (setf (cqrr cell) nil)
+    it))
+
+(defun e-unlink (cell)
+  (if (not (cerr cell))
+      (error 'link-error "CELL's E place is nil - nothing to unlink"))
+  (e-unlink! cell))
+(defun e-unlink! (cell)
+  (let ((it (cerr cell)))
+    (setf (cerr cell) nil)
+    it))
+

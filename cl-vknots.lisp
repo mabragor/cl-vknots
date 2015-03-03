@@ -510,7 +510,9 @@
 		  (copy-list factors))))))
 	    
 
-(defun copy-dessin (dessin)
+(defgeneric copy-dessin (dessin))
+  
+(defmethod copy-dessin ((dessin dessin-denfant))
   (apply #'deserialize (serialize dessin)))
       
 (defun min-valency (dessin)
