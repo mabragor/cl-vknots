@@ -116,7 +116,8 @@
   (d-unlink! cell))
 (defun d-unlink! (cell)
   (let ((it (cdrr cell)))
-    (setf (cdrr cell) nil)
+    (setf (cdrr cell) nil
+	  (cqrr it) nil)
     it))
 
 (defun q-unlink (cell)
@@ -125,7 +126,8 @@
   (q-unlink! cell))
 (defun q-unlink! (cell)
   (let ((it (cqrr cell)))
-    (setf (cqrr cell) nil)
+    (setf (cqrr cell) nil
+	  (cdrr it) nil)
     it))
 
 (defun e-unlink (cell)
@@ -134,6 +136,7 @@
   (e-unlink! cell))
 (defun e-unlink! (cell)
   (let ((it (cerr cell)))
-    (setf (cerr cell) nil)
+    (setf (cerr cell) nil
+	  (cerr it) nil)
     it))
 

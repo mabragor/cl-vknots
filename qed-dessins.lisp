@@ -49,7 +49,8 @@
 	 (eq q-cell d-cell))))
 
 (defun reidemeister-2.1-able-p (qed-cell)
-  (eq (ceqrr qed-cell) (cqerr qed-cell)))
+  (and (not (eq (cqrr qed-cell) qed-cell))
+       (eq (ceqrr qed-cell) (cqerr qed-cell))))
 
 (defun qed-valency (qed-cell)
   "Number of outgoing E edges in QD-loop of the current qed-cell, or :LOOPS,
@@ -65,8 +66,9 @@ if cells QD-loop has E-loops"
 	  (summing 1))))
 
 (defun reidemeister-3.1-able-p (qed-cell)
-  (eq (ceqrr qed-cell)
-      (cqqerr qed-cell)))
+  (and (not (eq (cqrr qed-cell) qed-cell))
+       (eq (ceqrr qed-cell)
+	   (cqqerr qed-cell))))
 
 (defun reidemeister-3.2-able-p (qed-cell)
   (equal 3 (qed-valency qed-cell)))
@@ -130,6 +132,43 @@ if cells QD-loop has E-loops"
       (:3.1-able . ,reidemeister-3.1-able)
       (:3.2-able . ,reidemeister-3.2-able))))
 
+(defun 3.1-drift-points (dessin &optional used-points)
+  (let ((reidemeister-3.1-able nil))
+    (iter (for cell in (slot-value dessin 'qed-cells))
+	  (if (and (or (not used-points)
+		       (not (gethash cell used-points)))
+		   (reidemeister-3.1-able-p cell))
+	      (push cell reidemeister-3.1-able)))
+    reidemeister-3.1-able))
+
+(defun 3.1-drift (cell)
+  (let ((lb-cell (d-unlink cell))
+	(lt-cell (q-unlink (cqrr cell)))
+	(rb-cell (d-unlink (ceqerr cell)))
+	(rt-cell (q-unlink (ceqerr cell))))
+    (dq-link rt-cell (cqrr cell))
+    (dq-link cell rb-cell)
+    (dq-link lt-cell (ceqerr cell))
+    (dq-link (ceqerr cell) lb-cell)
+    cell))
+
+(defmacro! with-3.1-drift ((o!-cell) &body body)
+  `(unwind-protect (progn (3.1-drift ,o!-cell)
+			  ,@body)
+     (3.1-drift ,o!-cell)))
+
+(defun simplifiable-p (dessin)
+  (iter (for cell in (slot-value dessin 'qed-cells))
+	(if (reidemeister-1-able-p cell)
+	    (return (cons :1-able cell)))
+	(if (reidemeister-2.1-able-p cell)
+	    (return (cons :2.1-able cell)))
+	(if (reidemeister-2.2-able-p cell)
+	    (return (cons :2.2-able cell)))
+	(finally (return nil))))
+
+  
+
 (defun deserialize-qed (lst)
   (let ((cells nil)
 	(encountered (make-hash-table :test #'equal)))
@@ -150,4 +189,46 @@ if cells QD-loop has E-loops"
 	    (dq-link! first-cell the-loop)))
     (make-instance 'qed-dessin :cells cells)))
 	  
-	
+
+(defmacro with-used-point ((o!-point) &body body)
+  `(unwind-protect (progn (setf (gethash ,o!-point used-points) t)
+			  ,@body)
+     (remhash ,o!-point used-points)))
+
+
+(defun depth-first-3.1-drift-to-simplifiable (dessin)
+  (let ((used-points (make-hash-table)))
+    (labels ((rec (path)
+	       (let ((it (simplifiable-p dessin)))
+		 (if it
+		     (list :yes! path)
+		     (iter over-drift-points
+			   (for drift-point in (3.1-drift-points dessin used-points))
+			   (with-used-point (drift-point)
+			     (with-3.1-drift (drift-point)
+			       (let ((it (rec (cons drift-point path))))
+				 (if it
+				     (return-from over-drift-points it)))))
+			   (finally (return-from over-drift-points nil)))))))
+      (rec nil))))
+
+;; (defgeneric find-3.1-drift-to-simplifiable (smth)
+;;   (:documentation "Find sequence of 3.1 Reidemeister moves, which converts a given diagram
+;; into simplifiable one"))
+
+;; (defun find-3.1-drift-to-simplifiable ((lst list))
+;;   (iter (for path in lst)
+;; 	(destructuring-bind (dessin last-node-used used-nodes) (car path)
+;; 	  (let ((drift-points (3.1-drift-points dessin used-points)))
+;; 	    (iter (for drift-point in drift-points)
+;; 		  (multiple-value-bind (copy-dessin copy-drift-point copy-used-points)
+;; 		      (copy-dessin-with-marked-points dessin drift-point used-points)
+;; 		    (3.1-drift copy-drift-point)
+;; 		    ;; 
+;; 		    (let ((it (simplifiable-p copy-dessin)))
+;; 		      (if (not it)
+;; 			  (progn (gethash used-points
+;;   ...)
+
+;; (defmethod find-3.1-drift-to-simplifiable ((dessin qed-dessin))
+;;   (find-3.1-drift-to-simplifiable (list (cons dessin (make-hash-table)))))
