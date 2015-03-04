@@ -140,3 +140,43 @@
 	  (cerr it) nil)
     it))
 
+
+
+(defun q-grow (cell)
+  (let ((new-cell (qed nil))
+	(q-cell (q-unlink! cell)))
+    (dq-link! q-cell new-cell)
+    (dq-link! new-cell cell)
+    new-cell))
+
+(defun d-grow (cell)
+  (let ((new-cell (qed nil))
+	(d-cell (d-unlink! cell)))
+    (dq-link! cell new-cell)
+    (dq-link! new-cell d-cell)
+    new-cell))
+
+(defun q-shrink (cell &optional exact-cell-to-shrink)
+  (if (and exact-cell-to-shrink
+	   (not (eq exact-cell-to-shrink (cqrr cell))))
+      :didn-t-do-a-shrink
+      (progn (if (not (cqrr cell))
+		 (error 'link-error "Q-place is empty, can't shrink"))
+	     (if (ceqrr cell)
+		 (error 'link-error "Q-place cell's E-place is not empty, can't shrink"))
+	     (let ((qq-cell (q-unlink! (cqrr cell))))
+	       (q-unlink! cell)
+	       (dq-link! qq-cell cell)))))
+
+(defun d-shrink (cell &optional exact-cell-to-shrink)
+  (if (and exact-cell-to-shrink
+	   (not (eq exact-cell-to-shrink (cqrr cell))))
+      :didn-t-do-a-shrink
+      (progn (if (not (cdrr cell))
+		 (error 'link-error "D-place is empty, can't shrink"))
+	     (if (cedrr cell)
+		 (error 'link-error "D-place cell's E-place is not empty, can't shrink"))
+	     (let ((dd-cell (d-unlink! (cdrr cell))))
+	       (d-unlink! cell)
+	       (dq-link! cell dd-cell)))))
+

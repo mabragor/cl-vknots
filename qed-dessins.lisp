@@ -238,27 +238,74 @@ if cells QD-loop has E-loops"
 
 ;; OK, now it's time to actually write the decomposer
 
-(defmacro with-removed-nodes ((&rest nodes) dessin &body body)
-  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "REM-NODE")) nodes))
-	(g-dessin (gensym "DESSIN")))
+(defmacro! with-removed-nodes ((&rest nodes) o!-dessin &body body)
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "REM-NODE")) nodes)))
     `(let ,(mapcar (lambda (x y)
 		     `(,x ,y))
 		   gensyms nodes)
-       (let ((,g-dessin ,dessin))
-	 (setf (slot-value ,g-dessin 'qed-cells)
+       (unwind-protect (progn (setf (slot-value ,o!-dessin 'qed-cells)
+				    (remove-if (lambda (x)
+						 (or ,@(mapcar (lambda (x)
+								 `(eq ,x x))
+							       gensyms)))
+					       (slot-value ,o!-dessin 'qed-cells)))
+			      ,@body)
+	 ,@(mapcar (lambda (x)
+		     `(push ,x (slot-value ,o!-dessin 'qed-cells)))
+		   gensyms)))))
+
+(defmacro! with-added-nodes ((&rest nodes) o!-dessin &body body)
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "NEW-NODE")) nodes)))
+    `(let ,(mapcar (lambda (x y)
+		     `(,x ,y))
+		   gensyms nodes)
+       (unwind-protect (progn ,@(mapcar (lambda (x)
+					  `(push ,x (slot-value ,o!-dessin 'qed-cells)))
+					gensyms)
+			      ,@body)
+	 (setf (slot-value ,o!-dessin 'qed-cells)
 	       (remove-if (lambda (x)
 			    (or ,@(mapcar (lambda (x)
 					    `(eq ,x x))
 					  gensyms)))
-			  (slot-value ,g-dessin 'qed-cells)))
-	 ;; TODO: shouldn't I propagate values from the body?
-	 ,@body
-	 ,@(mapcar (lambda (x)
-		     `(push ,x (slot-value ,g-dessin 'qed-cells)))
-		   gensyms)))))
+			  (slot-value ,o!-dessin 'qed-cells)))))))
 
 
-(defmacro with-severed-links ((&rest link-specs) &body body)
+(defmacro! with-grown-nodes ((&rest node-specs) o!-dessin &body body)
+  (let ((gensyms (mapcar (lambda (x)
+			   (declare (ignore x))
+			   (list (gensym "NODE-TO-GROW") (gensym "GROWN-NODE")))
+			 node-specs)))
+    `(let ,(mapcar (lambda (x y)
+		     `(,(car x) ,(cadr y)))
+		   gensyms node-specs)
+       (let ,(mapcar #'cadr gensyms)
+	 (unwind-protect (progn ,@(mapcar (lambda (x y)
+					    `(setf ,(cadr x)
+						   (,(intern #?"$((string (car y)))-GROW")
+						     ,(car x))))
+					  gensyms node-specs)
+				(with-added-nodes ,(mapcar #'cadr gensyms) ,o!-dessin
+				  ,@body))
+	   ,@(mapcar (lambda (x y)
+		       `(,(intern #?"$((string (car y)))-SHRINK") ,(car x) ,(cadr x)))
+		     gensyms node-specs))))))
+
+
+(defmacro! with-severed-links ((&rest link-specs) o!-dessin &body body)
+  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "THIS-LINK-END")) link-specs)))
+    `(let ,(mapcar (lambda (x y)
+		     `(,x ,(cadr y)))
+		   gensyms link-specs)
+       (with-grown-nodes ,(mapcar (lambda (x y)
+				    (list (car x) y))
+				  link-specs gensyms) ,o!-dessin
+	 (with-severed-links! ,(mapcar (lambda (x y)
+					 (list (car x) y (caddr x)))
+				       link-specs gensyms)
+	   ,@body)))))
+
+(defmacro with-severed-links! ((&rest link-specs) &body body)
   (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "THIS-LINK-END")) link-specs))
 	(vars (mapcar (lambda (x)
 			(or (caddr x)
@@ -270,35 +317,14 @@ if cells QD-loop has E-loops"
        (let ,(mapcar (lambda (x y z)
 		       `(,z (,(intern #?"$((string (car x)))-UNLINK") ,y)))
 		     link-specs gensyms vars)
-	 ;; TODO: shouldn't I propagate values from the body?
-	 ,@body
-	 ,@(mapcar (lambda (x y z)
-		     (let ((op (cond ((eq 'q (car x)) 'dq)
-				     ((eq 'd (car x)) 'qd)
-				     ((eq 'e (car x)) 'ee)
-				     (t (error "Unknown type of linking: ~a" (car x))))))
-		       `(,(intern #?"$((string op))-LINK") ,z ,y)))
-		   link-specs gensyms vars)))))
-
-    
-(defmacro with-added-nodes ((&rest nodes) dessin &body body)
-  (let ((gensyms (mapcar (lambda (x) (declare (ignore x)) (gensym "NEW-NODE")) nodes))
-	(g-dessin (gensym "DESSIN")))
-    `(let ,(mapcar (lambda (x y)
-		     `(,x ,y))
-		   gensyms nodes)
-       (let ((,g-dessin ,dessin))
-	 ,@(mapcar (lambda (x)
-		     `(push ,x (slot-value ,g-dessin 'qed-cells)))
-		   gensyms)
-	 ;; TODO: shouldn't I propagate values from the body?
-	 ,@body
-	 (setf (slot-value ,g-dessin 'qed-cells)
-	       (remove-if (lambda (x)
-			    (or ,@(mapcar (lambda (x)
-					    `(eq ,x x))
-					  gensyms)))
-			  (slot-value ,g-dessin 'qed-cells)))))))
+	 (unwind-protect (progn ,@body)
+	   ,@(mapcar (lambda (x y z)
+		       (let ((op (cond ((eq 'q (car x)) 'dq)
+				       ((eq 'd (car x)) 'qd)
+				       ((eq 'e (car x)) 'ee)
+				       (t (error "Unknown type of linking: ~a" (car x))))))
+			 `(,(intern #?"$((string op))-LINK") ,z ,y)))
+		     link-specs gensyms vars))))))
   
 
 (defmacro with-tmp-links ((&rest link-specs) &body body)
@@ -306,35 +332,34 @@ if cells QD-loop has E-loops"
 			   (declare (ignore x))
 			   (list (gensym "LEFT-NODE") (gensym "RIGHT-NODE")))
 			 link-specs)))
-    `(let ;; OK, I know it's lame and ineffective, but it's in a macroexpansion, so
-	 ;; makes little or no difference, right?
-	 (,@(mapcar (lambda (x y)
-		      `(,(car x) ,(cadr y)))
-		    gensyms link-specs)
-	  ,@(mapcar (lambda (x y)
-		      `(,(cadr x) ,(caddr y)))
-		    gensyms link-specs))
+    `(let (,@(mapcar (lambda (x y)
+		       `(,(car x) ,(cadr y)))
+		     gensyms link-specs)
+	   ,@(mapcar (lambda (x y)
+		       `(,(cadr x) ,(caddr y)))
+		     gensyms link-specs))
        ,@(mapcar (lambda (x y)
 		   `(,(intern #?"$((string (car x)))-LINK") ,(car y) ,(cadr y)))
 		 link-specs gensyms)
-       ;; TODO: shouldn't I propagate values from the body?
-       ,@body
-       ,@(mapcar (lambda (x y)
-		   (let ((op (cond ((eq 'qd (car x)) 'q)
-				   ((eq 'dq (car x)) 'd)
-				   ((eq 'ee (car x)) 'e)
-				   (t (error "Unknown type of linking: ~a" (car x))))))
-		     `(,(intern #?"$((string op))-UNLINK") ,(car y))))
-		 link-specs gensyms))))
+       (unwind-protect (progn ,@body)
+	 ,@(mapcar (lambda (x y)
+		     (let ((op (cond ((eq 'qd (car x)) 'q)
+				     ((eq 'dq (car x)) 'd)
+				     ((eq 'ee (car x)) 'e)
+				     (t (error "Unknown type of linking: ~a" (car x))))))
+		       `(,(intern #?"$((string op))-UNLINK") ,(car y))))
+		   link-specs gensyms)))))
 
 
 (defun do-1-reidemeister (qed-dessin node)
   (with-slots (qed-dessins) qed-dessin
     (let ((res nil))
-      (with-severed-links ((e node))
-	(with-removed-nodes (node) qed-dessin
-	  (setf res `(* (q "N-1") ,(copy-dessin qed-dessin)))))
-      res)))
+      (with-severed-links ((q (cerr node) t-node)
+			   (d (cerr node) b-node)) qed-dessin
+	(with-removed-nodes (node (cerr node)) qed-dessin
+	  (with-tmp-links ((dq t-node b-node))
+	    (setf res (copy-dessin qed-dessin)))))
+      `(* (q "N-1") ,res))))
 
 (defun do-2.1-reidemeister (qed-dessin node)
   (with-slots (qed-dessins) qed-dessin
@@ -348,7 +373,7 @@ if cells QD-loop has E-loops"
 		(tmp-r-node (qed nil)))
 	    (ee-link tmp-l-node tmp-r-node)
 	    (with-added-nodes (tmp-l-node tmp-r-node) qed-dessin
-              (with-tmp-links ((dq lt-node tmp-l-node)
+	      (with-tmp-links ((dq lt-node tmp-l-node)
 			       (dq rt-node tmp-r-node)
 			       (dq tmp-l-node lb-node)
 			       (dq tmp-r-node rb-node))
@@ -446,4 +471,12 @@ if cells QD-loop has E-loops"
 	    cons-dessins)))))
 
 (defun decompose (dessin)
-  ...)
+  (let ((head (list dessin)))
+    (let ((conses-of-dessins (list head)))
+      (iter (setf conses-of-dessins
+		  (apply #'append (remove-if-not #'identity
+						 (mapcar #'decomposition-step conses-of-dessins))))
+	    (if (not conses-of-dessins)
+		(terminate))))
+    head))
+
