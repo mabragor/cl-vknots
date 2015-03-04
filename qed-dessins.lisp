@@ -160,14 +160,17 @@ if cells QD-loop has E-loops"
      (3.1-drift ,o!-cell)))
 
 (defun simplifiable-p (dessin)
-  (iter (for cell in (slot-value dessin 'qed-cells))
-	(if (reidemeister-1-able-p cell)
-	    (return (cons :1-able cell)))
-	(if (reidemeister-2.1-able-p cell)
-	    (return (cons :2.1-able cell)))
-	(if (reidemeister-2.2-able-p cell)
-	    (return (cons :2.2-able cell)))
-	(finally (return nil))))
+  (with-slots (qed-cells) dessin
+    (if (not qed-cells)
+	(cons :0-able nil)
+	(iter (for cell in qed-cells)
+	      (if (reidemeister-1-able-p cell)
+		  (return (cons :1-able cell)))
+	      (if (reidemeister-2.1-able-p cell)
+		  (return (cons :2.1-able cell)))
+	      (if (reidemeister-2.2-able-p cell)
+		  (return (cons :2.2-able cell)))
+	      (finally (return nil))))))
 
   
 
@@ -351,6 +354,12 @@ if cells QD-loop has E-loops"
 		   link-specs gensyms)))))
 
 
+(defun do-0-reidemeister (qed-dessin node)
+  "Fake Reidemeister move, to substitute empty dessin with 1"
+  (declare (ignore node qed-dessin))
+  "1")
+  
+
 (defun do-1-reidemeister (qed-dessin node)
   (with-slots (qed-dessins) qed-dessin
     (let ((res nil))
@@ -358,7 +367,7 @@ if cells QD-loop has E-loops"
 			   (d (cerr node) b-node)) qed-dessin
 	(with-removed-nodes (node (cerr node)) qed-dessin
 	  (with-tmp-links ((dq t-node b-node))
-	    (setf res (copy-dessin qed-dessin)))))
+	    (setf res (tighten-loops (copy-dessin qed-dessin))))))
       `(* (q "N-1") ,res))))
 
 (defun do-2.1-reidemeister (qed-dessin node)
@@ -377,7 +386,7 @@ if cells QD-loop has E-loops"
 			       (dq rt-node tmp-r-node)
 			       (dq tmp-l-node lb-node)
 			       (dq tmp-r-node rb-node))
-		(setf res `(* (q "2") ,(copy-dessin qed-dessin))))))))
+		(setf res `(* (q "2") ,(tighten-loops (copy-dessin qed-dessin)))))))))
       res)))
 
 (defun do-2.2-reidemeister (qed-dessin node)
@@ -391,10 +400,10 @@ if cells QD-loop has E-loops"
 	(with-removed-nodes (node (cqrr node) (cerr node) (ceqrr node)) qed-dessin
 	  (with-tmp-links ((dq lt-node lb-node)
 			   (dq rt-node rb-node))
-	    (setf res-forget (copy-dessin qed-dessin)))
+	    (setf res-forget (tighten-loops (copy-dessin qed-dessin))))
 	  (with-tmp-links ((dq lt-node rb-node)
 			   (dq rt-node lb-node))
-	    (setf res-contract (copy-dessin qed-dessin)))))
+	    (setf res-contract (tighten-loops (copy-dessin qed-dessin))))))
       `(+ (* (q "N-2") ,res-forget)
 	  ,res-contract))))
 
@@ -402,7 +411,8 @@ if cells QD-loop has E-loops"
 
 (defun do-3.1-reidemeisters-then-something-else (qed-dessin plan)
   (if (equal 1 (length plan))
-      (cond ((eq :1-able (caar plan)) (do-1-reidemeister qed-dessin (cadar plan)))
+      (cond ((eq :0-able (caar plan)) (do-0-reidemeister qed-dessin (cadar plan)))
+	    ((eq :1-able (caar plan)) (do-0-reidemeister qed-dessin (cadar plan)))
 	    ((eq :2.1-able (caar plan)) (do-2.1-reidemeister qed-dessin (cadar plan)))
 	    ((eq :2.2-able (caar plan)) (do-2.2-reidemeister qed-dessin (cadar plan))))
       (%do-3.1-reidemeisters-then-something-else qed-dessin plan)))
@@ -430,13 +440,14 @@ if cells QD-loop has E-loops"
 				 (qd lb-node tmp-l-node)
 				 (qd cb-node tmp-r-node)
 				 (dq rt-node rb-node))
-		  (setf res-leave-left (copy-dessin qed-dessin)))
+		  (setf res-leave-left (tighten-loops (copy-dessin qed-dessin))))
 		(with-tmp-links ((dq ct-node tmp-l-node)
 				 (dq rt-node tmp-r-node)
 				 (qd cb-node tmp-l-node)
 				 (qd rb-node tmp-r-node)
 				 (dq lt-node lb-node))
-		  (setf res-leave-right (copy-dessin qed-dessin)))))))
+		  (setf res-leave-right (tighten-loops (copy-dessin qed-dessin))))))))
+	;; TODO: shouldn't it be also under growed outgoing links?
 	(3.1-drift node)
 	`(+ ,(do-3.1-reidemeisters-then-something-else qed-dessin (cdr plan))
 	    ,res-leave-left
@@ -449,11 +460,12 @@ if cells QD-loop has E-loops"
 (defparameter *accumulator* nil)
 
 (defun %find-cons-dessins (poly)
-  (if (typep (car poly) 'qed-dessin)
-      (push poly *accumulator*)
-      (if (consp (car poly))
-	  (%find-cons-dessins (car poly))))
-  (%find-cons-dessins (cdr poly)))
+  (if poly
+      (progn (if (typep (car poly) 'qed-dessin)
+		 (push poly *accumulator*)
+		 (if (consp (car poly))
+		     (%find-cons-dessins (car poly))))
+	     (%find-cons-dessins (cdr poly)))))
       
 
 (defun find-cons-dessins (dessin-poly)
@@ -463,9 +475,10 @@ if cells QD-loop has E-loops"
 
 (defun decomposition-step (cons-of-dessin)
   (let ((plan (depth-first-3.1-drift-to-simplifiable (car cons-of-dessin))))
+    (format t "~a~%" plan)
     (if (not plan)
 	(error "Unable to find a decomposition plan!")
-	(let ((new-stuff (do-3.1-reidemeisters-then-something-else (car cons-of-dessin) plan)))
+	(let ((new-stuff (do-3.1-reidemeisters-then-something-else (car cons-of-dessin) (cdr plan))))
 	  (let ((cons-dessins (find-cons-dessins new-stuff)))
 	    (setf (car cons-of-dessin) new-stuff)
 	    cons-dessins)))))
@@ -473,10 +486,30 @@ if cells QD-loop has E-loops"
 (defun decompose (dessin)
   (let ((head (list dessin)))
     (let ((conses-of-dessins (list head)))
-      (iter (setf conses-of-dessins
+      (iter (for i from 1 to 10)
+	    (format t "~a~%" head)
+	    (setf conses-of-dessins
 		  (apply #'append (remove-if-not #'identity
 						 (mapcar #'decomposition-step conses-of-dessins))))
 	    (if (not conses-of-dessins)
 		(terminate))))
     head))
+
+(defun tighten-loops (dessin)
+  (with-slots (qed-cells) dessin
+    (let ((new-qed-cells nil)
+	  (num-loops 0))
+      (iter (for cell in qed-cells)
+	    (if (cerr cell)
+		(push cell new-qed-cells)
+		(if (eq (cqrr cell) cell)
+		    (incf num-loops)
+		    (let ((q-cell (q-unlink cell))
+			  (d-cell (d-unlink cell)))
+		      (dq-link q-cell d-cell)))))
+      (setf qed-cells new-qed-cells)
+      (if (equal 0 num-loops)
+	  dessin
+	  `(* (** "[N]" ,num-loops) ,dessin)))))
+		
 
