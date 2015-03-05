@@ -159,10 +159,17 @@ if cells QD-loop has E-loops"
 	(lt-cell (q-unlink (cqrr cell)))
 	(rb-cell (d-unlink (ceqerr cell)))
 	(rt-cell (q-unlink (ceqerr cell))))
+    (if-debug "3.1-DRIFT: lb ~a lt ~a rb ~a rt ~a" lb-cell lt-cell rb-cell rt-cell)
+    (if-debug "3.1-DRIFT: c ~a cqrr ~a cqqrr ~a cdrr ~a ceqerr ~a cqeqerr ~a cdeqerr ~a"
+	      cell (cqrr cell) (cqqrr cell) (cdrr cell) (ceqerr cell)
+	      (cqrr (ceqerr cell)) (cdrr (ceqerr cell)))
     (dq-link rt-cell (cqrr cell))
     (dq-link cell rb-cell)
     (dq-link lt-cell (ceqerr cell))
     (dq-link (ceqerr cell) lb-cell)
+    (if-debug "3.1-DRIFT: c ~a cqrr ~a cqqrr ~a cdrr ~a ceqerr ~a cqeqerr ~a cdeqerr ~a"
+	      cell (cqrr cell) (cqqrr cell) (cdrr cell) (ceqerr cell)
+	      (cqrr (ceqerr cell)) (cdrr (ceqerr cell)))
     cell))
 
 (defmacro! with-3.1-drift ((o!-cell) &body body)
@@ -493,6 +500,7 @@ if cells QD-loop has E-loops"
 				 (dq lt-node lb-node))
 		  (setf res-leave-right (tighten-loops (copy-dessin qed-dessin))))))))
 	;; TODO: shouldn't it be also under growed outgoing links?
+	(if-debug "Done with reidemeister 'tails'")
 	(3.1-drift node)
 	`(+ ,(do-3.1-reidemeisters-then-something-else qed-dessin (cdr plan))
 	    ,res-leave-left
