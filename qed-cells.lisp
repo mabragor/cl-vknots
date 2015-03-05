@@ -70,14 +70,24 @@
 
 ;; (defparameter *a* (qed (qed 'a 'b 'c) (qed 'd 'e 'f) (qed 'g 'h 'i)))
 
-(define-condition link-error (error)
+(define-condition link-error (error simple-condition)
   ())
+
+(defmethod print-object :before ((condition link-error) stream)
+  (apply #'format stream
+         (simple-condition-format-control condition)
+         (simple-condition-format-arguments condition)))
+
+(defun link-error (reason &rest args)
+  (error 'link-error
+	 :format-control reason
+	 :format-arguments args))
 
 (defun dq-link (cell1 cell2)
   (if (cdrr cell1)
-      (error 'link-error "CELL1 D place is non-nil"))
+      (link-error "CELL1 D place is non-nil"))
   (if (cqrr cell2)
-      (error 'link-error "CELL2 Q place is non-nil"))
+      (link-error "CELL2 Q place is non-nil"))
   (dq-link! cell1 cell2))
 (defun dq-link! (cell1 cell2)
   (setf (cdrr cell1) cell2)
@@ -87,22 +97,22 @@
 
 (defun qd-link (cell1 cell2)
   (if (cqrr cell1)
-      (error 'link-error "CELL1 Q place is non-nil"))
+      (link-error "CELL1 Q place is non-nil"))
   (if (cdrr cell2)
-      (error 'link-error "CELL2 D place is non-nil"))
+      (link-error "CELL2 D place is non-nil"))
   (qd-link! cell1 cell2))
 (defun qd-link! (cell1 cell2)
   (setf (cqrr cell1) cell2)
   (if cell2
-      (setf (cqrr cell2) cell1))
+      (setf (cdrr cell2) cell1))
   cell1)
 
 
 (defun ee-link (cell1 cell2)
   (if (cerr cell1)
-      (error 'link-error "CELL1 E place is non-nil"))
+      (link-error "CELL1 E place is non-nil"))
   (if (cerr cell2)
-      (error 'link-error "CELL2 E place is non-nil"))
+      (link-error "CELL2 E place is non-nil"))
   (ee-link! cell1 cell2))
 (defun ee-link! (cell1 cell2)
   (setf (cerr cell2) cell1
@@ -112,7 +122,7 @@
 
 (defun d-unlink (cell)
   (if (not (cdrr cell))
-      (error 'link-error "CELL's D place is nil - nothing to unlink"))
+      (link-error "CELL's D place is nil - nothing to unlink"))
   (d-unlink! cell))
 (defun d-unlink! (cell)
   (let ((it (cdrr cell)))
@@ -122,7 +132,7 @@
 
 (defun q-unlink (cell)
   (if (not (cqrr cell))
-      (error 'link-error "CELL's Q place is nil - nothing to unlink"))
+      (link-error "CELL's Q place is nil - nothing to unlink"))
   (q-unlink! cell))
 (defun q-unlink! (cell)
   (let ((it (cqrr cell)))
@@ -132,7 +142,7 @@
 
 (defun e-unlink (cell)
   (if (not (cerr cell))
-      (error 'link-error "CELL's E place is nil - nothing to unlink"))
+      (link-error "CELL's E place is nil - nothing to unlink"))
   (e-unlink! cell))
 (defun e-unlink! (cell)
   (let ((it (cerr cell)))
@@ -161,9 +171,9 @@
 	   (not (eq exact-cell-to-shrink (cqrr cell))))
       :didn-t-do-a-shrink
       (progn (if (not (cqrr cell))
-		 (error 'link-error "Q-place is empty, can't shrink"))
+		 (link-error "Q-place is empty, can't shrink"))
 	     (if (ceqrr cell)
-		 (error 'link-error "Q-place cell's E-place is not empty, can't shrink"))
+		 (link-error "Q-place cell's E-place is not empty, can't shrink"))
 	     (let ((qq-cell (q-unlink! (cqrr cell))))
 	       (q-unlink! cell)
 	       (dq-link! qq-cell cell)))))
@@ -172,10 +182,11 @@
   (if (and exact-cell-to-shrink
 	   (not (eq exact-cell-to-shrink (cqrr cell))))
       :didn-t-do-a-shrink
-      (progn (if (not (cdrr cell))
-		 (error 'link-error "D-place is empty, can't shrink"))
+      (progn (if-debug "cell ~a cqrr ~a cdrr ~a cerr ~a" cell (cqrr cell) (cdrr cell) (cerr cell))
+	     (if (not (cdrr cell))
+		 (link-error "D-place of ~a is empty, can't shrink on ~a" cell exact-cell-to-shrink))
 	     (if (cedrr cell)
-		 (error 'link-error "D-place cell's E-place is not empty, can't shrink"))
+		 (link-error "D-place cell ~a's E-place is not empty, can't shrink" cell))
 	     (let ((dd-cell (d-unlink! (cdrr cell))))
 	       (d-unlink! cell)
 	       (dq-link! cell dd-cell)))))
