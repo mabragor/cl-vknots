@@ -26,13 +26,13 @@
 			     (gethash it qed-cells-reverse-hash) cell)
 		       it))))
 	     (copy-connections (new-cell cell)
-	       (if (not (cqrr new-cell))
+	       (if (and (cqrr cell) (not (cqrr new-cell)))
 		   (dq-link (new-cell-for-cell (cqrr cell))
 			    new-cell))
-	       (if (not (cdrr new-cell))
+	       (if (and (cdrr cell) (not (cdrr new-cell)))
 		   (qd-link (new-cell-for-cell (cdrr cell))
 			    new-cell))
-	       (if (not (cerr new-cell))
+	       (if (and (cerr cell) (not (cerr new-cell)))
 		   (ee-link (new-cell-for-cell (cerr cell))
 			    new-cell))))
       (iter (for cell in (slot-value dessin 'qed-cells))
@@ -41,8 +41,12 @@
       (make-instance 'qed-dessin :cells new-qed-cells))))
 
 
+(defun tightable-p (qed-cell)
+  (not (cerr qed-cell)))
+
 (defun reidemeister-1-able-p (qed-cell)
-  (eq (cqrr qed-cell) qed-cell))
+  (and (eq (cqrr qed-cell) qed-cell)
+       (cerr qed-cell)))
 
 (defun reidemeister-2.2-able-p (qed-cell)
   (let ((q-cell (cqrr qed-cell))
@@ -164,6 +168,8 @@ if cells QD-loop has E-loops"
     (if (not qed-cells)
 	(cons :0-able nil)
 	(iter (for cell in qed-cells)
+	      (if (tightable-p cell)
+		  (return (cons :tightable cell)))
 	      (if (reidemeister-1-able-p cell)
 		  (return (cons :1-able cell)))
 	      (if (reidemeister-2.1-able-p cell)
@@ -180,13 +186,15 @@ if cells QD-loop has E-loops"
     (iter (for (num . cycle) in lst)
 	  (format t "Loop num ~a~%" num)
 	  (let ((the-loop nil)
-		(first-cell nil))
+		(first-cell (qed nil)))
+	    (push first-cell cells)
+	    (setf the-loop first-cell)
 	    (iter (for edge-num in cycle)
 		  (format t "  edge num ~a, loop ~a~%" edge-num the-loop)
 		  (let ((new-cell (qed nil)))
 		    (push new-cell cells)
 		    (setf the-loop (dq-link! new-cell the-loop))
-		    (if-first-time (setf first-cell the-loop))
+		    ;; (if-first-time (setf first-cell the-loop))
 		    (let ((old-cell (gethash edge-num encountered)))
 		      (if old-cell
 			  (ee-link new-cell old-cell)
@@ -206,7 +214,7 @@ if cells QD-loop has E-loops"
     (labels ((rec (path)
 	       (let ((it (simplifiable-p dessin)))
 		 (if it
-		     (list :yes! (nreverse (cons it path)))
+		     (cons :yes! (nreverse (cons it path)))
 		     (iter over-drift-points
 			   (for drift-point in (3.1-drift-points dessin used-points))
 			   (with-used-point (drift-point)
@@ -407,14 +415,17 @@ if cells QD-loop has E-loops"
       `(+ (* (q "N-2") ,res-forget)
 	  ,res-contract))))
 
-
+(defun do-tight (dessin)
+  (tighten-loops (copy-dessin dessin)))
 
 (defun do-3.1-reidemeisters-then-something-else (qed-dessin plan)
   (if (equal 1 (length plan))
       (cond ((eq :0-able (caar plan)) (do-0-reidemeister qed-dessin (cadar plan)))
+	    ((eq :tightable (caar plan)) (do-tight qed-dessin))
 	    ((eq :1-able (caar plan)) (do-0-reidemeister qed-dessin (cadar plan)))
 	    ((eq :2.1-able (caar plan)) (do-2.1-reidemeister qed-dessin (cadar plan)))
-	    ((eq :2.2-able (caar plan)) (do-2.2-reidemeister qed-dessin (cadar plan))))
+	    ((eq :2.2-able (caar plan)) (do-2.2-reidemeister qed-dessin (cadar plan)))
+	    (t (error "Don't know how to perform this part of plan: ~a~%" (caar plan))))
       (%do-3.1-reidemeisters-then-something-else qed-dessin plan)))
 
 (defun %do-3.1-reidemeisters-then-something-else (qed-dessin plan)
@@ -460,12 +471,12 @@ if cells QD-loop has E-loops"
 (defparameter *accumulator* nil)
 
 (defun %find-cons-dessins (poly)
-  (if poly
-      (progn (if (typep (car poly) 'qed-dessin)
-		 (push poly *accumulator*)
-		 (if (consp (car poly))
-		     (%find-cons-dessins (car poly))))
-	     (%find-cons-dessins (cdr poly)))))
+  (when (and poly (not (atom poly)))
+    (if (typep (car poly) 'qed-dessin)
+	(push poly *accumulator*)
+	(if (consp (car poly))
+	    (%find-cons-dessins (car poly))))
+    (%find-cons-dessins (cdr poly))))
       
 
 (defun find-cons-dessins (dessin-poly)
@@ -479,6 +490,7 @@ if cells QD-loop has E-loops"
     (if (not plan)
 	(error "Unable to find a decomposition plan!")
 	(let ((new-stuff (do-3.1-reidemeisters-then-something-else (car cons-of-dessin) (cdr plan))))
+	  (format t "new stuff is: ~a~%" new-stuff)
 	  (let ((cons-dessins (find-cons-dessins new-stuff)))
 	    (setf (car cons-of-dessin) new-stuff)
 	    cons-dessins)))))
