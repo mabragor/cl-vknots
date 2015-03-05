@@ -17,3 +17,12 @@
 	     (decompose (deserialize-qed '((1 1) (2 1 2) (3 2))))))
   (is (equal '((* (Q "N-1") (* (Q "N-1") (* (Q "N-1") (* (** (Q "N") 1) "1")))))
 	     (decompose (deserialize-qed '((1 1) (2 1 2) (3 2 3) (4 3)))))))
+
+(test 2-strand-diagrams
+  (is (equal '((* (Q "2") (* (Q "N-1") (* (** (Q "N") 1) "1"))))
+	     (decompose (deserialize-qed '((1 1 2) (2 1 2))))))
+  (is (equal '((* (Q "2") (* (Q "2") (* (Q "N-1") (* (** (Q "N") 1) "1")))))
+	     (decompose (deserialize-qed '((1 1 2 3) (2 1 2 3))))))
+  (is (equal '((* (Q "2") (* (Q "2") (* (Q "2") (* (Q "N-1") (* (** (Q "N") 1) "1"))))))
+	     (decompose (deserialize-qed '((1 1 2 3 4) (2 1 2 3 4)))))))
+  
