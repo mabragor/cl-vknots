@@ -472,7 +472,7 @@ if cells QD-loop has E-loops"
 			     (q (ceqrr node) ct-node)
 			     (d (cerr node) cb-node)
 			     (q (ceqerr node) rt-node)
-			     (d (ceqerr node) rb-node))
+			     (d (ceqerr node) rb-node)) qed-dessin
 	  (with-removed-nodes (node (cqrr node)
 				    (cerr node) (cqerr node) (cqqerr node)
 				    (ceqerr node)) qed-dessin
@@ -559,4 +559,4 @@ if cells QD-loop has E-loops"
 	  `(* (** (q "N") ,num-loops) ,dessin)))))
 		
 
-(defparameter *a* (deserialize-qed '((1 1 2) (2 1 3 2 4) (3 3 4))))
+(defparameter *a* (deserialize-qed (torus-dessin 3 3)))
