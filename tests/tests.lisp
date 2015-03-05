@@ -25,4 +25,13 @@
 	     (decompose (deserialize-qed '((1 1 2 3) (2 1 2 3))))))
   (is (equal '((* (Q "2") (* (Q "2") (* (Q "2") (* (Q "N-1") (* (** (Q "N") 1) "1"))))))
 	     (decompose (deserialize-qed '((1 1 2 3 4) (2 1 2 3 4)))))))
-  
+
+(test torus
+  (is (equal '((+ (* (Q "N-2") (* (Q "2") (* (Q "N-1") (* (** (Q "N") 1) "1"))))
+		(* (Q "N-1") (* (Q "N-1") (* (** (Q "N") 1) "1")))))
+	     (decompose (deserialize-qed (torus-dessin 2 3)))))
+  (is (equal '((+ (* (Q "N-2") (+ (* (Q "N-2") (* (Q "2") (* (Q "N-1") (* (** (Q "N") 1) "1"))))
+				  (* (Q "N-1") (* (Q "N-1") (* (** (Q "N") 1) "1")))))
+		(* (Q "N-1") (* (Q "2") (* (Q "N-1") (* (Q "N-1") (* (** (Q "N") 1) "1")))))))
+	     (decompose (deserialize-qed (torus-dessin 2 4))))))
+
