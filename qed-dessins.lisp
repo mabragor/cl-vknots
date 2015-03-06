@@ -567,4 +567,18 @@ if cells QD-loop has E-loops"
 	  `(* (** (q "N") ,num-loops) ,dessin)))))
 		
 
+(defun serialize-qed (dessin)
+  (let ((edges-hash (make-hash-table :test #'equal))
+	(edge-count 0)
+	(loop-count 0))
+    (let ((cells-hash (make-hash-table)))
+      (iter (for cell in (slot-value dessin 'qed-cells))
+	    (setf (gethash cell cells-hash) t))
+      (iter (for new-loop-start next (multiple-value-bind (got key val) (pophash cells-hash)
+				       (if (not got)
+					   (terminate)
+					   key)))
+	    (for loop-num from 1)
+
+
 (defparameter *a* (deserialize-qed (torus-dessin 3 3)))
