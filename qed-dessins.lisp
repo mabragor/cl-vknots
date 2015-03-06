@@ -706,3 +706,21 @@ if cells QD-loop has E-loops"
 
 
 (defparameter *a-step* (deserialize-qed '((1 1 2) (2 3 4 2 5 6 1) (3 3 4 5 6))))
+
+
+(defun mathematica-serialize (poly)
+  (cond ((stringp poly) poly)
+	((eq 'q (car poly)) #?"q[$((mathematica-serialize (cadr poly)))]")
+	((eq '+ (car poly)) (joinl " + " (mapcar (lambda (x)
+						   #?"($((mathematica-serialize x)))")
+						 (cdr poly))))
+	((eq '* (car poly)) (joinl " * " (mapcar (lambda (x)
+						   #?"($((mathematica-serialize x)))")
+						 (cdr poly))))
+	((eq '** (car poly)) #?"($((mathematica-serialize (cadr poly))))^($((caddr poly)))")
+	((eq '- (car poly)) (if (not (equal 1 (length (cdr poly))))
+				(joinl " - " (mapcar (lambda (x)
+						   #?"($((mathematica-serialize x)))")
+						     (cdr poly)))
+				#?"- ($((mathematica-serialize (cadr poly))))"))
+	(t (error "Don't yet knot how to MATHEMATICA-SERIALIZE this: ~a~%" poly))))
