@@ -635,13 +635,15 @@ if cells QD-loop has E-loops"
   (let ((head (list dessin)))
     (let ((conses-of-dessins (list head)))
       (iter (for i from 1 to 10)
-	    (if-debug "DECOMPOSE: ~a ~a" head conses-of-dessins)
+	    (if-debug "DECOMPOSE: ~a| ~a" head conses-of-dessins)
 	    (setf conses-of-dessins
-		  (apply #'append (remove-if-not #'identity
-						 (mapcar #'decomposition-step conses-of-dessins))))
+		  (remove-duplicates (apply #'append (remove-if-not #'identity
+								    (mapcar #'decomposition-step
+									    conses-of-dessins)))
+				     :key #'car :test #'eq))
 	    (if (not conses-of-dessins)
 		(terminate))))
-    head))
+    (car head)))
 
 (defun tighten-loops (dessin)
   (with-slots (qed-cells) dessin
