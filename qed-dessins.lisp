@@ -46,21 +46,28 @@
 (defun tightable-p (qed-cell)
   (not (cerr qed-cell)))
 
-(defun reidemeister-1-able-p (qed-cell)
-  (and (eq (cqrr qed-cell) qed-cell)
-       (cerr qed-cell)))
+(defun has-breaks-p (dessin)
+  (iter (for cell in (slot-value dessin 'qed-cells))
+	(if (or (not (cqrr cell))
+		(not (cdrr cell)))
+	    (return t))
+	(finally (return nil))))
 
-(defun reidemeister-2.1-able-p (qed-cell)
-  (and (not (eq (cqrr qed-cell) qed-cell))
-       (eq (ceqrr qed-cell) (cqerr qed-cell))))
+(defun reidemeister-1-able-p (cell)
+  (and cell (cqrr cell) (cerr cell)
+       (eq (cqrr cell) cell)))
 
-(defun reidemeister-2.2-able-p (qed-cell)
-  (let ((q-cell (cqrr qed-cell))
-	(d-cell (cdrr qed-cell)))
-    (and (not (eq q-cell qed-cell))
-	 (eq q-cell d-cell)
-	 (cerr q-cell)
-	 (cerr d-cell))))
+(defun reidemeister-2.1-able-p (cell)
+  (and cell (cqrr cell) (ceqrr cell) (cerr cell) (cqerr cell)
+       (not (eq (cqrr cell) cell))
+       (eq (ceqrr cell) (cqerr cell))))
+
+(defun reidemeister-2.2-able-p (cell)
+  (let ((q-cell (cqrr cell))
+	(d-cell (cdrr cell)))
+    (and cell q-cell d-cell (cerr q-cell) (cerr d-cell)
+	 (not (eq q-cell cell))
+	 (eq q-cell d-cell))))
 
 
 (defun qed-valency (qed-cell)
@@ -78,10 +85,11 @@ if cells QD-loop has E-loops"
 	    (setf (gethash cell encountered) t)
 	    (summing 1)))))
 
-(defun reidemeister-3.1-able-p (qed-cell)
-  (and (not (eq (cqrr qed-cell) qed-cell))
-       (eq (ceqrr qed-cell)
-	   (cqqerr qed-cell))))
+(defun reidemeister-3.1-able-p (cell)
+  (and cell (cqrr cell) (cerr cell) (cqrr (cerr cell)) (cqqrr (cerr cell)) (ceqerr cell)
+       (not (eq (cqrr cell) cell))
+       (eq (ceqrr cell)
+	   (cqqerr cell))))
 
 (defun reidemeister-3.2-able-p (qed-cell)
   (equal 3 (qed-valency qed-cell)))
@@ -155,22 +163,35 @@ if cells QD-loop has E-loops"
     reidemeister-3.1-able))
 
 (defun 3.1-drift (cell)
+  (let ((it (list (q-grow (cqrr cell))
+		  (d-grow cell)
+		  (q-grow (ceqerr cell))
+		  (d-grow (ceqerr cell)))))
+    (if-debug "3.1-DRIFT: grown nodes ~{~a~^ ~}" it))
   (let ((lb-cell (d-unlink cell))
 	(lt-cell (q-unlink (cqrr cell)))
 	(rb-cell (d-unlink (ceqerr cell)))
 	(rt-cell (q-unlink (ceqerr cell))))
-    (if-debug "3.1-DRIFT: lb ~a lt ~a rb ~a rt ~a" lb-cell lt-cell rb-cell rt-cell)
-    (if-debug "3.1-DRIFT: c ~a cqrr ~a cqqrr ~a cdrr ~a ceqerr ~a cqeqerr ~a cdeqerr ~a"
-	      cell (cqrr cell) (cqqrr cell) (cdrr cell) (ceqerr cell)
-	      (cqrr (ceqerr cell)) (cdrr (ceqerr cell)))
+    ;; (if-debug "3.1-DRIFT: lb ~a lt ~a rb ~a rt ~a" lb-cell lt-cell rb-cell rt-cell)
+    ;; (if-debug "3.1-DRIFT: c ~a cqrr ~a cqqrr ~a cdrr ~a ceqerr ~a cqeqerr ~a cdeqerr ~a"
+    ;; 	      cell (cqrr cell) (cqqrr cell) (cdrr cell) (ceqerr cell)
+    ;; 	      (cqrr (ceqerr cell)) (cdrr (ceqerr cell))
     (dq-link rt-cell (cqrr cell))
     (dq-link cell rb-cell)
     (dq-link lt-cell (ceqerr cell))
     (dq-link (ceqerr cell) lb-cell)
-    (if-debug "3.1-DRIFT: c ~a cqrr ~a cqqrr ~a cdrr ~a ceqerr ~a cqeqerr ~a cdeqerr ~a"
-	      cell (cqrr cell) (cqqrr cell) (cdrr cell) (ceqerr cell)
-	      (cqrr (ceqerr cell)) (cdrr (ceqerr cell)))
-    cell))
+    ;; (if-debug "3.1-DRIFT: c ~a cqrr ~a cqqrr ~a cdrr ~a ceqerr ~a cqeqerr ~a cdeqerr ~a"
+    ;; 	      cell (cqrr cell) (cqqrr cell) (cdrr cell) (ceqerr cell)
+    ;; 	      (cqrr (ceqerr cell)) (cdrr (ceqerr cell))))
+    )
+  (let ((it (list (q-shrink (cqrr cell))
+		  (d-shrink cell)
+		  (q-shrink (ceqerr cell))
+		  (d-shrink (ceqerr cell)))))
+    (if-debug "3.1-DRIFT: shrank nodes ~{~a~^ ~}" it))
+  cell)
+  
+
 
 (defmacro! with-3.1-drift ((o!-cell) &body body)
   `(unwind-protect (progn (3.1-drift ,o!-cell)
@@ -192,7 +213,11 @@ if cells QD-loop has E-loops"
 		  (return (cons :2.2-able cell)))
 	      (finally (return nil))))))
 
-  
+(defun tightable-dessin-p (dessin)
+  (iter (for cell in (slot-value dessin 'qed-cells))
+	(if (tightable-p cell)
+	    (return t))
+	(finally (return nil))))
 
 (defun deserialize-qed (lst)
   (let ((cells nil)
@@ -223,20 +248,27 @@ if cells QD-loop has E-loops"
      (remhash ,o!-point used-points)))
 
 
+(defmacro print-nodes (dessin)
+  `(if-debug "  nodes ~{~a~^ ~}" (slot-value ,dessin 'qed-cells)))
+
+
 (defun depth-first-3.1-drift-to-simplifiable (dessin)
   (let ((used-points (make-hash-table)))
     (labels ((rec (path)
+	       ;; (check-dessin-totally-ok dessin)
+	       (print-nodes dessin)
 	       (let ((it (simplifiable-p dessin)))
 		 (if it
 		     (cons :yes! (nreverse (cons it path)))
-		     (iter over-drift-points
-			   (for drift-point in (3.1-drift-points dessin used-points))
-			   (with-used-point (drift-point)
-			     (with-3.1-drift (drift-point)
-			       (let ((it (rec (cons drift-point path))))
-				 (if it
-				     (return-from over-drift-points it)))))
-			   (finally (return-from over-drift-points nil)))))))
+		     (tracing-level
+		       (iter over-drift-points
+			     (for drift-point in (3.1-drift-points dessin used-points))
+			     (with-used-point (drift-point)
+			       (with-3.1-drift (drift-point)
+				 (let ((it (rec (cons drift-point path))))
+				   (if it
+				       (return-from over-drift-points it)))))
+			     (finally (return-from over-drift-points nil))))))))
       (rec nil))))
 
 ;; (defgeneric find-3.1-drift-to-simplifiable (smth)
@@ -270,6 +302,9 @@ if cells QD-loop has E-loops"
 		       `(,x ,y))
 		     gensyms nodes)
 	 (unwind-protect (progn (if-debug "WITH-REMOVED-NODES: removing nodes")
+				,@(mapcar (lambda (x)
+					    `(if-debug "  removing ~a" ,x))
+					  gensyms)
 				(setf (slot-value ,o!-dessin 'qed-cells)
 				      (remove-if (lambda (x)
 						   (or ,@(mapcar (lambda (x)
@@ -278,8 +313,9 @@ if cells QD-loop has E-loops"
 						 (slot-value ,o!-dessin 'qed-cells)))
 				,@body)
 	   (if-debug "WITH-REMOVED-NODES: adding nodes back")
-	   ,@(mapcar (lambda (x)
-		       `(push ,x (slot-value ,o!-dessin 'qed-cells)))
+	   ,@(mapcan (lambda (x)
+		       `((if-debug "  adding ~a" ,x)
+			 (push ,x (slot-value ,o!-dessin 'qed-cells))))
 		     gensyms))))))
 
 (defmacro! with-added-nodes ((&rest nodes) o!-dessin &body body)
@@ -317,16 +353,19 @@ if cells QD-loop has E-loops"
 		     gensyms node-specs)
 	 (let ,(mapcar #'cadr gensyms)
 	   (unwind-protect (progn (if-debug "WITH-GROWN-NODES: grow nodes")
-				  ,@(mapcar (lambda (x y)
-					      `(setf ,(cadr x)
+				  ,@(mapcan (lambda (x y)
+					      `((setf ,(cadr x)
 						     (,(intern #?"$((string (car y)))-GROW")
-						       ,(car x))))
+						       ,(car x)))
+						(if-debug "  ~a-grown ~a by ~a"
+							  ,(string (car y)) ,(car x) ,(cadr x))))
 					    gensyms node-specs)
 				  (with-added-nodes ,(mapcar #'cadr gensyms) ,o!-dessin
 				    ,@body))
 	     (if-debug "WITH-GROWN-NODES: shrink nodes")
-	     ,@(mapcar (lambda (x y)
-			 `(,(intern #?"$((string (car y)))-SHRINK") ,(car x) ,(cadr x)))
+	     ,@(mapcan (lambda (x y)
+			 `((if-debug "  ~a-shrinking ~a by ~a" ,(string (car y)) ,(car x) ,(cadr x))
+			   (,(intern #?"$((string (car y)))-SHRINK") ,(car x) ,(cadr x))))
 		       gensyms node-specs)))))))
 
 
@@ -357,6 +396,9 @@ if cells QD-loop has E-loops"
        (let ,(mapcar (lambda (x y z)
 		       `(,z (,(intern #?"$((string (car x)))-UNLINK") ,y)))
 		     link-specs gensyms vars)
+	 ,@(mapcar (lambda (x y z)
+		     `(if-debug "  ~a-unlinked ~a and ~a" ,(string (car x)) ,z ,y))
+		   link-specs gensyms vars)
 	 (unwind-protect (progn ,@body)
 	   (if-debug "WITH-SEVERED-LINKS: restoring links")
 	   ,@(mapcan (lambda (x y z)
@@ -419,24 +461,67 @@ if cells QD-loop has E-loops"
       (format t "Res of 1-reid is: ~a~%" res)
       `(* (q "N-1") ,res))))
 
+(defun dessin-cell-hash (dessin)
+  (let ((cell-hash (make-hash-table)))
+    (iter (for cell in (slot-value dessin 'qed-cells))
+	  (setf (gethash cell cell-hash) t))
+    cell-hash))
+
+
+(defun check-dessin-totally-ok (dessin)
+  (let ((cell-hash (dessin-cell-hash dessin)))
+    (iter (for cell in (slot-value dessin 'qed-cells))
+	  (let ((e-cell (cerr cell))
+		(q-cell (cqrr cell))
+		(d-cell (cdrr cell)))
+	    (if (not e-cell)
+		(error "Dessin is not tight"))
+	    (if (not q-cell)
+		(error "Dessin has Q-breaks"))
+	    (if (not d-cell)
+		(error "Dessin has D-breaks"))
+	    (if (not (gethash e-cell cell-hash))
+		(error "Dessin has E-leaks"))
+	    (if (not (gethash q-cell cell-hash))
+		(error "Dessin has Q-leaks"))
+	    (if (not (gethash d-cell cell-hash))
+		(error "Dessin has D-leaks: ~a d-connects to ~a" cell d-cell))
+	    (if (eq e-cell cell)
+		(error "Dessin has anomal E-links"))
+	    (if (not (eq (cdrr q-cell) cell))
+		(error "Dessin is non-Q-haussdorf"))
+	    (if (not (eq (cqrr d-cell) cell))
+		(error "Dessin is non-D-haussdorf"))
+	    (if (not (eq (cerr e-cell) cell))
+		(error "Dessin is non-E-haussdorf"))))
+    :dessin-totally-ok!))
+		
+		
+
 (defun do-2.1-reidemeister (qed-dessin node)
-  (with-slots (qed-dessins) qed-dessin
-    (let ((res nil))
-      (with-severed-links ((q (cqrr node) lt-node)
-			   (d node lb-node)
-			   (q (ceqrr node) rt-node)
-			   (d (cerr node) rb-node)) qed-dessin
-	(with-removed-nodes (node (cqrr node) (ceqrr node) (cerr node)) qed-dessin
-	  (let ((tmp-l-node (qed nil))
-		(tmp-r-node (qed nil)))
-	    (ee-link tmp-l-node tmp-r-node)
-	    (with-added-nodes (tmp-l-node tmp-r-node) qed-dessin
-	      (with-tmp-links ((dq lt-node tmp-l-node)
-			       (dq rt-node tmp-r-node)
-			       (dq tmp-l-node lb-node)
-			       (dq tmp-r-node rb-node))
-		(setf res `(* (q "2") ,(tighten-loops (copy-dessin qed-dessin)))))))))
-      res)))
+  (tracing-level
+    (if-debug "DO 2.1: ~a ~a" (serialize-qed qed-dessin) node)
+    (print-nodes qed-dessin)
+    (if-debug "~a" (check-dessin-totally-ok qed-dessin))
+    (if-debug "~a" (if (not (find node (slot-value qed-dessin 'qed-cells)))
+		       (error "Node ~a is not part of dessin" node)))
+    (with-slots (qed-dessins) qed-dessin
+      (let ((res nil))
+	(with-severed-links ((q (cqrr node) lt-node)
+			     (d node lb-node)
+			     (q (ceqrr node) rt-node)
+			     (d (cerr node) rb-node)) qed-dessin
+	  (with-removed-nodes (node (cqrr node) (ceqrr node) (cerr node)) qed-dessin
+	    (let ((tmp-l-node (qed nil))
+		  (tmp-r-node (qed nil)))
+	      (ee-link tmp-l-node tmp-r-node)
+	      (with-added-nodes (tmp-l-node tmp-r-node) qed-dessin
+		(with-tmp-links ((dq lt-node tmp-l-node)
+				 (dq rt-node tmp-r-node)
+				 (dq tmp-l-node lb-node)
+				 (dq tmp-r-node rb-node))
+		  (setf res `(* (q "2") ,(tighten-loops (copy-dessin qed-dessin)))))))))
+	res))))
 
 (defun do-2.2-reidemeister (qed-dessin node)
   (with-slots (qed-dessins) qed-dessin
@@ -460,17 +545,20 @@ if cells QD-loop has E-loops"
   (tighten-loops (copy-dessin dessin)))
 
 (defun do-3.1-reidemeisters-then-something-else (qed-dessin plan)
-  (if (equal 1 (length plan))
-      (cond ((eq :0-able (caar plan)) (do-0-reidemeister qed-dessin (cdar plan)))
-	    ((eq :tightable (caar plan)) (do-tight qed-dessin))
-	    ((eq :1-able (caar plan)) (do-1-reidemeister qed-dessin (cdar plan)))
-	    ((eq :2.1-able (caar plan)) (do-2.1-reidemeister qed-dessin (cdar plan)))
-	    ((eq :2.2-able (caar plan)) (do-2.2-reidemeister qed-dessin (cdar plan)))
-	    (t (error "Don't know how to perform this part of plan: ~a~%" (caar plan))))
-      (%do-3.1-reidemeisters-then-something-else qed-dessin plan)))
+  (tracing-level
+    (if (equal 1 (length plan))
+	(cond ((eq :0-able (caar plan)) (do-0-reidemeister qed-dessin (cdar plan)))
+	      ((eq :tightable (caar plan)) (do-tight qed-dessin))
+	      ((eq :1-able (caar plan)) (do-1-reidemeister qed-dessin (cdar plan)))
+	      ((eq :2.1-able (caar plan)) (do-2.1-reidemeister qed-dessin (cdar plan)))
+	      ((eq :2.2-able (caar plan)) (do-2.2-reidemeister qed-dessin (cdar plan)))
+	      (t (error "Don't know how to perform this part of plan: ~a~%" (caar plan))))
+	(%do-3.1-reidemeisters-then-something-else qed-dessin plan))))
 
 (defun %do-3.1-reidemeisters-then-something-else (qed-dessin plan)
   (let ((node (car plan)))
+    (if-debug "~a" (check-dessin-totally-ok qed-dessin))
+    (print-nodes qed-dessin)
     (with-slots (qed-dessins) qed-dessin
       (let ((res-leave-left nil)
 	    (res-leave-right nil))
@@ -481,10 +569,10 @@ if cells QD-loop has E-loops"
 			     (q (ceqerr node) rt-node)
 			     (d (ceqerr node) rb-node)) qed-dessin
 	  (with-removed-nodes (node (cqrr node)
-				    (cerr node) (cqerr node) (cqqerr node)
-				    (ceqerr node)) qed-dessin
+	  			    (cerr node) (cqerr node) (cqqerr node)
+	  			    (ceqerr node)) qed-dessin
 	    (let ((tmp-l-node (qed nil))
-		  (tmp-r-node (qed nil)))
+	    	  (tmp-r-node (qed nil)))
 	      (ee-link tmp-l-node tmp-r-node)
 	      (with-added-nodes (tmp-l-node tmp-r-node) qed-dessin
 		(with-tmp-links ((dq lt-node tmp-l-node)
@@ -499,9 +587,14 @@ if cells QD-loop has E-loops"
 				 (qd rb-node tmp-r-node)
 				 (dq lt-node lb-node))
 		  (setf res-leave-right (tighten-loops (copy-dessin qed-dessin))))))))
-	;; TODO: shouldn't it be also under growed outgoing links?
-	(if-debug "Done with reidemeister 'tails'")
+	;; (print-nodes qed-dessin)
+	(if-debug "~a" (check-dessin-totally-ok qed-dessin))
+	(if-debug "Done with reidemeister 'tails' ~a ~a"
+		  (tightable-dessin-p qed-dessin) (has-breaks-p qed-dessin))
 	(3.1-drift node)
+	(print-nodes qed-dessin)
+	(if-debug "Now dessin is ~a ~a ~a"
+		  (serialize-qed qed-dessin) (tightable-dessin-p qed-dessin) (has-breaks-p qed-dessin))
 	`(+ ,(do-3.1-reidemeisters-then-something-else qed-dessin (cdr plan))
 	    ,res-leave-left
 	    (- ,res-leave-right))))))
@@ -515,7 +608,8 @@ if cells QD-loop has E-loops"
 (defun %find-cons-dessins (poly)
   (when (and poly (not (atom poly)))
     (if (typep (car poly) 'qed-dessin)
-	(push poly *accumulator*)
+	(progn (if-debug "FIND-CONS-DESSINS: found ~a" poly)
+	       (push poly *accumulator*))
 	(if (consp (car poly))
 	    (%find-cons-dessins (car poly))))
     (%find-cons-dessins (cdr poly))))
@@ -541,7 +635,7 @@ if cells QD-loop has E-loops"
   (let ((head (list dessin)))
     (let ((conses-of-dessins (list head)))
       (iter (for i from 1 to 10)
-	    (format t "~a~%" head)
+	    (if-debug "DECOMPOSE: ~a ~a" head conses-of-dessins)
 	    (setf conses-of-dessins
 		  (apply #'append (remove-if-not #'identity
 						 (mapcar #'decomposition-step conses-of-dessins))))
@@ -568,17 +662,41 @@ if cells QD-loop has E-loops"
 		
 
 (defun serialize-qed (dessin)
-  (let ((edges-hash (make-hash-table :test #'equal))
+  (let ((edges-hash (make-hash-table))
 	(edge-count 0)
-	(loop-count 0))
-    (let ((cells-hash (make-hash-table)))
+	res)
+    (let ((cells-hash (make-hash-table))
+	  (cur-loop nil))
       (iter (for cell in (slot-value dessin 'qed-cells))
 	    (setf (gethash cell cells-hash) t))
       (iter (for new-loop-start next (multiple-value-bind (got key val) (pophash cells-hash)
+				       (declare (ignore val))
 				       (if (not got)
 					   (terminate)
 					   key)))
 	    (for loop-num from 1)
+	    (setf cur-loop (list loop-num))
+	    (iter (initially (setq cell nil))
+		  (for cell next (if (not cell)
+				     new-loop-start
+				     (let ((it (cqrr cell)))
+				       (cond ((not it) (error "Attempt to serialize dessin with broken loop"))
+					     ((eq new-loop-start it) (terminate))
+					     (t (remhash it cells-hash)
+						it)))))
+		  (let ((other-end (cerr cell)))
+		    (cond ((not other-end) (next-iteration))
+			  ((eq cell other-end) (error "Self-referring E-place in dessin to serialize"))
+			  (t (push (or (gethash other-end edges-hash)
+				       (setf (gethash cell edges-hash) (incf edge-count)))
+				   cur-loop)))))
+	    (push (nreverse cur-loop) res)))
+    (nreverse res)))
+			  
+			
 
 
 (defparameter *a* (deserialize-qed (torus-dessin 3 3)))
+
+
+(defparameter *a-step* (deserialize-qed '((1 1 2) (2 3 4 2 5 6 1) (3 3 4 5 6))))

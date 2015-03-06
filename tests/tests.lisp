@@ -35,3 +35,20 @@
 		(* (Q "N-1") (* (Q "2") (* (Q "N-1") (* (Q "N-1") (* (** (Q "N") 1) "1")))))))
 	     (decompose (deserialize-qed (torus-dessin 2 4))))))
 
+
+(test deserialize-serialize-loops
+  (macrolet ((frob (x &optional y)
+	       `(is (equal ',x (serialize-qed (deserialize-qed ',(or y x)))))))
+    (frob ((1)))
+    (frob ((1) (2)))
+    (frob ((1) (2) (3)))
+    (frob ((1 1) (2 1)))
+    (frob ((1 1 2) (2 1 2)))
+    (frob ((1 1 2) (2 2 1)))
+    (frob ((1 1 2) (2 2 1)) ((1 2 1) (2 1 2)))
+    ;; KLUDGE: we should better test properly for correct cyclic order of vertices,
+    ;; then fine-tuning the answer to particular implementation of hashing functions etc.
+    (frob ((1 1 2) (2 1 3 2 4) (3 4 3)) ((1 1 2) (2 1 3 2 4) (3 3 4)))
+    (frob ((1 1 2 3) (2 1 4 2 5 3 6) (3 6 4 5)) ((1 1 2 3) (2 1 4 2 5 3 6) (3 4 5 6)))))
+  
+

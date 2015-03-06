@@ -175,19 +175,21 @@
 	     (if (ceqrr cell)
 		 (link-error "Q-place cell's E-place is not empty, can't shrink"))
 	     (let ((qq-cell (q-unlink! (cqrr cell))))
-	       (q-unlink! cell)
-	       (dq-link! qq-cell cell)))))
+	       (let ((q-cell (q-unlink! cell)))
+		 (dq-link! qq-cell cell)
+		 q-cell)))))
 
 (defun d-shrink (cell &optional exact-cell-to-shrink)
   (if (and exact-cell-to-shrink
-	   (not (eq exact-cell-to-shrink (cqrr cell))))
+	   (not (eq exact-cell-to-shrink (cdrr cell))))
       :didn-t-do-a-shrink
-      (progn (if-debug "cell ~a cqrr ~a cdrr ~a cerr ~a" cell (cqrr cell) (cdrr cell) (cerr cell))
+      (progn ;; (if-debug "cell ~a cqrr ~a cdrr ~a cerr ~a" cell (cqrr cell) (cdrr cell) (cerr cell))
 	     (if (not (cdrr cell))
 		 (link-error "D-place of ~a is empty, can't shrink on ~a" cell exact-cell-to-shrink))
 	     (if (cedrr cell)
 		 (link-error "D-place cell ~a's E-place is not empty, can't shrink" cell))
 	     (let ((dd-cell (d-unlink! (cdrr cell))))
-	       (d-unlink! cell)
-	       (dq-link! cell dd-cell)))))
+	       (let ((d-cell (d-unlink! cell)))
+		 (dq-link! cell dd-cell)
+		 d-cell)))))
 
