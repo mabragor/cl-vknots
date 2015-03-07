@@ -638,13 +638,12 @@ if cells QD-loop has E-loops"
 (defun decompose (dessin)
   (let ((head (list dessin)))
     (let ((conses-of-dessins (list head)))
-      (iter (for i from 1 to 10)
-	    (if-debug "DECOMPOSE: ~a| ~a" head conses-of-dessins)
-	    (setf conses-of-dessins
-		  (remove-duplicates (apply #'append (remove-if-not #'identity
-								    (mapcar #'decomposition-step
-									    conses-of-dessins)))
-				     :key #'car :test #'eq))
+      (iter (if-debug "DECOMPOSE: ~a| ~a" head conses-of-dessins)
+	    (setf conses-of-dessins (remove-duplicates (apply #'append
+							      (remove-if-not #'identity
+									     (mapcar #'decomposition-step
+										     conses-of-dessins)))
+						       :key #'car :test #'eq))
 	    (if (not conses-of-dessins)
 		(terminate))))
     (car head)))
@@ -702,7 +701,7 @@ if cells QD-loop has E-loops"
 			
 
 
-(defparameter *a* (deserialize-qed (torus-dessin 3 3)))
+(defparameter *a* (deserialize-qed (torus-dessin 5 3)))
 
 
 (defparameter *a-step* (deserialize-qed '((1 1 2) (2 3 4 2 5 6 1) (3 3 4 5 6))))
