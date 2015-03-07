@@ -16,7 +16,8 @@
 	       (:file "debug")
 	       (:file "qed-cells")
                (:file "cl-vknots")
-	       (:file "qed-dessins")))
+	       (:file "qed-dessins")
+	       (:file "planar-diagrams")))
 
 
 (defsystem :cl-vknots-tests

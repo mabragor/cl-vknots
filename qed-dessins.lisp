@@ -57,6 +57,10 @@
   (and cell (cqrr cell) (cerr cell)
        (eq (cqrr cell) cell)))
 
+(defun virt-reidemeister-1-able-p (cell)
+  (and cell (cqrr cell) (cerr cell)
+       (eq (cerr cell) (cqrr cell))))
+
 (defun reidemeister-2.1-able-p (cell)
   (and cell (cqrr cell) (ceqrr cell) (cerr cell) (cqerr cell)
        (not (eq (cqrr cell) cell))
@@ -209,12 +213,10 @@ if cells QD-loop has E-loops"
 		      (return (cons :tightable cell)))
 		  (finally (return nil)))
 	    (iter (for cell in qed-cells)
-		  (if (reidemeister-1-able-p cell)
-		      (return (cons :1-able cell)))
-		  (if (reidemeister-2.1-able-p cell)
-		      (return (cons :2.1-able cell)))
-		  (if (reidemeister-2.2-able-p cell)
-		      (return (cons :2.2-able cell)))
+		  (cond ((reidemeister-1-able-p cell) (return (cons :1-able cell)))
+			((virt-reidemeister-1-able-p cell) (return (cons :virt-1-able cell)))
+			((reidemeister-2.1-able-p cell) (return (cons :2.1-able cell)))
+			((reidemeister-2.2-able-p cell) (return (cons :2.2-able cell))))
 		  (finally (return nil)))))))
 
 (defun tightable-dessin-p (dessin)
@@ -462,8 +464,19 @@ if cells QD-loop has E-loops"
 	      (debug-frob))
 	    (debug-frob))
 	  (debug-frob)))
-      (format t "Res of 1-reid is: ~a~%" res)
+      (if-debug "Res of 1-reid is: ~a" res)
       `(* (q "N-1") ,res))))
+
+(defun do-virt-1-reidemeister (qed-dessin node)
+  (with-slots (qed-dessins) qed-dessin
+    (let ((res nil))
+      (with-severed-links ((q (cqrr node) t-node)
+			   (d node b-node)) qed-dessin
+	(with-removed-nodes (node (cqrr node)) qed-dessin
+	  (with-tmp-links ((dq t-node b-node))
+	    (setf res (tighten-loops (copy-dessin qed-dessin))))))
+      `(* (- (q "N-1")) ,res))))
+
 
 (defun dessin-cell-hash (dessin)
   (let ((cell-hash (make-hash-table)))
@@ -554,6 +567,7 @@ if cells QD-loop has E-loops"
 	(cond ((eq :0-able (caar plan)) (do-0-reidemeister qed-dessin (cdar plan)))
 	      ((eq :tightable (caar plan)) (do-tight qed-dessin))
 	      ((eq :1-able (caar plan)) (do-1-reidemeister qed-dessin (cdar plan)))
+	      ((eq :virt-1-able (caar plan)) (do-virt-1-reidemeister qed-dessin (cdar plan)))
 	      ((eq :2.1-able (caar plan)) (do-2.1-reidemeister qed-dessin (cdar plan)))
 	      ((eq :2.2-able (caar plan)) (do-2.2-reidemeister qed-dessin (cdar plan)))
 	      (t (error "Don't know how to perform this part of plan: ~a~%" (caar plan))))
