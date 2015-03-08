@@ -1,6 +1,8 @@
 
 (in-package #:cl-vknots)
 
+(cl-interpol:enable-interpol-syntax)
+
 (defparameter *kishino-diagram*
   '((n 1 2 4 3)
     (b 4 3 5 11)
@@ -46,3 +48,46 @@
 	(for vertex in diagram)
 	(collect (bud-vertex vertex n (intern #?"V$(i)")) into res)
 	(finally (return (apply #'nconc res)))))
+
+
+(defun planar->seifert (diagram)
+  (let ((the-hash (make-hash-table :test #'equal))
+	(b-hash (make-hash-table :test #'equal))
+	(e-edge-count 0)
+	res)
+    (iter (for (op lb rb lt rt) in diagram)
+	  (if (eq 'n op)
+	      (setf (gethash lb the-hash) (cons rt nil)
+		    (gethash rb the-hash) (cons lt nil))
+	      (setf (gethash lb the-hash) (cons lt (list op (incf e-edge-count)))
+		    (gethash rb the-hash) (cons rt (list op e-edge-count))))
+	  (setf (gethash lb b-hash) t
+		(gethash rb b-hash) t))
+    (let ((cur-loop nil))
+      (iter (for loop-start next (multiple-value-bind (got key val) (pophash b-hash)
+				   (declare (ignore val))
+				   (if (not got)
+				       (terminate)
+				       key)))
+	    (for loop-num from 1)
+	    (setf cur-loop (list loop-num))
+	    (iter (initially (setq edge nil))
+		  (initially (setq e-edge nil))
+		  (for (edge e-edge) next (cond ((eq :terminate edge) (terminate))
+						((not edge) (list loop-start nil))
+						(t (destructuring-bind (next-edge . next-e-edge)
+						       (gethash edge the-hash)
+						     (remhash next-edge b-hash)
+						     (list (if (equal loop-start next-edge)
+							       :terminate
+							       next-edge)
+							   next-e-edge)))))
+		  (if e-edge (push e-edge cur-loop)))
+	    (push (nreverse cur-loop) res))
+      (nreverse res))))
+					      
+
+;; Ok, so now the only thing that remains to be done is
+;; to refresh computation of hypercube and HOMFLY using DECOMPOSE instead of N-DESSIN-RECURSION...
+
+;; ... and, of course, tests for this PLANAR->SEIFERT function, to ensure it works correctly ...    
