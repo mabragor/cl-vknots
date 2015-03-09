@@ -225,17 +225,20 @@ if cells QD-loop has E-loops"
 	    (return t))
 	(finally (return nil))))
 
-(defun deserialize-qed (lst)
+(defun deserialize-qed (lst &key (ignore-colors t))
   (let ((cells nil)
 	(encountered (make-hash-table :test #'equal)))
     (iter (for (num . cycle) in lst)
-	  (format t "Loop num ~a~%" num)
+	  (if-debug "Loop num ~a" num)
 	  (let ((the-loop nil)
 		(first-cell (qed nil)))
 	    (push first-cell cells)
 	    (setf the-loop first-cell)
 	    (iter (for edge-num in cycle)
-		  (format t "  edge num ~a, loop ~a~%" edge-num the-loop)
+		  (if (and ignore-colors
+			   (consp edge-num))
+		      (setf edge-num (cadr edge-num)))
+		  (if-debug "  edge num ~a, loop ~a" edge-num the-loop)
 		  (let ((new-cell (qed nil)))
 		    (push new-cell cells)
 		    (setf the-loop (dq-link! new-cell the-loop))
@@ -640,11 +643,11 @@ if cells QD-loop has E-loops"
 
 (defun decomposition-step (cons-of-dessin)
   (let ((plan (depth-first-3.1-drift-to-simplifiable (car cons-of-dessin))))
-    (format t "~a~%" plan)
+    (if-debug "~a" plan)
     (if (not plan)
 	(error "Unable to find a decomposition plan!")
 	(let ((new-stuff (do-3.1-reidemeisters-then-something-else (car cons-of-dessin) (cdr plan))))
-	  (format t "new stuff is: ~a~%" new-stuff)
+	  (if-debug "new stuff is: ~a" new-stuff)
 	  (setf (car cons-of-dessin) new-stuff)
 	  (let ((cons-dessins (find-cons-dessins cons-of-dessin)))
 	    cons-dessins)))))
@@ -653,6 +656,8 @@ if cells QD-loop has E-loops"
   (let ((head (list dessin)))
     (let ((conses-of-dessins (list head)))
       (iter (if-debug "DECOMPOSE: ~a| ~a" head conses-of-dessins)
+	    (for i from 1)
+	    (format t "  DECOMPOSE: round ~a ~a~%" i (length conses-of-dessins))
 	    (setf conses-of-dessins (remove-duplicates (apply #'append
 							      (remove-if-not #'identity
 									     (mapcar #'decomposition-step
@@ -737,3 +742,19 @@ if cells QD-loop has E-loops"
 						     (cdr poly)))
 				#?"- ($((mathematica-serialize (cadr poly))))"))
 	(t (error "Don't yet knot how to MATHEMATICA-SERIALIZE this: ~a~%" poly))))
+
+
+
+
+(defun 4-thick-decompositions (n-max &optional (fname "~/code/superpolys/FourThickDecompositions.m"))
+  (with-open-file (stream fname :direction :output :if-exists :supersede)
+    (iter (for n from 2 to n-max)
+	  ;; (format stream "ThreeSausageHOMFLY[~a] := ~a;~%~%"
+	  ;; 	  n (homfly-for-dessin (deserialize2 (torus-dessin 3 n))))
+	  (format t "Doing ~a~%" n)
+	  (let ((it (decompose (deserialize-qed (torus-dessin 4 n)))))
+	    (format t "  done decomposing~%")
+	    (format stream "FourThickDecomposition[~a] := ~a;~%~%"
+		    n (mathematica-serialize it))
+	    (format t "  done serializing~%"))))
+  :success!)
