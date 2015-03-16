@@ -762,3 +762,9 @@ if cells QD-loop has E-loops"
 		    n (mathematica-serialize it))
 	    (format t "  done serializing~%"))))
   :success!)
+
+
+(defparameter *closed-torus* '((1 5 1 6 2) (2 1 3 2 4) (3 3 5 4 6)))
+
+
+(defparameter *almost-closed-torus* '((1 1 6 2) (2 1 3 2 4) (3 3 4 6)))
