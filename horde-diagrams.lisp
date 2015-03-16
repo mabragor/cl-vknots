@@ -198,3 +198,20 @@
 			   (say "\\end{document}"))))))
 		     
   
+(defun %horde->qed-dessin (%horde)
+  (let ((pre-res (make-array (length %horde))))
+    (iter (for i from 0 to (1- (length %horde)))
+	  (setf (elt pre-res i) (qed nil)))
+    (iter (for i from 0)
+	  (for delta in %horde)
+	  (when (< 0 delta)
+	    (ee-link (elt pre-res i) (elt pre-res (+ i delta))))
+	  (dq-link (elt pre-res (mod (1+ i) (length %horde)))
+		   (elt pre-res i)))
+    (make-instance 'qed-dessin :cells (coerce pre-res 'list))))
+
+  
+(defun grog2 (n)
+  (mapcar (lambda (x)
+	    (decompose (%horde->qed-dessin x)))
+	  (grog n)))

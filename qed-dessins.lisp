@@ -210,7 +210,7 @@ if cells QD-loop has E-loops"
 		  ;; Other transforms really do not work on loose dessins,
 		  ;; so it's important to tighten first!
 		  (if (tightable-p cell)
-		      (return (cons :tightable cell)))
+		      (return (cons :tight-able cell)))
 		  (finally (return nil)))
 	    (iter (for cell in qed-cells)
 		  (cond ((reidemeister-1-able-p cell) (return (cons :1-able cell)))
@@ -561,19 +561,26 @@ if cells QD-loop has E-loops"
       `(+ (* (q "N-2") ,res-forget)
 	  ,res-contract))))
 
-(defun do-tight (dessin)
+(defun do-tight (dessin node)
+  (declare (ignore node))
   (tighten-loops (copy-dessin dessin)))
+
+
+(defparameter actions `((:0-able . ,#'do-0-reidemeister)
+			(:tight-able . ,#'do-tight)
+			(:1-able . ,#'do-1-reidemeister)
+			(:virt-1-able . ,#'do-virt-1-reidemeister)
+			(:2.1-able . ,#'do-2.1-reidemeister)
+			(:2.2-able . ,#'do-2.2-reidemeister)))
+
 
 (defun do-3.1-reidemeisters-then-something-else (qed-dessin plan)
   (tracing-level
     (if (equal 1 (length plan))
-	(cond ((eq :0-able (caar plan)) (do-0-reidemeister qed-dessin (cdar plan)))
-	      ((eq :tightable (caar plan)) (do-tight qed-dessin))
-	      ((eq :1-able (caar plan)) (do-1-reidemeister qed-dessin (cdar plan)))
-	      ((eq :virt-1-able (caar plan)) (do-virt-1-reidemeister qed-dessin (cdar plan)))
-	      ((eq :2.1-able (caar plan)) (do-2.1-reidemeister qed-dessin (cdar plan)))
-	      ((eq :2.2-able (caar plan)) (do-2.2-reidemeister qed-dessin (cdar plan)))
-	      (t (error "Don't know how to perform this part of plan: ~a~%" (caar plan))))
+	(let ((it (assoc (caar plan) actions)))
+	  (if it
+	      (funcall (cdr it) qed-dessin (cdar plan))
+	      (error "Don't know how to perform this part of plan: ~a~%" (caar plan))))
 	(%do-3.1-reidemeisters-then-something-else qed-dessin plan))))
 
 (defun %do-3.1-reidemeisters-then-something-else (qed-dessin plan)
