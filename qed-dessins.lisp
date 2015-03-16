@@ -654,16 +654,20 @@ if cells QD-loop has E-loops"
 
 (defun decompose (dessin)
   (let ((head (list dessin)))
-    (let ((conses-of-dessins (list head)))
-      (iter (if-debug "DECOMPOSE: ~a| ~a" head conses-of-dessins)
+    (let ((conses-of-dessins (make-hash-table)))
+      (setf (gethash dessin conses-of-dessins) head)
+      (iter ;; (if-debug "DECOMPOSE: ~a| ~a" head conses-of-dessins)
 	    (for i from 1)
-	    (format t "  DECOMPOSE: round ~a ~a~%" i (length conses-of-dessins))
-	    (setf conses-of-dessins (remove-duplicates (apply #'append
-							      (remove-if-not #'identity
-									     (mapcar #'decomposition-step
-										     conses-of-dessins)))
-						       :key #'car :test #'eq))
-	    (if (not conses-of-dessins)
+	    (format t "  DECOMPOSE: round ~a ~a~%" i (hash-table-count conses-of-dessins))
+	    (let ((new-conses-of-dessins (make-hash-table)))
+	      (iter (for (nil cons-of-dessin) in-hashtable conses-of-dessins)
+		    ;; (format t "~a~%" cons-of-dessin)
+		    (let ((it (decomposition-step cons-of-dessin)))
+		      (if it
+			  (iter (for elt in it)
+				(setf (gethash (car elt) new-conses-of-dessins) elt)))))
+	      (setf conses-of-dessins new-conses-of-dessins))
+	    (if (equal 0 (hash-table-count conses-of-dessins))
 		(terminate))))
     (car head)))
 
