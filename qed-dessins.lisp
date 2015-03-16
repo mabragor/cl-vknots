@@ -66,12 +66,26 @@
        (not (eq (cqrr cell) cell))
        (eq (ceqrr cell) (cqerr cell))))
 
+(defun virt-reidemeister-2.1-able-p (cell)
+  (and cell (cqrr cell) (ceqrr cell) (cerr cell) (cderr cell)
+       (not (eq (cqrr cell) cell))
+       (eq (ceqrr cell) (cderr cell))))
+
+
 (defun reidemeister-2.2-able-p (cell)
   (let ((q-cell (cqrr cell))
 	(d-cell (cdrr cell)))
     (and cell q-cell d-cell (cerr q-cell) (cerr d-cell)
 	 (not (eq q-cell cell))
 	 (eq q-cell d-cell))))
+
+
+(defun virt-reidemeister-2.2-able-p (cell)
+  (let ((q-cell (cqrr cell))
+	(d-cell (cdrr cell)))
+    (and cell q-cell d-cell (cerr cell)
+	 (not (eq q-cell d-cell))
+	 (eq (cerr q-cell) d-cell))))
 
 
 (defun qed-valency (qed-cell)
@@ -202,6 +216,14 @@ if cells QD-loop has E-loops"
 			  ,@body)
      (3.1-drift ,o!-cell)))
 
+(defparameter predicates `((,#'reidemeister-1-able-p . :1-able)
+			   (,#'virt-reidemeister-1-able-p . :virt-1-able)
+			   (,#'reidemeister-2.1-able-p . :2.1-able)
+			   (,#'reidemeister-2.2-able-p . :2.2-able)
+			   (,#'virt-reidemeister-2.1-able-p . :virt-2.1-able)
+			   (,#'virt-reidemeister-2.2-able-p . :virt-2.2-able)
+			   ))
+
 (defun simplifiable-p (dessin)
   (with-slots (qed-cells) dessin
     (if (not qed-cells)
@@ -212,12 +234,11 @@ if cells QD-loop has E-loops"
 		  (if (tightable-p cell)
 		      (return (cons :tight-able cell)))
 		  (finally (return nil)))
-	    (iter (for cell in qed-cells)
-		  (cond ((reidemeister-1-able-p cell) (return (cons :1-able cell)))
-			((virt-reidemeister-1-able-p cell) (return (cons :virt-1-able cell)))
-			((reidemeister-2.1-able-p cell) (return (cons :2.1-able cell)))
-			((reidemeister-2.2-able-p cell) (return (cons :2.2-able cell))))
-		  (finally (return nil)))))))
+	    (iter outer (for cell in qed-cells)
+		  (iter (for (fun . tag) in predicates)
+			(if (funcall fun cell)
+			    (return-from outer (cons tag cell))))
+		  (finally (return-from outer nil)))))))
 
 (defun tightable-dessin-p (dessin)
   (iter (for cell in (slot-value dessin 'qed-cells))
@@ -566,12 +587,54 @@ if cells QD-loop has E-loops"
   (tighten-loops (copy-dessin dessin)))
 
 
+(defun do-virt-2.1-reidemeister (qed-dessin node)
+  (with-slots (qed-dessins) qed-dessin
+    (let ((res-forget nil)
+	  (res-contract nil))
+      (with-severed-links ((q (cqrr node) lt-node)
+			   (d node lb-node)
+			   (q (cerr node) rt-node)
+			   (d (cderr node) rb-node)) qed-dessin
+	(with-removed-nodes (node (cqrr node) (cerr node) (cderr node)) qed-dessin
+	  (with-tmp-links ((dq lt-node rb-node)
+			   (dq rt-node lb-node))
+	    (setf res-contract (tighten-loops (copy-dessin qed-dessin))))
+	  (with-tmp-links ((dq lt-node lb-node)
+			   (dq rt-node rb-node))
+	    (setf res-forget (tighten-loops (copy-dessin qed-dessin))))))
+      `(+ (* (q "N-2") ,res-contract)
+	  ,res-forget))))
+
+
+(defun do-virt-2.2-reidemeister (qed-dessin node)
+  (with-slots (qed-dessins) qed-dessin
+    (let ((res-forget nil)
+	  (res-contract nil))
+      (with-severed-links ((q (cqrr node) lt-node)
+			   (d (cdrr node) lb-node)
+			   (q (cerr node) rt-node)
+			   (d (cerr node) rb-node)) qed-dessin
+	(with-removed-nodes (node (cqrr node) (cdrr node) (cerr node)) qed-dessin
+	  (with-tmp-links ((dq lt-node rb-node)
+			   (dq rt-node lb-node))
+	    (setf res-contract (tighten-loops (copy-dessin qed-dessin))))
+	  (with-tmp-links ((dq lt-node lb-node)
+			   (dq rt-node rb-node))
+	    (setf res-forget (tighten-loops (copy-dessin qed-dessin))))))
+      `(- (+ (* (q "N-2") ,res-forget)
+	     ,res-contract)))))
+
+
+
 (defparameter actions `((:0-able . ,#'do-0-reidemeister)
 			(:tight-able . ,#'do-tight)
 			(:1-able . ,#'do-1-reidemeister)
 			(:virt-1-able . ,#'do-virt-1-reidemeister)
 			(:2.1-able . ,#'do-2.1-reidemeister)
-			(:2.2-able . ,#'do-2.2-reidemeister)))
+			(:virt-2.1-able . ,#'do-virt-2.1-reidemeister)
+			(:2.2-able . ,#'do-2.2-reidemeister)
+			(:virt-2.2-able . ,#'do-virt-2.2-reidemeister)
+			))
 
 
 (defun do-3.1-reidemeisters-then-something-else (qed-dessin plan)
