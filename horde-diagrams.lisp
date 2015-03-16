@@ -157,12 +157,20 @@
 	  (with-output-env
 	    (say #?"\\global\\def\\foo$((dumb-name-the-int n)){")
 	    (with-indent
-		(iter (for k from 1 to (length diags))
-		      (let ((i (mod k 6))
-			    (j (floor k 6)))
-			(say #?"\\foo$((dumb-name-the-int n))n$((dumb-name-the-int k)){$((* 3 i))}
-                                {$((- (* 3 j)))}")
-			(say #?"\\node at ($((* 3 i)), $((- 0 1.5 (* 3 j)))) {$(k)};"))))
+		(let ((l (length diags))
+		      (done nil))
+		  (iter (for j from 0)
+			(while (not done))
+			(say "~%~%\\begin{tikzpicture}[scale=0.5]")
+			(iter (for i from 0 to 5)
+			      (let ((k (+ (* 6 j) i)))
+				(when (>= k l)
+				  (setf done t)
+				  (terminate))
+				(say #?"\\foo$((dumb-name-the-int n))n$((dumb-name-the-int (1+ k))){$((* 3 i))}
+                                       {$((- (* 3 j)))}")
+				(say #?"\\node at ($((* 3 i)), $((- 0 1.5 (* 3 j)))) {$((1+ k))};")))
+			(say "\\end{tikzpicture}~%~%"))))
 	    (say "}~%")))))
 
 (defun horde-diagram-pics! (n)
@@ -186,9 +194,7 @@
 			   (say "\\begin{document}")
 			   (iter (for i from from to to)
 				 (say #?"\\section{Horde diagrams with $(i) strands}")
-				 (say "\\begin{tikzpicture}[scale=0.5]")
-				 (say #?"\\foo$((dumb-name-the-int i))")
-				 (say "\\end{tikzpicture}"))
+				 (say #?"\\foo$((dumb-name-the-int i))"))
 			   (say "\\end{document}"))))))
 		     
   
