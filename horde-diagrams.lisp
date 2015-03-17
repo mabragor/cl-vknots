@@ -210,8 +210,121 @@
 		   (elt pre-res i)))
     (make-instance 'qed-dessin :cells (coerce pre-res 'list))))
 
+(defun groger2 (x)
+  (handler-case (decompose (%horde->qed-dessin x))
+    (error () "Fail")))
+
+(defun groger3 (x)
+  (mathematica-serialize x))
+  
+
+(defun mathematica-simplify-and-canonicalize (lst)
+  (with-open-file (stream "~/code/superpolys/lisp-out.txt"
+			  :direction :output :if-exists :supersede)
+    (iter (for expr in lst)
+	  (format stream #?"expr = ~a;~%" expr)))
+  (multiple-value-bind (out err errno)
+      (script "math -script ~/code/superpolys/simple-script.m > ~/code/superpolys/lisp-in.txt")
+    ;; (declare (ignore out))
+    (if (not (zerop errno))
+	(error err)
+	out)))
   
 (defun grog2 (n)
-  (mapcar (lambda (x)
-	    (decompose (%horde->qed-dessin x)))
-	  (grog n)))
+  (let ((it (grog n)))
+    (mathematica-simplify-and-canonicalize (mapcar (lambda (x)
+						     (groger3 (groger2 x)))
+						   it))
+    (let ((dimens (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+			(collect (cl-ppcre:regex-replace-all "q\\(([^()]+)\\)" expr "[\\1]")))))
+      (generate-tex-horde-section n it dimens))))
+
+(defun mk-dimensions-hash (diags dimens)
+  (let ((res (make-hash-table :test #'equal)))
+    (iter (for diag in diags)
+	  (for i from 1)
+	  (for dimen in dimens)
+	  (push (cons i diag) (gethash dimen res nil)))
+    res))
+
+(defun diags->tex (diags n line-width)
+  (let ((res nil)
+	(cur nil))
+    (iter (for diag in diags)
+	  (for i from 0)
+	  (if (zerop (mod i line-width))
+	      (progn (push (nreverse cur) res)
+		     (setf cur nil)))
+	  (push diag cur)
+	  (finally (push (nreverse cur) res)))
+    ;; (format t "~a" res)
+    (with-output-env
+      (say "\\vbox{")
+      (iter (for diag-str in (nreverse res))
+	    (if (not diag-str)
+		(next-iteration))
+	    (say "\\begin{tikzpicture}[scale=0.5]")
+	    (iter (for (num . diag) in diag-str)
+		  (for i from 0)
+		  (say #?"\\foo$((dumb-name-the-int n))n$((dumb-name-the-int num)){$((* 3 i))}{0}")
+		  (say #?"\\node at ($((* 3 i)), - 1.5) {$(num)};"))
+	    (say "\\end{tikzpicture}")
+	    (say "\\vskip"))
+      (say "}"))))
+		 
+  
+
+(defun dimensions-hash->tex (hash n &optional (line-width 3))
+  (with-output-env
+    (say "\\begin{equation}")
+    (say "\\begin{array}{|c|c|}")
+    (say "\\hline")
+    (iter (for (dimen diags) in-hashtable hash)
+	  (for i from 0)
+	  (say #?"$((diags->tex diags n line-width)) & $(dimen) \\\\")
+	  (say "\\hline")
+	  (when (zerop (mod i 3))
+	    (say "\\end{array}")
+	    (say "\\end{equation}")
+	    (say "\\begin{equation}")
+	    (say "\\begin{array}{|c|c|}")
+	    (say "\\hline")))
+    (say "\\end{array}")
+    (say "\\end{equation}")))
+
+(defun diags-cmds (diags n)
+  (with-output-env
+    (iter (for diag in diags)
+	  (for i from 1)
+	  (say (%horde->tikz diag :cmd-name
+			     #?"foo$((dumb-name-the-int n))n$((dumb-name-the-int i))")))))
+
+
+(defun generate-tex-horde-section (n diags dimens)
+  (let ((hash (dimensions-hash diags dimens)))
+    (with-output-env
+      (say #?"\\section{Horde diagrams with $(n) strands}")
+      (say (diags-cmds diags n))
+      (say (dimensions-hash->tex hash n)))))
+
+
+(defun gen-tex-header ()
+  (with-output-env
+    (say "\\documentclass[a4paper]{article}")
+    (say "\\usepackage{tikz}")
+    (say "\\usetikzlibrary{calc}")
+    (say "\\begin{document}")))
+
+(defun gen-tex-tailer ()
+  (with-output-env
+    (say "\\end{document}")))    
+
+(defun gen-horde-diagrams-dimens (&key (from 1) (to 4) (fname "~/drafts/kauffman-in-a-nutshell/bar.tex"))
+  (with-open-file (stream fname
+			  :direction :output :if-exists :supersede)
+    (format stream (gen-tex-header))
+    (format stream (with-output-env
+		     (iter (for i from from to to)
+			   (say (grog2 i)))))
+    (format stream (gen-tex-tailer))))
+
