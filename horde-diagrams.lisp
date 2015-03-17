@@ -259,7 +259,7 @@
 	  (finally (push (nreverse cur) res)))
     ;; (format t "~a" res)
     (with-output-env
-      (say "\\vbox{")
+      (say "\\begin{array}{c}")
       (iter (for diag-str in (nreverse res))
 	    (if (not diag-str)
 		(next-iteration))
@@ -269,8 +269,8 @@
 		  (say #?"\\foo$((dumb-name-the-int n))n$((dumb-name-the-int num)){$((* 3 i))}{0}")
 		  (say #?"\\node at ($((* 3 i)), - 1.5) {$(num)};"))
 	    (say "\\end{tikzpicture}")
-	    (say "\\vskip"))
-      (say "}"))))
+	    (say "\\\\"))
+      (say "\\end{array}"))))
 		 
   
 
@@ -301,7 +301,7 @@
 
 
 (defun generate-tex-horde-section (n diags dimens)
-  (let ((hash (dimensions-hash diags dimens)))
+  (let ((hash (mk-dimensions-hash diags dimens)))
     (with-output-env
       (say #?"\\section{Horde diagrams with $(n) strands}")
       (say (diags-cmds diags n))
