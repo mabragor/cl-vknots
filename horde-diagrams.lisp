@@ -235,8 +235,15 @@
     (mathematica-simplify-and-canonicalize (mapcar (lambda (x)
 						     (groger3 (groger2 x)))
 						   it))
-    (let ((dimens (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
-			(collect (cl-ppcre:regex-replace-all "q\\(([^()]+)\\)" expr "[\\1]")))))
+    (let ((dimens
+	   (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+		 (collect
+		     (regex-replace-all "\\^"
+					(regex-replace-all "\\\\left|\\\\right"
+							   (regex-replace-all "q\\(([^()]+)\\)"
+									      expr "[\\1]")
+							   "")
+					"\\textsuperscript")))))
       (generate-tex-horde-section n it dimens))))
 
 (defun mk-dimensions-hash (diags dimens)
@@ -248,49 +255,33 @@
     res))
 
 (defun diags->tex (diags n line-width)
-  (let ((res nil)
-	(cur nil))
-    (iter (for diag in diags)
-	  (for i from 0)
-	  (if (zerop (mod i line-width))
-	      (progn (push (nreverse cur) res)
-		     (setf cur nil)))
-	  (push diag cur)
-	  (finally (push (nreverse cur) res)))
-    ;; (format t "~a" res)
-    (with-output-env
-      (say "\\begin{array}{c}")
-      (iter (for diag-str in (nreverse res))
-	    (if (not diag-str)
-		(next-iteration))
-	    (say "\\begin{tikzpicture}[scale=0.5]")
-	    (iter (for (num . diag) in diag-str)
-		  (for i from 0)
-		  (say #?"\\foo$((dumb-name-the-int n))n$((dumb-name-the-int num)){$((* 3 i))}{0}")
-		  (say #?"\\node at ($((* 3 i)), - 1.5) {$(num)};"))
-	    (say "\\end{tikzpicture}")
-	    (say "\\\\"))
-      (say "\\end{array}"))))
-		 
+  (declare (ignore line-width))
+  (with-output-env
+    (iter (for (num . diag) in diags)
+	  (say "\\begin{tikzpicture}[scale=0.5]")
+	  (say #?"\\foo$((dumb-name-the-int n))n$((dumb-name-the-int num)){0}{0}")
+	  (say #?"\\node at (0, - 1.5) {$(num)};")
+	  (say "\\end{tikzpicture}"))))
   
 
 (defun dimensions-hash->tex (hash n &optional (line-width 3))
   (with-output-env
-    (say "\\begin{equation}")
-    (say "\\begin{array}{|c|c|}")
+    ;; (say "\\begin{equation}")
+    (say "\\begin{longtable}{|p{.50\\textwidth}|p{.50\\textwidth}|}")
     (say "\\hline")
     (iter (for (dimen diags) in-hashtable hash)
 	  (for i from 0)
-	  (say #?"$((diags->tex diags n line-width)) & $(dimen) \\\\")
+	  (say #?"$((diags->tex diags n line-width)) & \\parbox[t]{.50\\textwidth}{$(dimen)} \\\\")
 	  (say "\\hline")
 	  (when (zerop (mod i 3))
-	    (say "\\end{array}")
-	    (say "\\end{equation}")
-	    (say "\\begin{equation}")
-	    (say "\\begin{array}{|c|c|}")
+	    (say "\\end{longtable} \\par")
+	    ;; (say "\\end{equation}")
+	    ;; (say "\\begin{equation}")
+	    (say "\\begin{longtable}{|p{.50\\textwidth}|p{.50\\textwidth}|}")
 	    (say "\\hline")))
-    (say "\\end{array}")
-    (say "\\end{equation}")))
+    (say "\\end{longtable} \\par")
+    ;; (say "\\end{equation}")
+    ))
 
 (defun diags-cmds (diags n)
   (with-output-env
@@ -311,8 +302,13 @@
 (defun gen-tex-header ()
   (with-output-env
     (say "\\documentclass[a4paper]{article}")
+    (say "\\usepackage{longtable}")
     (say "\\usepackage{tikz}")
     (say "\\usetikzlibrary{calc}")
+    (say "\\textheight 24.5cm")
+    (say "\\textwidth 17cm")
+    (say "\\voffset=-1.1in")
+    (say "\\hoffset= - 1.0in")
     (say "\\begin{document}")))
 
 (defun gen-tex-tailer ()

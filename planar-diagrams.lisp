@@ -11,6 +11,11 @@
     (w 10 9 6 12)
     (n 7 8 10 9)))
 
+(defparameter *simple-trefoil*
+  '((b 1 2 3 4)
+    (b 3 4 5 6)
+    (b 5 6 1 2)))
+
 (defun bud-vertex (vertex n &optional vertex-id)
   (destructuring-bind (op lb rb lt rt) vertex
     (let* ((id (or vertex-id (gensym "VERTEX")))
