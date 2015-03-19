@@ -753,7 +753,7 @@ if cells QD-loop has E-loops"
 		(terminate))))
     (car head)))
 
-(defun tighten-loops (dessin)
+(defun %tighten-loops (dessin)
   (with-slots (qed-cells) dessin
     (let ((new-qed-cells nil)
 	  (num-loops 0))
@@ -766,9 +766,14 @@ if cells QD-loop has E-loops"
 			  (d-cell (d-unlink cell)))
 		      (dq-link q-cell d-cell)))))
       (setf qed-cells new-qed-cells)
-      (if (equal 0 num-loops)
-	  dessin
-	  `(* (** (q "N") ,num-loops) ,dessin)))))
+      num-loops)))
+
+  
+(defun tighten-loops (dessin)
+  (let ((num-loops (%tighten-loops dessin)))
+    (if (equal 0 num-loops)
+	dessin
+	`(* (** (q "N") ,num-loops) ,dessin))))
 		
 
 (defun serialize-qed (dessin)
