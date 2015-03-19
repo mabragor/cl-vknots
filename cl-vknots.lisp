@@ -435,8 +435,8 @@
 		      (if (atom edge-spec)
 			  (progn (setf num-edge edge-spec
 				       edge-color :b))
-			  (progn (setf num-edge (car edge-spec)
-				       edge-color (cadr edge-spec))))
+			  (progn (setf num-edge (cadr edge-spec)
+				       edge-color (car edge-spec))))
 		      ;; (format t "Connecting edge ~a to node ~a~%" num-edge num)
 		      (let ((it (gethash num-edge edge-hash)))
 			(when (not it)
@@ -448,12 +448,14 @@
 			(connect-edge-begin cur-node it)))))))
     (make-instance 'dessin-denfant :edges all-edges :nodes all-nodes)))
 			
-(defun serialize2 (dessin)
+(defun serialize2 (dessin &optional ignore-color)
   (let ((edge-hash (make-hash-table :test #'eq)))
     (with-slots (nodes edges) dessin
       (iter (for edge in edges)
 	    (for i from 1)
-	    (setf (gethash edge edge-hash) i))
+	    (setf (gethash edge edge-hash) (if (or ignore-color (eq :b (slot-value edge 'color)))
+					       i
+					       (list (slot-value edge 'color) i))))
       (iter (for node in nodes)
 	    (if (not (alive-p node))
 		(next-iteration))
