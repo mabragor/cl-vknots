@@ -228,8 +228,25 @@
 	    (collect (list n-flips (%%horde->horde
 				    (qed-dessin->%%horde (make-instance 'qed-dessin
 									:cells cur-loop-cells)))))))))
-    
 
+
+(defun find-or-create-place (horde diags)
+  (let ((reflected-horde (reflect-horde-diag horde))
+	(old-diags (gethash (horde-length horde) diags)))
+    (iter (for diag1 n-in-diag-rotations horde)
+	  (for diag2 n-in-diag-rotations reflected-horde)
+	  (iter (for (old-diag place) in old-diags)
+		(if (or (horde-primitive-equal-p old-diag diag1)
+			(horde-primitive-equal-p old-diag diag2))
+		    (return place))
+		(finally (let ((it (cons nil nil)))
+			   (push it (gethash (horde-length horde) diags))
+			   (return it)))))))
+
+(defun hordize-the-dessin! (diags)
+  (iter (for (nflips horde) in (hordize-dessin the-qed-dessin))
+	(collect (list nflips (find-or-create-place horde diags)))))
+    
 
 
 (let ((acc  nil)
@@ -241,14 +258,19 @@
     (multiple-value-bind (n-factors n-1-factors 2-factors min-one-factors qed-dessin)
 	(lousy-simplify-dessin dessin)
       (let ((the-qed-dessin qed-dessin))
-	(multiple-value-bind (mins dessin-place) (hordize-the-dessin! diags)
-	  (incf min-one-factors mins)
-	  (push `(* ,@(if (not (zerop n-factors)) `((** (q "N") ,n-factors)))
-		    ,@(if (not (zerop n-1-factors)) `((** (q "N-1") ,n-factors)))
-		    ,@(if (not (zerop 2-factors)) `((** (q "2") ,n-factors)))
-		    ,@(if (not (zerop min-one-factors)) `((** "-1" ,min-one-factors)))
-		    (diag ,dessin-place))
-		acc)))))
+	(push `(* ,@(if (not (zerop n-factors)) `((** (q "N") ,n-factors)))
+		  ,@(if (not (zerop n-1-factors)) `((** (q "N-1") ,n-factors)))
+		  ,@(if (not (zerop 2-factors)) `((** (q "2") ,n-factors)))
+		  ,@(if (not (zerop min-one-factors)) `((** "-1" ,min-one-factors)))
+		  ,@(if (not (zerop charge)) `((** "-1/q" ,charge)))
+		  ,@(iter (for (nflips place) in (hordize-the-dessin! diags))
+			  (collect `(* (** "-1" ,nflips) (diag ,place)))))
+	      acc))))
+  (defun homfly-calculator-different-hordes ()
+    (iter (for (nil hordes) in-hashtable diags)
+	  (appending (mapcar (lambda (x)
+			       (slot-value x 'under-lst))
+			     hordes))))
   (defun output-homfly-calculator ()
     (let ((it (progn more-magic!)))
       (reset-homfly-calculator)
