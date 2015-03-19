@@ -18,7 +18,8 @@
                (:file "cl-vknots")
 	       (:file "qed-dessins")
 	       (:file "planar-diagrams")
-	       (:file "horde-diagrams")))
+	       (:file "horde-diagrams")
+	       (:file "homfly")))
 
 
 (defsystem :cl-vknots-tests
