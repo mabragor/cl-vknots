@@ -137,13 +137,124 @@
 				  (incf 2-factors (length cells))
 				  (mapc #'ndo-2.1-reidemeister cells))
 				 (t (error "Unknown tag ~a in this very specialized routine" tag))))))))
-    (values `((:n-factors . ,n-factors)
-	      (:n-1-factors . ,n-1-factors)
-	      (:2-factors . ,2-factors)
-	      (:min-one-factors . ,min-one-factors))
+    (values n-factors n-1-factors 2-factors min-one-factors
 	    the-qed-dessin)))
 
+
+(defun flip-at-cell (cell)
+  (let ((lb-node (smart-d-unlink cell))
+	(rb-node (smart-d-unlink (cerr cell))))
+    (dq-link cell rb-node)
+    (dq-link (cerr cell) lb-node)
+    (d-shrink cell)
+    (d-shrink (cerr cell))
+    :success!))
     
+
+;; I need to know:
+;;   * which nodes belong to the same loop
+;;   * at which EE-links do every given two loops connect
+
+;; Also, after simplification we may suddenly see that dessin is disconnected
+;; -- then we must act accordingly - return list of places where individual dessins are located
+
+(defun gen-hordization-hashes (qed-dessin)
+  (let ((node->loop (make-hash-table :test #'eq))
+	(loop->node (make-hash-table :test #'equal)))
+    (let ((cells-hash (make-hash-table)))
+      (iter (for cell in (slot-value qed-dessin 'qed-cells))
+	    (setf (gethash cell cells-hash) t))
+      (iter (for new-loop-start next (multiple-value-bind (got key val) (pophash cells-hash)
+				       (declare (ignore val))
+				       (if (not got)
+					   (terminate)
+					   key)))
+	    (for loop-num from 1)
+	    (iter (initially (setq cell nil))
+		  (for cell next (if (not cell)
+				     new-loop-start
+				     (let ((it (cqrr cell)))
+				       (cond ((not it) (error "Attempt to hordize dessin with broken loop"))
+					     ((eq new-loop-start it) (terminate))
+					     (t (remhash it cells-hash)
+						it)))))
+		  (setf (gethash cell node->loop) loop-num)
+		  (push cell (gethash loop-num loop->node)))))
+    ;; Now, do I have here all the information, that's required to successfully hordize?
+    (list node->loop loop->node)))
+
+(defun glue-loop (place node->loop loop->node)
+  (let ((other-loop (gethash (cerr (car place)) node->loop))
+	(this-loop (gethash (car place) node->loop)))
+    (let ((new-cells (gethash other-loop loop->node)))
+      (iter (for cell in new-cells)
+	    (setf (gethash cell node->loop) this-loop))
+      (setf (cdr (last new-cells)) (cdr place)
+	    (cdr place) new-cells)
+      (remhash other-loop loop->node)
+      :success!)))
+    
+(defun qed-dessin->%%horde (dessin)
+  (let ((cell-hash (make-hash-table))
+	(start-cell nil))
+    (iter (initially (setq cell nil))
+	  (for cell next (if (not cell)
+			     (setf start-cell (car (slot-value dessin 'cells)))
+			     (let ((next (cqrr cell)))
+			       (if (eq next start-cell)
+				   (terminate)
+				   next))))
+	  (for num from 1)
+	  (if (not (cerr cell))
+	      (error "The dessin is supposed to be tight at these stage of transformations!")
+	      (let ((it (gethash (cerr cell) cell-hash)))
+		(if it
+		    (collect (list it num))
+		    (setf (gethash cell cell-hash) num)))))))
+			   
+
+(defun hordize-dessin (dessin)
+  (destructuring-bind (node->loop loop->node) (gen-hordization-hashes dessin)
+    (iter (for (cur-loop-num cur-loop-cells) next (multiple-value-bind (got key val) (pophash loop->node)
+						    (if (not got)
+							(terminate)
+							(list key val))))
+	  (let ((n-flips 0))
+	    (iter (for cell-place on cur-loop-cells)
+		  (when (and (cerr (car cell-place))
+			     (not (equal cur-loop-num (gethash (cerr (car cell-place)) node->loop))))
+		    (glue-loop cell-place node->loop loop->node)
+		    (incf n-flips)))
+	    (collect (list n-flips (%%horde->horde
+				    (qed-dessin->%%horde (make-instance 'qed-dessin
+									:cells cur-loop-cells)))))))))
+    
+
+
+
+(let ((acc  nil)
+      (diags (make-hash-table :test #'equal)))
+  (defun reset-homfly-calculator ()
+    (setf acc nil
+	  diags (make-hash-table :test #'equal)))
+  (defun homfly-calculator (dessin charge)
+    (multiple-value-bind (n-factors n-1-factors 2-factors min-one-factors qed-dessin)
+	(lousy-simplify-dessin dessin)
+      (let ((the-qed-dessin qed-dessin))
+	(multiple-value-bind (mins dessin-place) (hordize-the-dessin! diags)
+	  (incf min-one-factors mins)
+	  (push `(* ,@(if (not (zerop n-factors)) `((** (q "N") ,n-factors)))
+		    ,@(if (not (zerop n-1-factors)) `((** (q "N-1") ,n-factors)))
+		    ,@(if (not (zerop 2-factors)) `((** (q "2") ,n-factors)))
+		    ,@(if (not (zerop min-one-factors)) `((** "-1" ,min-one-factors)))
+		    (diag ,dessin-place))
+		acc)))))
+  (defun output-homfly-calculator ()
+    (let ((it (progn more-magic!)))
+      (reset-homfly-calculator)
+      it)))
+
+
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers
 ;; * (done) calculate the q-charge of the sub-dessin as it goes along
@@ -157,4 +268,7 @@
 ;;   much as possible
 ;; * (done) a way to apply all found lousy simplifications in one go
 ;; * somehow classify the remnants, such as not to do double job, when calculating them.
+;;   * (done, untested) bring qed-dessin to some chord diagram form
+;;   * through rotations and reflections bring it to some already occured form
+;;   * arrange somehow, that change to one place will automatically change value of dessin in all the others
 
