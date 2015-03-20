@@ -2,7 +2,7 @@
 (in-package #:cl-vknots)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *debug* t))
+  (defparameter *debug* nil))
 
 (defparameter *tracing-indent* 0)
 

@@ -196,6 +196,7 @@
       (setf (cdr (last new-cells)) (cdr place)
 	    (cdr place) new-cells)
       (remhash other-loop loop->node)
+      (flip-at-cell (car place))
       :success!)))
     
 (defun qed-dessin->%%horde (dessin)
@@ -240,24 +241,34 @@
 			(glue-loop cell-place node->loop loop->node)
 			(if-debug "  after glue: ~{~a~^ ~}" cell-place)
 			(incf n-flips)))
-		(collect (list n-flips (%%horde->horde
-					(qed-dessin->%%horde (make-instance 'qed-dessin
-									    :cells cur-loop-cells))))))))))
+		(if-debug "  after all glues: ~a" cur-loop-cells)
+		(let ((it (make-instance 'qed-dessin :cells cur-loop-cells)))
+		  (if-debug "  qed-dessin is ~a" (serialize-qed it))
+		  (collect (list n-flips (%%horde->horde (qed-dessin->%%horde it))))))))))
+
 
 
 (defun find-or-create-place (horde diags)
   (let ((reflected-horde (reflect-horde-diag horde))
 	(old-diags (gethash (horde-length horde) diags)))
-    (if-debug "FIND-OR-CREATE-PLACE: ~a" old-diags)
-    (iter (for diag1 n-in-diag-rotations horde)
-	  (for diag2 n-in-diag-rotations reflected-horde)
-	  (iter (for (old-diag place) in old-diags)
-		(if (or (horde-primitive-equal-p old-diag diag1)
-			(horde-primitive-equal-p old-diag diag2))
-		    (return place))
-		(finally (let ((it (cons nil nil)))
-			   (push (list horde it) (gethash (horde-length horde) diags))
-			   (return it)))))))
+    (if-debug "FIND-OR-CREATE-PLACE: ~a ~a" old-diags (under-lst horde))
+    (if (not old-diags)
+	(let ((it (cons nil nil)))
+	  (if-debug "  ~a" (under-lst horde))
+	  (push (list horde it) (gethash (horde-length horde) diags))
+	  it)
+	(iter outer
+	      (for diag1 n-in-diag-rotations horde)
+	      (for diag2 n-in-diag-rotations reflected-horde)
+	      (if-debug "    rotate ~a ~a" (under-lst diag1) (under-lst diag2))
+	      (iter (for (old-diag place) in old-diags)
+		    (if (or (horde-primitive-equal-p old-diag diag1)
+			    (horde-primitive-equal-p old-diag diag2))
+			(return-from outer place)))
+	      (finally (let ((it (cons nil nil)))
+			 (if-debug "  ~a" (under-lst horde))
+			 (push (list horde it) (gethash (horde-length horde) diags))
+			 (return-from outer it)))))))
 
 (defun hordize-the-dessin! (diags)
   (iter (for (nflips horde) in (hordize-dessin the-qed-dessin))
@@ -290,6 +301,11 @@
 				   :empty
 				   (slot-value (car x) 'under-lst)))
 			     hordes))))
+  (defun homfly-calculator-output-lame ()
+    (iter (for (length diags) in-hashtable diags)
+	  (iter (for (diag place) in diags)
+		(setf (car place) (under-lst diag))))
+    `(+ ,. acc))
   (defun raw-diags ()
     diags)
   (defun output-homfly-calculator ()
@@ -299,7 +315,7 @@
 
 (defun frob ()
   (reset-homfly-calculator)
-  (over-all-subdessins (deserialize2 (torus-dessin 2 3))
+  (over-all-subdessins (deserialize2 (torus-dessin 5 5))
 		       #'homfly-calculator))
 
 ;; OK, now I need this code also to:

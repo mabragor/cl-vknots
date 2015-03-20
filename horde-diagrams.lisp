@@ -52,7 +52,9 @@
   (make-instance 'horde-diagram :under-lst (%%horde->%horde %%horde)))
 
 (defun under-lst (horde)
-  (slot-value horde 'under-lst))
+  (if (eq :empty horde)
+      :empty
+      (slot-value horde 'under-lst)))
 
 (defun %rotate-clockwise (horde)
   (let ((newval (- (length horde) (car horde)))
@@ -342,8 +344,8 @@
 
 
 (defun horde-primitive-equal-p (horde1 horde2)
-  (or (and (or (eq horde1 :empty) (eq horde2 :empty))
-	   (eq horde1 horde2))
+  (if (or (eq horde1 :empty) (eq horde2 :empty))
+      (eq horde1 horde2)
       (equal (slot-value horde1 'under-lst)
 	     (slot-value horde2 'under-lst))))
 
@@ -361,4 +363,12 @@ state, if iteration does not finish early"
 				(progn (incf ,g!-nrotations)
 				       (if (eq :empty ,g!-horde)
 					   :empty
-					   (rotate-clockwise ,var))))))))
+					   (rotate-clockwise (if-first-time ,g!-horde
+									    ,var)))))))))
+
+
+
+
+(defun simple-in-diag-rotations-test ()
+  (iter (for diag n-in-diag-rotations (make-instance 'horde-diagram :under-lst '(2 3 -2 2 -3 -2)))
+	(collect (copy-list (under-lst diag)))))
