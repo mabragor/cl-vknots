@@ -325,21 +325,27 @@
     (format stream (gen-tex-tailer))))
 
 (defun reflect-horde-diag (horde)
-  (make-instance 'horde-diagram
-		 :under-lst (mapl (lambda (x)
-				    (setf (car x) (- (car x))))
-				  (reverse (slot-value horde 'under-lst)))))
+  (if (eq horde :empty)
+      :empty
+      (make-instance 'horde-diagram
+		     :under-lst (mapl (lambda (x)
+					(setf (car x) (- (car x))))
+				      (reverse (slot-value horde 'under-lst))))))
 
 
 
 (defun horde-length (horde)
-  (/ (length (slot-value horde 'under-lst))
-     2))
+  (if (eq :empty horde)
+      0
+      (/ (length (slot-value horde 'under-lst))
+	 2)))
 
 
 (defun horde-primitive-equal-p (horde1 horde2)
-  (equal (slot-value horde1 'under-lst)
-	 (slot-value horde2 'under-lst)))
+  (or (and (or (eq horde1 :empty) (eq horde2 :empty))
+	   (eq horde1 horde2))
+      (equal (slot-value horde1 'under-lst)
+	     (slot-value horde2 'under-lst))))
 
 (defmacro-driver! (for var n-in-diag-rotations horde)
   "Destructively rotate diagram in all possible ways, returning it to the same
@@ -347,8 +353,12 @@ state, if iteration does not finish early"
   (let ((kwd (if generate 'generate 'for)))
     `(progn (with ,g!-nrotations = 0)
 	    (with ,g!-horde = ,horde)
-	    (with ,g!-tot-rotations = (length (slot-value ,g!-horde 'under-lst)))
+	    (with ,g!-tot-rotations = (if (eq :empty ,g!-horde)
+					  1
+					  (length (slot-value ,g!-horde 'under-lst))))
 	    (,kwd ,var next (if (equal ,g!-tot-rotations ,g!-nrotations)
 				(terminate)
 				(progn (incf ,g!-nrotations)
-				       (rotate-clockwise ,var)))))))
+				       (if (eq :empty ,g!-horde)
+					   :empty
+					   (rotate-clockwise ,var))))))))
