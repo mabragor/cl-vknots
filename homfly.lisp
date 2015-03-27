@@ -315,7 +315,7 @@
 
 (defun frob ()
   (reset-homfly-calculator)
-  (over-all-subdessins (deserialize2 (torus-dessin 5 5))
+  (over-all-subdessins (deserialize2 (torus-dessin 3 3))
 		       #'homfly-calculator))
 
 ;; OK, now I need this code also to:
@@ -332,6 +332,15 @@
 ;; * (done) a way to apply all found lousy simplifications in one go
 ;; * somehow classify the remnants, such as not to do double job, when calculating them.
 ;;   * (done, untested) bring qed-dessin to some chord diagram form
-;;   * through rotations and reflections bring it to some already occured form
-;;   * arrange somehow, that change to one place will automatically change value of dessin in all the others
+;;   * (done, untested) through rotations and reflections bring it to some already occured form
+;;   * (done, untested) arrange somehow,
+;;     that change to one place will automatically change value of dessin in all the others
+
+
+;; Now I have polynomials of lousily simplified horde diagrams, I want to promote them
+;; to honest HOMFLY polynomials in an efficient way. How do I do that? What can I use?
+;; * the large part of effort should be put into memoization and into persistence of answers
+;;   * how do I store answers?
+;;   * how do I recognize that answer was already calculated somewhere?
+
 
