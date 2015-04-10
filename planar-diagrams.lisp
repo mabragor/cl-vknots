@@ -96,3 +96,15 @@
 ;; to refresh computation of hypercube and HOMFLY using DECOMPOSE instead of N-DESSIN-RECURSION...
 
 ;; ... and, of course, tests for this PLANAR->SEIFERT function, to ensure it works correctly ...    
+
+(defparameter *10-132* '((b 1 4 2 3)
+			 (w 6 5 7 4)
+			 (w 8 7 9 1)
+			 (w 10 3 11 5)
+			 (b 13 12 8 6)
+			 (w 20 2 15 10)
+			 (b 15 11 19 12)
+			 (w 19 16 20 18)
+			 (w 14 17 13 16)
+			 (w 9 18 14 17)))
+			 

@@ -318,6 +318,11 @@
   (over-all-subdessins (deserialize2 (torus-dessin 3 3))
 		       #'homfly-calculator))
 
+(defun frob-10-132 ()
+  (reset-homfly-calculator)
+  (over-all-subdessins (deserialize2 (planar->seifert *10-132*))
+		       #'homfly-calculator))
+
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers
 ;; * (done) calculate the q-charge of the sub-dessin as it goes along
