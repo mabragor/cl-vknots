@@ -817,7 +817,14 @@ if cells QD-loop has E-loops"
 (defparameter *a-step* (deserialize-qed '((1 1 2) (2 3 4 2 5 6 1) (3 3 4 5 6))))
 
 
-(defun mathematica-serialize (poly)
+(defun just-print-diag (%horde)
+  (format nil "HordeDiag[~{~a~^, ~}]" %horde))
+
+(defun try-to-decompose-diag (%horde)
+  (handler-case (mathematica-serialize (%horde->qed-dessin %horde) #'try-to-decompose-diag)
+    (error () (just-print-diag %horde))))
+
+(defun mathematica-serialize (poly &optional (diag-decomposer #'just-print-diag))
   (cond ((stringp poly) poly)
 	((eq 'q (car poly)) #?"q[$((mathematica-serialize (cadr poly)))]")
 	((eq '+ (car poly)) (joinl " + " (mapcar (lambda (x)
@@ -832,6 +839,9 @@ if cells QD-loop has E-loops"
 						   #?"($((mathematica-serialize x)))")
 						     (cdr poly)))
 				#?"- ($((mathematica-serialize (cadr poly))))"))
+	((eq 'diag (car poly)) (if (equal '(:empty) (cadr poly))
+				   "1"
+				   (joinl " * " (mapcar diag-decomposer (cadr poly)))))
 	(t (error "Don't yet knot how to MATHEMATICA-SERIALIZE this: ~a~%" poly))))
 
 
