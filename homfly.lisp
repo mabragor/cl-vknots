@@ -304,13 +304,14 @@
     (setf acc nil
 	  diags (make-hash-table :test #'equal)))
   (defun homfly-calculator (dessin charge)
-    (if-debug "HOMFLY CALCULATOR: considering new dessin ~a" dessin)
+    (if-debug "HOMFLY CALCULATOR: considering new dessin ~a" (serialize2 dessin))
     (multiple-value-bind (n-factors n-1-factors 2-factors min-one-factors qed-dessin)
 	(lousy-simplify-dessin dessin)
+      (if-debug "Factors are: ~a ~a ~a ~a" n-factors n-1-factors 2-factors min-one-factors)
       (let ((the-qed-dessin qed-dessin))
 	(push `(* ,@(if (not (zerop n-factors)) `((** (q "N") ,n-factors)))
-		  ,@(if (not (zerop n-1-factors)) `((** (q "N-1") ,n-factors)))
-		  ,@(if (not (zerop 2-factors)) `((** (q "2") ,n-factors)))
+		  ,@(if (not (zerop n-1-factors)) `((** (q "N-1") ,n-1-factors)))
+		  ,@(if (not (zerop 2-factors)) `((** (q "2") ,2-factors)))
 		  ,@(if (not (zerop min-one-factors)) `((** "-1" ,min-one-factors)))
 		  ,@(if (not (zerop charge)) `((** "-1/q" ,charge)))
 		  ,@(iter (for (nflips place) in (hordize-the-dessin! diags))
@@ -423,10 +424,9 @@
 ;;   * how do I recognize that answer was already calculated somewhere?
 
 
-;; (+ (* (** (Q "N") 3) (** "-1/q" 2) (* (** "-1" 0) (DIAG (:EMPTY))))
-;;    (* (** (Q "N") 2) (** (Q "N-1") 2) (** "-1/q" 1) (* (** "-1" 0) (DIAG (:EMPTY))))
-;;    (* (** (Q "N") 2) (** (Q "N-1") 2) (** "-1/q" 1) (* (** "-1" 0) (DIAG (:EMPTY))))
-;;    (* (** (Q "N") 1) (** (Q "N-1") 1) (* (** "-1" 0) (DIAG (:EMPTY)))))
+;; (-q^N)^(2)
+;;  (q[N]^3 * (-1/q)^2
+;;   + (q[N]^2 * ((q[N-1])^(2)) * ((-1/q)^(1)) * (((-1)^(0)) * (1))) + (((q[N])^(2)) * ((q[N-1])^(2)) * ((-1/q)^(1)) * (((-1)^(0)) * (1))) + (((q[N])^(1)) * ((q[N-1])^(1)) * (((-1)^(0)) * (1))))"
 
 ;; + (-1/q)^(0) 1 qnum[N] qnum[N-1] qnum[N-1]
 ;; + (-1/q)^(1) 2 qnum[N] qnum[N-1] qnum[N]
