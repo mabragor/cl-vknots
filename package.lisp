@@ -6,6 +6,7 @@
   (:shadowing-import-from #:cl-ppcre #:regex-replace-all)
   (:export #:decompose #:deserialize-qed #:serialize-qed
 	   #:q #:torus-dessin
-	   #:bud-vertex #:cable))
+	   #:bud-vertex #:cable
+	   #:homfly-serial-toolchain))
 
 

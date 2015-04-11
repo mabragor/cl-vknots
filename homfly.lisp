@@ -318,20 +318,23 @@
   (over-all-subdessins (deserialize2 (torus-dessin 3 3))
 		       #'homfly-calculator))
 
-(defun frob-torus (n m)
+(defun prehomfly-serial (serial-dessin)
   (reset-homfly-calculator)
-  (over-all-subdessins (deserialize2 (torus-dessin n m))
+  (over-all-subdessins (deserialize2 serial-dessin)
 		       #'homfly-calculator))
 
-
-(defun frob-10-132 ()
+(defun prehomfly-planar (planar-diagram)
   (reset-homfly-calculator)
-  (over-all-subdessins (deserialize2 (planar->seifert *10-132*))
+  (over-all-subdessins (deserialize2 (planar->seifert planar-diagram))
 		       #'homfly-calculator))
-
-(defun homfly-torus-toolchain (n m)
-  (frob-torus n m)
-  (let ((pre-expr (mathematica-serialize ...)))))
+  
+(defun homfly-serial-toolchain (serial-dessin)
+  (prehomfly-serial serial-dessin)
+  (let ((pre-expr (mathematica-serialize (homfly-calculator-output-lame)
+					 #'try-to-decompose-diag)))
+    (mathematica-simplify-and-canonicalize (list pre-expr))
+    (joinl " " (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+		     (collect expr)))))
 
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers
