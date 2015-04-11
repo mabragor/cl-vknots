@@ -7,6 +7,8 @@
   (:export #:decompose #:deserialize-qed #:serialize-qed
 	   #:q #:torus-dessin
 	   #:bud-vertex #:cable
-	   #:homfly-serial-toolchain))
+	   #:homfly-serial-toolchain
+	   #:compare-q-exprs #:compare-q-exprs1
+	   #:deserialize2 #:lousy-simplify-dessin))
 
 

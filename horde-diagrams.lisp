@@ -226,7 +226,7 @@
     (iter (for expr in lst)
 	  (format stream #?"expr = ~a;~%" expr)))
   (multiple-value-bind (out err errno)
-      (script "math -script ~/code/superpolys/simple-script.m > ~/code/superpolys/lisp-in.txt")
+      (script "math -script ~/code/superpolys/simple-script-input.m > ~/code/superpolys/lisp-in.txt")
     ;; (declare (ignore out))
     (if (not (zerop errno))
 	(error err)

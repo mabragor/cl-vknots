@@ -133,7 +133,35 @@
 	     (bud-vertex '(n a b c d) 4 :a))))
   
 
+(test lousy-simplify-dessin
+  (macrolet ((frob (n-factors n-1-factors 2-factors min-one-factors x)
+	       `(multiple-value-bind (x1 x2 x3 x4) (lousy-simplify-dessin (deserialize2 ',x))
+		  (is (equal (list ,n-factors ,n-1-factors ,2-factors ,min-one-factors)
+			     (list x1 x2 x3 x4))))))
+    (frob 1 0 0 0 ((1)))
+    (frob 2 0 0 0 ((1) (2)))
+    (frob 1 1 0 0 ((1 1) (2 1)))
+    (frob 1 1 1 0 ((1 1 2) (2 1 2)))
+    (frob 1 1 2 0 ((1 1 2 3) (2 1 2 3)))
+    (frob 1 1 0 1 ((1 1 1)))
+    (frob 1 2 0 2 ((1 1 1 2 2)))
+    (frob 1 2 1 2 ((1 1 1 2 3 2 3)))))
+    
+
 (test homfly-serial-toolchain
-  (is (equal "q(N)" (homfly-serial-toolchain '((1)))))
-  (is (equal "q(N)^2" (homfly-serial-toolchain '((1) (2)))))
-  (is (equal "q(N)^3" (homfly-serial-toolchain '((1) (2) (3))))))
+  (macrolet ((frob (&rest clauses)
+	       `(is (equal ',(make-list (length clauses) :initial-element "0")
+			   (compare-q-exprs (list ,@(mapcar (lambda (clause)
+							      `(list ,(car clause)
+								     (homfly-serial-toolchain ,(cadr clause))))
+							    clauses)))))))
+    (frob ("q[N]" '((1)))
+	  ("q[N]^2" '((1) (2)))
+	  ("q[N]^3" '((1) (2) (3)))
+	  ("q[N]" '((1 1) (2 1)))
+	  ("q[N]" '((1 (:w 1)) (2 1)))
+	  ("q[N]" '((1 1) (2 1 2) (3 2)))
+	  ("q[N]" '((1 (:w 1)) (2 1 2) (3 2)))
+	  ("q[N]" '((1 1) (2 1 (:w 2)) (3 2)))
+	  ("q[N]" '((1 (:w 1)) (2 1 (:w 2)) (3 2))))))
+

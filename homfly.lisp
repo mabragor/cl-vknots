@@ -1,6 +1,7 @@
 
 (in-package #:cl-vknots)
 
+(cl-interpol:enable-interpol-syntax)
 
 ;; In this file we will write a proper HOMFLY calculation, which will be able to
 ;; withstand the strain of cabled diagrams (at least 2- and 3- cabled)
@@ -86,6 +87,10 @@
 		     (find x nodes :test #'eq))
 		   (slot-value the-qed-dessin 'qed-cells))))
 
+(defun add-the-nodes! (&rest nodes)
+  (iter (for node in nodes)
+	(push node (slot-value the-qed-dessin 'qed-cells))))
+
 (defun smart-q-unlink (cell)
   (push (q-grow cell) (slot-value the-qed-dessin 'qed-cells))
   (q-unlink cell))
@@ -94,28 +99,41 @@
   (push (d-grow cell) (slot-value the-qed-dessin 'qed-cells))
   (d-unlink cell))
 
-
 (defun ndo-1-reidemeister (cell)
   (if (find cell (slot-value the-qed-dessin 'qed-cells) :test #'eq)
       (let ((t-node (smart-q-unlink (cerr cell)))
 	    (b-node (smart-d-unlink (cerr cell))))
 	(remove-the-nodes! cell (cerr cell))
-	(dq-link t-node b-node))))
+	(dq-link t-node b-node)
+	t)))
 
 (defun ndo-virt-1-reidemeister (cell)
   (if (find cell (slot-value the-qed-dessin 'qed-cells) :test #'eq)
       (let ((t-node (smart-q-unlink (cqrr cell)))
 	    (b-node (smart-d-unlink cell)))
 	(remove-the-nodes! cell (cqrr cell))
-	(dq-link t-node b-node))))
+	(dq-link t-node b-node)
+	t)))
 
 (defun ndo-2.1-reidemeister (cell)
   (if (find cell (slot-value the-qed-dessin 'qed-cells) :test #'eq)
+      ;; we really need to remove all the relevant cells, otherwise
+      ;; we risk to try to apply the transformation twice
       (let ((lt-node (smart-q-unlink (cqrr cell)))
-	    (rt-node (smart-q-unlink (cqerr cell))))
-	(remove-the-nodes! (q-unlink cell) (q-unlink (cerr cell)))
-	(dq-link lt-node cell)
-	(dq-link rt-node (cerr cell)))))
+	    (rt-node (smart-q-unlink (cqerr cell)))
+	    (lb-node (smart-d-unlink cell))
+	    (rb-node (smart-d-unlink (cerr cell))))
+	(remove-the-nodes! (cqrr cell) (cqerr cell) (cerr cell) cell)
+	(let ((new-cell (qed nil))
+	      (new-cerr (qed nil)))
+	  (add-the-nodes! new-cell new-cerr)
+	  (ee-link new-cell new-cerr)
+	  (dq-link lt-node new-cell)
+	  (dq-link new-cell lb-node)
+	  (dq-link rt-node new-cerr)
+	  (dq-link new-cerr rb-node)
+	  (%tighten-loops the-qed-dessin)
+	  t))))
   
 
 (defun lousy-simplify-dessin (dessin)
@@ -131,15 +149,19 @@
 		   (incf n-factors (%tighten-loops the-qed-dessin)))
 		  (t (iter (for (tag . cells) in plan)
 			   (cond ((eq :1-able tag)
-				  (incf n-1-factors (length cells))
-				  (mapc #'ndo-1-reidemeister cells))
+				  (incf n-1-factors (iter (for cell in cells)
+							  (if (ndo-1-reidemeister cell)
+							      (summing 1)))))
 				 ((eq :virt-1-able tag)
-				  (incf n-1-factors (length cells))
-				  (incf min-one-factors (length cells))
-				  (mapc #'ndo-virt-1-reidemeister cells))
+				  (let ((it (iter (for cell in cells)
+						  (if (ndo-virt-1-reidemeister cell)
+						      (summing 1)))))
+				    (incf n-1-factors it)
+				    (incf min-one-factors it)))
 				 ((eq :2.1-able tag)
-				  (incf 2-factors (length cells))
-				  (mapc #'ndo-2.1-reidemeister cells))
+				  (incf 2-factors (iter (for cell in cells)
+							(if (ndo-2.1-reidemeister cell)
+							    (summing 1)))))
 				 (t (error "Unknown tag ~a in this very specialized routine" tag))))))))
     (values n-factors n-1-factors 2-factors min-one-factors
 	    the-qed-dessin)))
@@ -328,16 +350,52 @@
 
 (defun prehomfly-planar (planar-diagram)
   (prehomfly (planar->seifert planar-diagram)))
+
+(defun lisp-serial-homfly (serial-dessin &optional (diag-fun #'try-to-decompose-diag))
+  (let ((total-charge (prehomfly-serial serial-dessin)))
+    (join "" (format nil "(-q^N)^(~a) (" total-charge)
+	  (mathematica-serialize (homfly-calculator-output-lame) diag-fun)
+	  ")")))
+
   
 (defun homfly-serial-toolchain (serial-dessin)
-  (let ((total-charge (prehomfly-serial serial-dessin)))
-    (let ((pre-expr (join "" (format nil "(-q^N)^(~a) (" total-charge)
-			  (mathematica-serialize (homfly-calculator-output-lame)
-						 #'try-to-decompose-diag)
-			  ")")))
-      (mathematica-simplify-and-canonicalize (list pre-expr))
-      (joinl " " (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
-		       (collect expr))))))
+  (let ((pre-expr (lisp-serial-homfly serial-dessin)))
+    (mathematica-simplify-and-canonicalize (list pre-expr))
+    (joinl " " (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+		     (collect expr)))))
+
+(defun substitute-q-numbers (lst)
+  (with-open-file (stream "~/code/superpolys/lisp-out.txt"
+			  :direction :output :if-exists :supersede)
+    (iter (for expr in lst)
+	  (format stream #?"expr = ~a;~%" expr)))
+  (multiple-value-bind (out err errno)
+      (script "math -script ~/code/superpolys/substitute-q-values.m > ~/code/superpolys/lisp-in.txt")
+    ;; (declare (ignore out))
+    (if (not (zerop errno))
+	(error err)
+	(iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+	      (collect expr)))))
+
+(defun substitute-q-numbers1 (expr)
+  (car (substitute-q-numbers (list expr))))
+
+(defun compare-q-exprs (lst)
+  (with-open-file (stream "~/code/superpolys/lisp-out.txt"
+			  :direction :output :if-exists :supersede)
+    (iter (for (expr1 expr2) in lst)
+	  (format stream #?"expr1 = ~a;~%" expr1)
+	  (format stream #?"expr2 = ~a;~%" expr2)))
+  (multiple-value-bind (out err errno)
+      (script "math -script ~/code/superpolys/compare-q-exprs.m > ~/code/superpolys/lisp-in.txt")
+    (declare (ignore out))
+    (if (not (zerop errno))
+	(error err)
+	(iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+	      (collect expr)))))
+
+(defun compare-q-exprs1 (expr1 expr2)
+  (car (compare-q-exprs `((,expr1 ,expr2)))))
 
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers
@@ -365,3 +423,11 @@
 ;;   * how do I recognize that answer was already calculated somewhere?
 
 
+;; (+ (* (** (Q "N") 3) (** "-1/q" 2) (* (** "-1" 0) (DIAG (:EMPTY))))
+;;    (* (** (Q "N") 2) (** (Q "N-1") 2) (** "-1/q" 1) (* (** "-1" 0) (DIAG (:EMPTY))))
+;;    (* (** (Q "N") 2) (** (Q "N-1") 2) (** "-1/q" 1) (* (** "-1" 0) (DIAG (:EMPTY))))
+;;    (* (** (Q "N") 1) (** (Q "N-1") 1) (* (** "-1" 0) (DIAG (:EMPTY)))))
+
+;; + (-1/q)^(0) 1 qnum[N] qnum[N-1] qnum[N-1]
+;; + (-1/q)^(1) 2 qnum[N] qnum[N-1] qnum[N]
+;; + (-1/q)^(2) qnum[N] qnum[N] qnum[N]
