@@ -431,3 +431,27 @@
 ;; + (-1/q)^(0) 1 qnum[N] qnum[N-1] qnum[N-1]
 ;; + (-1/q)^(1) 2 qnum[N] qnum[N-1] qnum[N]
 ;; + (-1/q)^(2) qnum[N] qnum[N] qnum[N]
+
+;; (-q^N)^(1)
+;; (+ q[N]^2 * (-1/q)^1
+;;    + q[N] * q[N-1] + q[N] * q[N-1]
+;;    + q[N] * q[N-1] * (-1/q)^2
+;;    + q[N] * q[N-1] * q[2] * (-1/q)^(1) + q[N] * q[N-1] * q[2] * (-1/q)^(1)
+;;    + q[N] * q[N-1] * q[2] * (-1/q)^(-1)
+;;    + q[N] * q[N-1] * q[2]^2)
+
+;; (-q^N)^(1)
+;; (+ (-1/q)^(1) 1 qnum[N] qnum[N]
+;;    + (-1/q)^(0) 2 qnum[N] qnum[N-1]
+;;    + (-1/q)^(2) 1 qnum[N] qnum[N-1]
+;;    + (-1/q)^(1) 2 qnum[N] qnum[N-1] qnum[2]
+;;    + (-1/q)^(-1) 1 qnum[N] qnum[N-1] qnum[2]
+;;    + (-1/q)^(0) qnum[N] qnum[N-1] qnum[2] qnum[2]
+;;    )
+
+
+
+
+
+
+

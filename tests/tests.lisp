@@ -150,7 +150,7 @@
 
 (test homfly-serial-toolchain
   (macrolet ((frob (&rest clauses)
-	       `(is (equal ',(make-list (length clauses) :initial-element "0")
+	       `(is (equal ',(make-list (length clauses) :initial-element "1")
 			   (compare-q-exprs (list ,@(mapcar (lambda (clause)
 							      `(list ,(car clause)
 								     (homfly-serial-toolchain ,(cadr clause))))
@@ -163,5 +163,10 @@
 	  ("q[N]" '((1 1) (2 1 2) (3 2)))
 	  ("q[N]" '((1 (:w 1)) (2 1 2) (3 2)))
 	  ("q[N]" '((1 1) (2 1 (:w 2)) (3 2)))
-	  ("q[N]" '((1 (:w 1)) (2 1 (:w 2)) (3 2))))))
+	  ("q[N]" '((1 (:w 1)) (2 1 (:w 2)) (3 2)))
+	  ("q[N]^2" '((1 1 (:w 2)) (2 1 2)))
+	  ("q[N]" '((1 1) (2 1 2) (3 2 3) (4 3)))
+	  ("q[N]" '((1 1) (2 1 2) (3 2 3) (4 3 4) (5 4)))
+	  ("q[N]" '((1 1 (:w 2) 3) (2 1 2 3)))
+	  )))
 
