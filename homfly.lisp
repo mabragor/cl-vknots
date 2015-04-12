@@ -78,6 +78,14 @@
 			      (push cell (gethash tag res))))))
 	      (hash->assoc res))))))
 
+(defun lousy-decompose (dessin)
+  (multiple-value-bind (n-factors n-1-factors 2-factors min-one-factors qed-dessin)
+      (lousy-simplify-dessin dessin)
+    `(* ,@(if (not (zerop n-factors)) `((** (q "N") ,n-factors)))
+	,@(if (not (zerop n-1-factors)) `((** (q "N-1") ,n-1-factors)))
+	,@(if (not (zerop 2-factors)) `((** (q "2") ,2-factors)))
+	,@(if (not (zerop min-one-factors)) `((** "-1" ,min-one-factors)))
+	,(decompose qed-dessin))))
 
 (defparameter the-qed-dessin nil)
 
@@ -98,6 +106,21 @@
 (defun smart-d-unlink (cell)
   (push (d-grow cell) (slot-value the-qed-dessin 'qed-cells))
   (d-unlink cell))
+
+(defun smart-q-shrink-all (cell)
+  (let ((cells (q-shrink-all cell)))
+    (setf (slot-value the-qed-dessin 'qed-cells)
+	  (remove-if (lambda (x)
+		       (find x cells :test #'eq))
+		     (slot-value the-qed-dessin 'qed-cells)))))
+
+(defun smart-d-shrink-all (cell)
+  (let ((cells (d-shrink-all cell)))
+    (setf (slot-value the-qed-dessin 'qed-cells)
+	  (remove-if (lambda (x)
+		       (find x cells :test #'eq))
+		     (slot-value the-qed-dessin 'qed-cells)))))
+
 
 (defun ndo-1-reidemeister (cell)
   (if (find cell (slot-value the-qed-dessin 'qed-cells) :test #'eq)
@@ -132,7 +155,10 @@
 	  (dq-link new-cell lb-node)
 	  (dq-link rt-node new-cerr)
 	  (dq-link new-cerr rb-node)
-	  (%tighten-loops the-qed-dessin)
+	  (smart-q-shrink-all new-cell)
+	  (smart-d-shrink-all new-cell)
+	  (smart-q-shrink-all new-cerr)
+	  (smart-d-shrink-all new-cerr)
 	  t))))
   
 
@@ -381,22 +407,41 @@
 (defun substitute-q-numbers1 (expr)
   (car (substitute-q-numbers (list expr))))
 
-(defun compare-q-exprs (lst)
+(defun %compare-q-exprs (lst script-name)
   (with-open-file (stream "~/code/superpolys/lisp-out.txt"
 			  :direction :output :if-exists :supersede)
     (iter (for (expr1 expr2) in lst)
 	  (format stream #?"expr1 = ~a;~%" expr1)
 	  (format stream #?"expr2 = ~a;~%" expr2)))
   (multiple-value-bind (out err errno)
-      (script "math -script ~/code/superpolys/compare-q-exprs.m > ~/code/superpolys/lisp-in.txt")
+      (script #?"math -script $(script-name) > ~/code/superpolys/lisp-in.txt")
     (declare (ignore out))
     (if (not (zerop errno))
 	(error err)
 	(iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
 	      (collect expr)))))
 
+(defun compare-q-exprs (lst)
+  (%compare-q-exprs lst "~/code/superpolys/compare-q-exprs.m"))
+
+(defun compare-q-exprs-minus (lst)
+  (%compare-q-exprs lst "~/code/superpolys/compare-q-exprs-minus.m"))
+
 (defun compare-q-exprs1 (expr1 expr2)
   (car (compare-q-exprs `((,expr1 ,expr2)))))
+
+(defun compare-q-exprs-minus1 (expr1 expr2)
+  (car (compare-q-exprs-minus `((,expr1 ,expr2)))))
+
+
+(defun homfly-old-new-compare (serial-dessin)
+  (compare-q-exprs1 (homfly-for-dessin (deserialize2 serial-dessin))
+		    (homfly-serial-toolchain serial-dessin)))
+
+(defun homfly-old-new-min-compare (serial-dessin)
+  (compare-q-exprs-minus1 (homfly-for-dessin (deserialize2 serial-dessin))
+			  (homfly-serial-toolchain serial-dessin)))
+
 
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers
@@ -448,10 +493,4 @@
 ;;    + (-1/q)^(-1) 1 qnum[N] qnum[N-1] qnum[2]
 ;;    + (-1/q)^(0) qnum[N] qnum[N-1] qnum[2] qnum[2]
 ;;    )
-
-
-
-
-
-
 

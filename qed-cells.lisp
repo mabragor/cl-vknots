@@ -179,6 +179,17 @@
 		 (dq-link! qq-cell cell)
 		 q-cell)))))
 
+(defun q-shrink-all (cell)
+  (iter (for i from 0)
+	(handler-case (collect (q-shrink cell) into res)
+	  (link-error () (return res)))))
+
+(defun d-shrink-all (cell)
+  (iter (for i from 0)
+	(handler-case (collect (d-shrink cell) into res)
+	  (link-error () (return res)))))
+
+
 (defun d-shrink (cell &optional exact-cell-to-shrink)
   (if (and exact-cell-to-shrink
 	   (not (eq exact-cell-to-shrink (cdrr cell))))

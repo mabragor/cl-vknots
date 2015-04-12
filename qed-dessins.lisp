@@ -740,7 +740,7 @@ if cells QD-loop has E-loops"
       (setf (gethash dessin conses-of-dessins) head)
       (iter ;; (if-debug "DECOMPOSE: ~a| ~a" head conses-of-dessins)
 	    (for i from 1)
-	    (format t "  DECOMPOSE: round ~a ~a~%" i (hash-table-count conses-of-dessins))
+	    (if-debug "  DECOMPOSE: round ~a ~a" i (hash-table-count conses-of-dessins))
 	    (let ((new-conses-of-dessins (make-hash-table)))
 	      (iter (for (nil cons-of-dessin) in-hashtable conses-of-dessins)
 		    ;; (format t "~a~%" cons-of-dessin)

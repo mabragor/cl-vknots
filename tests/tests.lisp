@@ -148,7 +148,7 @@
     (frob 1 2 1 2 ((1 1 1 2 3 2 3)))))
     
 
-(test homfly-serial-toolchain
+(test homfly-serial-toolchain-simple
   (macrolet ((frob (&rest clauses)
 	       `(is (equal ',(make-list (length clauses) :initial-element "1")
 			   (compare-q-exprs (list ,@(mapcar (lambda (clause)
@@ -169,5 +169,32 @@
 	  ("q[N]" '((1 1) (2 1 2) (3 2 3) (4 3 4) (5 4)))
 	  ("q[N]" '((1 1 (:w 2) 3) (2 1 2 3)))
 	  ("q[N]" '((1 1 2) (2 1 (:w 3) 2 4) (3 3 4)))
-	  )))
+	  ("q[N]" (torus-dessin 1 7))
+	  ("q[N]" (torus-dessin 1 8)))))
 
+
+(test decompose-vs-lousy-decompose
+  (macrolet ((frob (x)
+	       `(over-all-subdessins (deserialize2 ,x)
+		  (lambda (dessin charge)
+		    (declare (ignore charge))
+		    (let ((it (serialize2 dessin)))
+		      ;; (format t "Testing ~a~%" it)
+		      (let ((lousy-expr (mathematica-serialize (lousy-decompose (deserialize2 it))))
+			    (decompose-expr (mathematica-serialize (decompose (deserialize-qed it))))
+			    (old-expr (with-output-to-string (stream)
+					(print-dessin-poly stream
+							   (n-dessin-recursion (deserialize2 it))))))
+			(is (equal '("0" "0") (compare-q-exprs-minus `((,old-expr ,decompose-expr)
+								       (,decompose-expr ,lousy-expr)))))))))))
+    (frob '((1 1 (:w 2)) (2 1 3 2 4) (3 3 5 4 (:w 6)) (4 5 6)))))
+
+
+(test homfly-serial-toolchain-complex
+  (macrolet ((frob (&rest clauses)
+	       `(is (equal ',(make-list (length clauses) :initial-element "1")
+			   (compare-q-exprs (list ,@(mapcar (lambda (clause)
+							      `(list ,(car clause)
+								     (homfly-serial-toolchain ,(cadr clause))))
+							    clauses)))))))
+    (frob ("q[N]^2" '((1 1 (:w 2)) (2 1 3 2 4) (3 3 5 4 (:w 6)) (4 5 6))))))
