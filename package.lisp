@@ -12,6 +12,8 @@
 	   #:deserialize2 #:lousy-simplify-dessin
 	   #:lousy-decompose #:mathematica-serialize
 	   #:n-dessin-recursion #:print-dessin-poly
-	   #:over-all-subdessins #:serialize2))
+	   #:over-all-subdessins #:serialize2
+	   #:*rolfsen-total-numbers*
+	   #:compare-homfly-with-katlas #:compare-homfly-with-katlas1))
 
 

@@ -208,3 +208,18 @@
 		    (3 4 7 5 (:w 8) 6 (:w 9))
 		    (4 7 8 9))))
     ))
+
+(test rolfsen-homflies
+  (labels ((frob (n)
+	     (let ((total-num (cdr (assoc n *rolfsen-total-numbers*))))
+	       (let ((results (compare-homfly-with-katlas
+			       (iter (for i from 1 to total-num)
+				     (collect #?"Knot[$(n), $(i)]")))))
+		 (iter (for i from 1)
+		       (for res in results)
+		       (is (or (equal "1" res)
+			       (cl-ppcre:all-matches "HordeDiag" res))))))))
+    (frob 3) (frob 4) (frob 5) (frob 6) (frob 7) (frob 8) (frob 9) (frob 10)
+    ))
+    
+

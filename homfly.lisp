@@ -526,3 +526,5 @@
 ;;    + (-1/q)^(0) qnum[N] qnum[N-1] qnum[2] qnum[2]
 ;;    )
 
+(defparameter *rolfsen-total-numbers* '((3 . 1) (4 . 1) (5 . 2) (6 . 3) (7 . 7) (8 . 21) (9 . 49) (10 . 165)))
+  
