@@ -765,11 +765,11 @@
 (defun abort-calculation ()
   (sb-ext:process-kill *mathematica-kernel-process* *sigint*))
 
-(defrule integer ()
+(defrule my-integer ()
   (postimes (character-ranges (#\0 #\9))))
 
 (defrule reverse-in ()
-  " =:]" integer "[nI" #\newline
+  " =:]" my-integer "[nI" #\newline
   :correct)
 
 (defun join-continued-lines (lst)

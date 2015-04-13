@@ -392,34 +392,13 @@
 		     (collect expr)))))
 
 (defun substitute-q-numbers (lst)
-  (with-open-file (stream "~/code/superpolys/lisp-out.txt"
-			  :direction :output :if-exists :supersede)
-    (iter (for expr in lst)
-	  (format stream #?"expr = ~a;~%" expr)))
-  (multiple-value-bind (out err errno)
-      (script "math -script ~/code/superpolys/substitute-q-values.m > ~/code/superpolys/lisp-in.txt")
-    ;; (declare (ignore out))
-    (if (not (zerop errno))
-	(error err)
-	(iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
-	      (collect expr)))))
+  (mathematica-bulk-exec expr "~/code/superpolys/substitute-q-values.m" lst))
 
 (defun substitute-q-numbers1 (expr)
   (car (substitute-q-numbers (list expr))))
 
 (defun %compare-q-exprs (lst script-name)
-  (with-open-file (stream "~/code/superpolys/lisp-out.txt"
-			  :direction :output :if-exists :supersede)
-    (iter (for (expr1 expr2) in lst)
-	  (format stream #?"expr1 = ~a;~%" expr1)
-	  (format stream #?"expr2 = ~a;~%" expr2)))
-  (multiple-value-bind (out err errno)
-      (script #?"math -script $(script-name) > ~/code/superpolys/lisp-in.txt")
-    (declare (ignore out))
-    (if (not (zerop errno))
-	(error err)
-	(iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
-	      (collect expr)))))
+  (mathematica-bulk-exec (expr1 expr2) script-name lst))
 
 (defun compare-q-exprs (lst)
   (%compare-q-exprs lst "~/code/superpolys/compare-q-exprs.m"))
@@ -442,6 +421,49 @@
   (compare-q-exprs-minus1 (homfly-for-dessin (deserialize2 serial-dessin))
 			  (homfly-serial-toolchain serial-dessin)))
 
+(defun wm-torus-knot (n m)
+  #?"TorusKnot[$(n), $(m)]")
+
+(defrule integer ()
+  (text (list (? (|| #\+ #\-))
+	      (postimes (character-ranges (#\0 #\9))))))
+
+(defrule wm-simple-int-list ()
+  (mapcar (lambda (x)
+	    (parse-integer x))
+	  (progm #\{ (cons integer (times (progn ", " integer))) #\})))
+
+(defrule wm-braid ()
+  (let (total lst)
+    "BR[" (setf total integer) ", " (setf lst wm-simple-int-list) "]"
+    `(,(parse-integer total) ,@lst)))
+
+
+(defun get-braid-reps (lst)
+  (mapcar (lambda (x)
+	    ;; (format t "~a~%" x)
+	    (parse 'wm-braid x))
+	  (mathematica-bulk-exec expr "~/code/superpolys/get-knots-braid.m" lst)))
+(defun get-braid-rep1 (expr)
+  (car (get-braid-reps (list expr))))
+
+(defun braid->planar (braid)
+  (destructuring-bind (total . specs) braid
+    (let ((cur-arcs (coerce (iter (for i from 1 to total) (collect i)) 'vector))
+	  (last-num total)
+	  res)
+      (iter (for spec in specs)
+	    (let ((index (1- (abs spec))))
+	      (let ((lb (elt cur-arcs index))
+		    (rb (elt cur-arcs (1+ index)))
+		    (lt (setf (elt cur-arcs index) (incf last-num)))
+		    (rt (setf (elt cur-arcs (1+ index)) (incf last-num))))
+		(push `(,(if (> spec 0) :b :w) ,lb ,rb ,lt ,rt) res))))
+      (iter (for i from 1)
+	    (for elt in-vector cur-arcs)
+	    (push `(:d ,elt ,i) res))
+      res)))
+			 
 
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers

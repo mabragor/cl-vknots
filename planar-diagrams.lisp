@@ -60,14 +60,19 @@
 	(b-hash (make-hash-table :test #'equal))
 	(e-edge-count 0)
 	res)
-    (iter (for (op lb rb lt rt) in diagram)
-	  (if (eq 'n op)
-	      (setf (gethash lb the-hash) (cons rt nil)
-		    (gethash rb the-hash) (cons lt nil))
-	      (setf (gethash lb the-hash) (cons lt (list op (incf e-edge-count)))
-		    (gethash rb the-hash) (cons rt (list op e-edge-count))))
-	  (setf (gethash lb b-hash) t
-		(gethash rb b-hash) t))
+    (iter (for (op . args) in diagram)
+	  (if (equal 4 (length args))
+	      (destructuring-bind (lb rb lt rt) args
+		(if (eq 'n op)
+		    (setf (gethash lb the-hash) (cons rt nil)
+			  (gethash rb the-hash) (cons lt nil))
+		    (setf (gethash lb the-hash) (cons lt (list op (incf e-edge-count)))
+			  (gethash rb the-hash) (cons rt (list op e-edge-count))))
+		(setf (gethash lb b-hash) t
+		      (gethash rb b-hash) t))
+	      (destructuring-bind (bottom top) args
+		(cond ((eq :d op) (setf (gethash bottom the-hash) (cons top nil)))
+		      (t (error "Don't know how to seifertize this ~a" op))))))
     (let ((cur-loop nil))
       (iter (for loop-start next (multiple-value-bind (got key val) (pophash b-hash)
 				   (declare (ignore val))

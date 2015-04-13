@@ -220,18 +220,38 @@
   (mathematica-serialize x))
   
 
-(defun mathematica-simplify-and-canonicalize (lst)
-  (with-open-file (stream "~/code/superpolys/lisp-out.txt"
-			  :direction :output :if-exists :supersede)
-    (iter (for expr in lst)
-	  (format stream #?"expr = ~a;~%" expr)))
+(defmacro! mathematica-bulk-send (pattern o!-lst)
+  `(with-open-file (stream "~/code/superpolys/lisp-out.txt"
+			   :direction :output :if-exists :supersede)
+     (iter (for ,pattern in ,o!-lst)
+	   ,@(if (atom pattern)
+		 `((format stream ,#?"$((stringify-symbol pattern)) = ~a;~%" ,pattern))
+		 (mapcar (lambda (x)
+			   `(format stream ,#?"$((stringify-symbol x)) = ~a;~%" ,x))
+			 pattern)))))
+
+(defun mathematica-bulk-run (script-name)
   (multiple-value-bind (out err errno)
-      (script "math -script ~/code/superpolys/simple-script-input.m > ~/code/superpolys/lisp-in.txt")
+      (script #?"math -script $(script-name) > ~/code/superpolys/lisp-in.txt")
     ;; (declare (ignore out))
     (if (not (zerop errno))
 	(error err)
 	out)))
-  
+
+(defun mathematica-bulk-receive ()
+  (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+	(collect expr)))
+
+
+(defun mathematica-simplify-and-canonicalize (lst)
+  (mathematica-bulk-send expr lst)
+  (mathematica-bulk-run "~/code/superpolys/simple-script-input.m"))
+
+(defmacro mathematica-bulk-exec (pattern script lst)
+  `(progn (mathematica-bulk-send ,pattern ,lst)
+	  (mathematica-bulk-run ,script)
+	  (mathematica-bulk-receive)))
+
 (defun grog2 (n)
   (let ((it (grog n)))
     (mathematica-simplify-and-canonicalize (mapcar (lambda (x)
