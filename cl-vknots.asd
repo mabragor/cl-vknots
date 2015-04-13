@@ -11,7 +11,7 @@
   :author "Alexandr Popolitov <popolit@gmail.com>"
   :license "GPL"
   :depends-on (#:iterate #:cl-ppcre #:cl-interpol #:lol-re #:esrap-liquid #:cl-yaclyaml #:defmacro-enhance
-			 #:alexandria #:clesh #:cg-common-ground)
+			 #:alexandria #:clesh #:cg-common-ground #:quasiquote-2.0)
   :components ((:file "package")
 	       (:file "debug")
 	       (:file "qed-cells")

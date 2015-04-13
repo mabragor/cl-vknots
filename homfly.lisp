@@ -464,6 +464,16 @@
 	    (push `(:d ,elt ,i) res))
       res)))
 			 
+(defun compare-homfly-with-katlas (lst)
+  (let ((braids (get-braid-reps lst)))
+    (mathematica-bulk-exec (expr1 expr2) "~/code/superpolys/compare-homfly-with-katlas.m"
+			   (mapcar (lambda (x y)
+				     (list (homfly-serial-toolchain (planar->seifert (braid->planar x)))
+					    y))
+				   braids lst))))
+
+(defun compare-homfly-with-katlas1 (knot)
+  (car (compare-homfly-with-katlas (list knot))))
 
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers
