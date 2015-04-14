@@ -850,7 +850,7 @@ if cells QD-loop has E-loops"
 
 
 
-(defun 4-thick-decompositions (n-max &optional (fname "~/code/superpolys/FourThickDecompositions.m"))
+(defun 4-thick-decompositions (n-max &optional (fname #?"$(*fname-prefix*)FourThickDecompositions.m"))
   (with-open-file (stream fname :direction :output :if-exists :supersede)
     (iter (for n from 2 to n-max)
 	  ;; (format stream "ThreeSausageHOMFLY[~a] := ~a;~%~%"

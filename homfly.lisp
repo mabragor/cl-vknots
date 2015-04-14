@@ -388,23 +388,23 @@
 (defun homfly-serial-toolchain (serial-dessin)
   (let ((pre-expr (lisp-serial-homfly serial-dessin)))
     (mathematica-simplify-and-canonicalize (list pre-expr))
-    (joinl " " (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+    (joinl " " (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
 		     (collect expr)))))
 
 (defun substitute-q-numbers (lst)
-  (mathematica-bulk-exec expr "~/code/superpolys/substitute-q-values.m" lst))
+  (mathematica-bulk-exec expr #?"$(*fname-prefix*)substitute-q-values.m" lst))
 
 (defun substitute-q-numbers1 (expr)
   (car (substitute-q-numbers (list expr))))
 
 (defun %compare-q-exprs (lst script-name)
-  (mathematica-bulk-exec (expr1 expr2) script-name lst))
+  (mathematica-bulk-exec (expr1 expr2) #?"$(script-name)" lst))
 
 (defun compare-q-exprs (lst)
-  (%compare-q-exprs lst "~/code/superpolys/compare-q-exprs.m"))
+  (%compare-q-exprs lst #?"$(*fname-prefix*)compare-q-exprs.m"))
 
 (defun compare-q-exprs-minus (lst)
-  (%compare-q-exprs lst "~/code/superpolys/compare-q-exprs-minus.m"))
+  (%compare-q-exprs lst #?"$(*fname-prefix*)compare-q-exprs-minus.m"))
 
 (defun compare-q-exprs1 (expr1 expr2)
   (car (compare-q-exprs `((,expr1 ,expr2)))))
@@ -443,7 +443,7 @@
   (mapcar (lambda (x)
 	    ;; (format t "~a~%" x)
 	    (parse 'wm-braid x))
-	  (mathematica-bulk-exec expr "~/code/superpolys/get-knots-braid.m" lst)))
+	  (mathematica-bulk-exec expr #?"$(*fname-prefix*)get-knots-braid.m" lst)))
 (defun get-braid-rep1 (expr)
   (car (get-braid-reps (list expr))))
 
@@ -466,7 +466,7 @@
 			 
 (defun compare-homfly-with-katlas (lst)
   (let ((braids (get-braid-reps lst)))
-    (mathematica-bulk-exec (expr1 expr2) "~/code/superpolys/compare-homfly-with-katlas.m"
+    (mathematica-bulk-exec (expr1 expr2) #?"$(*fname-prefix*)compare-homfly-with-katlas.m"
 			   (mapcar (lambda (x y)
 				     (list (homfly-serial-toolchain (planar->seifert (braid->planar x)))
 					    y))

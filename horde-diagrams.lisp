@@ -221,7 +221,7 @@
   
 
 (defmacro! mathematica-bulk-send (pattern o!-lst)
-  `(with-open-file (stream "~/code/superpolys/lisp-out.txt"
+  `(with-open-file (stream "lisp-out.txt"
 			   :direction :output :if-exists :supersede)
      (iter (for ,pattern in ,o!-lst)
 	   ,@(if (atom pattern)
@@ -232,20 +232,20 @@
 
 (defun mathematica-bulk-run (script-name)
   (multiple-value-bind (out err errno)
-      (script #?"math -script $(script-name) > ~/code/superpolys/lisp-in.txt")
+      (script #?"math -script $(script-name) > $(*fname-prefix*)lisp-in.txt")
     ;; (declare (ignore out))
     (if (not (zerop errno))
 	(error err)
 	out)))
 
 (defun mathematica-bulk-receive ()
-  (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+  (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
 	(collect expr)))
 
 
 (defun mathematica-simplify-and-canonicalize (lst)
   (mathematica-bulk-send expr lst)
-  (mathematica-bulk-run "~/code/superpolys/simple-script-input.m"))
+  (mathematica-bulk-run #?"$(*fname-prefix*)simple-script-input.m"))
 
 (defmacro mathematica-bulk-exec (pattern script lst)
   `(progn (mathematica-bulk-send ,pattern ,lst)
@@ -258,7 +258,7 @@
 						     (groger3 (groger2 x)))
 						   it))
     (let ((dimens
-	   (iter (for expr in-file "~/code/superpolys/lisp-in.txt" using #'read-line)
+	   (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
 		 (collect
 		     (regex-replace-all "\\^"
 					(regex-replace-all "\\\\left|\\\\right"

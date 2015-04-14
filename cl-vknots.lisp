@@ -5,6 +5,9 @@
 (enable-read-macro-tokens)
 (cl-interpol:enable-interpol-syntax)
 
+;; Don't know the better way to do this for now...
+(defparameter *fname-prefix* "~/quicklisp/local-projects/cl-vknots/")
+
 (defun joinl (joinee lst)
   (format nil (concatenate 'string "~{~a~^" joinee "~}") lst))
 (defun join (joinee &rest lst)
@@ -1300,7 +1303,7 @@
 ;; Ok, I need to generate code for expressions for many HOMFLY of 3-sausages
 
 
-(defun 3-sausage-homflies (n-max &optional (fname "~/code/superpolys/ThreeSausageHOMFLIES.m"))
+(defun 3-sausage-homflies (n-max &optional (fname #?"$(*fname-prefix*)ThreeSausageHOMFLIES.m"))
   (with-open-file (stream fname :direction :output :if-exists :supersede)
     (iter (for n from 2 to n-max)
 	  ;; (format stream "ThreeSausageHOMFLY[~a] := ~a;~%~%"
@@ -1374,7 +1377,7 @@
 	  (for elt in-vector pre-res)
 	  (collect (cons j (nreverse elt))))))
 
-(defun velo-tori-file (nmax &optional (fname "~/code/superpolys/veloTori.m"))
+(defun velo-tori-file (nmax &optional (fname #?"$(*fname-prefix*)veloTori.m"))
   (with-open-file (stream fname :direction :output :if-exists :supersede)
     (iter (for n from 3 to nmax)
 	  (format stream "veloToriDessin[~a] := ~a;~%" n
