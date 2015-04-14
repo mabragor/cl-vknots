@@ -49,3 +49,4 @@ TODO
   * add unit-tests for virtual knots
   * add search over flips of the horde-diagrams, to tackle difficult cases
   * express HOMFLY in a-z variables.
+  * add pre-calculation of horde-diagrams and memoization of results
