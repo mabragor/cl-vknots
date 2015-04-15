@@ -21,7 +21,9 @@
 	       (:file "qed-dessins")
 	       (:file "planar-diagrams")
 	       (:file "horde-diagrams")
-	       (:file "homfly")))
+	       (:file "homfly")
+	       (:file "tikz")
+	       ))
 
 
 (defsystem :cl-vknots-tests

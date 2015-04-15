@@ -238,6 +238,14 @@
 	(error err)
 	out)))
 
+
+
+(defun script1 (str)
+  (multiple-value-bind (out err errno) (script str)
+    (if (not (zerop errno))
+	(error err)
+	out)))
+
 (defun mathematica-bulk-receive ()
   (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
 	(collect expr)))
