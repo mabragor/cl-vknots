@@ -221,7 +221,7 @@
   
 
 (defmacro! mathematica-bulk-send (pattern o!-lst)
-  `(with-open-file (stream "lisp-out.txt"
+  `(with-open-file (stream #?"$(*fname-prefix*)lisp-out.txt"
 			   :direction :output :if-exists :supersede)
      (iter (for ,pattern in ,o!-lst)
 	   ,@(if (atom pattern)

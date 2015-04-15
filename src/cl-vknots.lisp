@@ -6,7 +6,7 @@
 (cl-interpol:enable-interpol-syntax)
 
 ;; Don't know the better way to do this for now...
-(defparameter *fname-prefix* "~/quicklisp/local-projects/cl-vknots/")
+(defparameter *fname-prefix* "~/quicklisp/local-projects/cl-vknots/src/")
 
 (defun joinl (joinee lst)
   (format nil (concatenate 'string "~{~a~^" joinee "~}") lst))

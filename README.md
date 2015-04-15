@@ -9,7 +9,8 @@ the underlying ideas will follow, when it's ready.
 
 Note: some of the functionality (and most importantly, the tests) are implemented through
 interface with Wolfram Mathematica and Mathematica package KnotTheory, which can be
-downloaded from www.katlas.org.
+downloaded from www.katlas.org. KnotTheory is to be placed under src/ subdirectory of this project.
+The incorrect setup here may lead to hangs of the machine. You've been warned!)
 
 Calculate HOMFLY polynomial for the twisted unknot.
 ```lisp
@@ -50,3 +51,4 @@ TODO
   * add search over flips of the horde-diagrams, to tackle difficult cases
   * express HOMFLY in a-z variables.
   * add pre-calculation of horde-diagrams and memoization of results
+  * write checks in Mathematica scripts, so that they don't hang and don't loop infinitely
