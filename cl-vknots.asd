@@ -11,8 +11,8 @@
   :author "Alexandr Popolitov <popolit@gmail.com>"
   :license "GPL"
   :version "0.1"
-  :depends-on (#:iterate #:cl-ppcre #:cl-interpol #:lol-re #:esrap-liquid #:cl-yaclyaml #:defmacro-enhance
-			 #:alexandria #:clesh #:cg-common-ground #:quasiquote-2.0)
+  :depends-on (#:iterate #:cl-ppcre #:cl-interpol
+			 #:alexandria #:clesh #:cg-common-ground)
   :pathname "src/"
   :components ((:file "package")
 	       (:file "debug")
@@ -22,7 +22,7 @@
 	       (:file "planar-diagrams")
 	       (:file "horde-diagrams")
 	       (:file "homfly")
-	       (:file "tikz")
+	       ;; (:file "tikz")
 	       ))
 
 

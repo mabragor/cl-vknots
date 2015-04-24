@@ -56,9 +56,6 @@
 				 (,#'virt-reidemeister-1-able-p :virt-1-able)
 				 (,#'reidemeister-2.1-able-p :2.1-able)))
 
-(defun hash->assoc (hash)
-  (iter (for (key val) in-hashtable hash)
-	(collect (cons key val))))
 
 (defun lousy-simplifiable-p (dessin)
   (with-slots (qed-cells) dessin
@@ -424,25 +421,31 @@
 (defun wm-torus-knot (n m)
   #?"TorusKnot[$(n), $(m)]")
 
-(defrule integer ()
-  (text (list (? (|| #\+ #\-))
-	      (postimes (character-ranges (#\0 #\9))))))
+;; (defrule integer ()
+;;   (text (list (? (|| #\+ #\-))
+;; 	      (postimes (character-ranges (#\0 #\9))))))
 
-(defrule wm-simple-int-list ()
-  (mapcar (lambda (x)
-	    (parse-integer x))
-	  (progm #\{ (cons integer (times (progn ", " integer))) #\})))
+;; (defrule wm-simple-int-list ()
+;;   (mapcar (lambda (x)
+;; 	    (parse-integer x))
+;; 	  (progm #\{ (cons integer (times (progn ", " integer))) #\})))
 
-(defrule wm-braid ()
-  (let (total lst)
-    "BR[" (setf total integer) ", " (setf lst wm-simple-int-list) "]"
-    `(,(parse-integer total) ,@lst)))
+;; (defrule wm-braid ()
+;;   (let (total lst)
+;;     "BR[" (setf total integer) ", " (setf lst wm-simple-int-list) "]"
+;;     `(,(parse-integer total) ,@lst)))
 
+(defun lame-parse-braid (x)
+  (let ((lst (cl-ppcre:split ", " (subseq x 3 (1- (length x))))))
+    (setf (cadr lst) (subseq (cadr lst) 1))
+    (setf (car (last lst)) (subseq (car (last lst)) 0 (1- (length (car (last lst))))))
+    (mapcar #'parse-integer lst)))
 
 (defun get-braid-reps (lst)
   (mapcar (lambda (x)
 	    ;; (format t "~a~%" x)
-	    (parse 'wm-braid x))
+	    ;; (parse 'wm-braid x))
+	    (lame-parse-braid x))
 	  (mathematica-bulk-exec expr #?"$(*fname-prefix*)get-knots-braid.m" lst)))
 (defun get-braid-rep1 (expr)
   (car (get-braid-reps (list expr))))

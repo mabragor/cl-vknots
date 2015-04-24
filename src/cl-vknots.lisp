@@ -2,7 +2,6 @@
 
 (in-package #:cl-vknots)
 
-(enable-read-macro-tokens)
 (cl-interpol:enable-interpol-syntax)
 
 ;; Don't know the better way to do this for now...
@@ -398,8 +397,12 @@
    (nodes :initarg :nodes)
    (factors :initarg :factors :initform nil)))
 
+(defun hash->assoc (hash)
+  (iter (for (key val) in-hashtable hash)
+	(collect (cons key val))))
+
 (defun bw->dessin (bw)
-  (deserialize (seifert-segments bw) (cl-yy::hash->assoc (cycle-join-hash bw))))
+  (deserialize (seifert-segments bw) (hash->assoc (cycle-join-hash bw))))
 		
 (defun deserialize (seifert-segments joins &rest factors)
   (let (all-edges all-nodes)
@@ -768,12 +771,12 @@
 (defun abort-calculation ()
   (sb-ext:process-kill *mathematica-kernel-process* *sigint*))
 
-(defrule my-integer ()
-  (postimes (character-ranges (#\0 #\9))))
+;; (defrule my-integer ()
+;;   (postimes (character-ranges (#\0 #\9))))
 
-(defrule reverse-in ()
-  " =:]" my-integer "[nI" #\newline
-  :correct)
+;; (defrule reverse-in ()
+;;   " =:]" my-integer "[nI" #\newline
+;;   :correct)
 
 (defun join-continued-lines (lst)
   (let ((curline (car lst)))
@@ -788,11 +791,11 @@
 	  (if (equal (length (cdr lst)) i)
 	      (progn (collect curline))))))
 
-(defrule out-record ()
-  "Out[" integer "]"
-  (? (prog1 "//" (postimes (character-ranges (#\a #\z) (#\A #\Z)))))
-  "= "
-  t)
+;; (defrule out-record ()
+;;   "Out[" integer "]"
+;;   (? (prog1 "//" (postimes (character-ranges (#\a #\z) (#\A #\Z)))))
+;;   "= "
+;;   t)
 		     
 (defun trim-out-record (str)
   (multiple-value-bind (head head-end-pos) (parse 'out-record str :junk-allowed t)
@@ -939,17 +942,18 @@
 	      (push "[N-1]" factors))))
     (values dessin touch)))
 
-(defmacro! with-disabled-components ((&rest components) &body body)
-  `(let ((,g!-saved-states (mapcar (lambda (x)
-				     (slot-value x 'alive))
-				   (list ,@components))))
-     (unwind-protect (progn ,@(mapcar (lambda (x)
-					`(setf ,x nil))
-				      components)
-			    ,@body)
-       (iter (for component in (list ,@components))
-	     (for state in ,g!-saved-states)
-	     (setf (slot-value component 'alive) state)))))
+(defmacro with-disabled-components ((&rest components) &body body)
+  (let ((g!-saved-states (gensym "SAVED-STATES")))
+    `(let ((,g!-saved-states (mapcar (lambda (x)
+				       (slot-value x 'alive))
+				     (list ,@components))))
+       (unwind-protect (progn ,@(mapcar (lambda (x)
+					  `(setf ,x nil))
+					components)
+			      ,@body)
+	 (iter (for component in (list ,@components))
+	       (for state in ,g!-saved-states)
+	       (setf (slot-value component 'alive) state))))))
 
 (defun looped-2-valent-vertex-p (node)
   (destructuring-bind (edge1 edge2) (alive-edges node)
@@ -995,7 +999,7 @@
 
 
 
-(defmacro! with-saved-node-state (node &body body)
+(defmacro with-saved-node-state (node &body body)
   `(progn (push-alive ,node)
 	  (iter (for edge in (slot-value ,node 'edges))
 		(push-alive edge))
@@ -1004,7 +1008,7 @@
 	    (iter (for edge in (slot-value ,node 'edges))
 		  (pop-alive edge)))))
 
-(defmacro! with-saved-edge-state (edge &body body)
+(defmacro with-saved-edge-state (edge &body body)
   `(progn (push-alive ,edge)
 	  (unwind-protect (progn ,@body)
 	    (pop-alive ,edge))))

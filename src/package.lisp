@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:cl-vknots
-  (:use #:cl #:iterate #:lol-re #:esrap-liquid #:defmacro-enhance #:cg-common-ground)
+  (:use #:cl #:iterate #:cg-common-ground)
   (:shadowing-import-from #:clesh #:script)
   (:shadowing-import-from #:cl-ppcre #:regex-replace-all)
   (:export #:decompose #:deserialize-qed #:serialize-qed

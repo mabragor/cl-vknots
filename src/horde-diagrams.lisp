@@ -220,15 +220,17 @@
   (mathematica-serialize x))
   
 
-(defmacro! mathematica-bulk-send (pattern o!-lst)
-  `(with-open-file (stream #?"$(*fname-prefix*)lisp-out.txt"
-			   :direction :output :if-exists :supersede)
-     (iter (for ,pattern in ,o!-lst)
-	   ,@(if (atom pattern)
-		 `((format stream ,#?"$((stringify-symbol pattern)) = ~a;~%" ,pattern))
-		 (mapcar (lambda (x)
-			   `(format stream ,#?"$((stringify-symbol x)) = ~a;~%" ,x))
-			 pattern)))))
+(defmacro mathematica-bulk-send (pattern o!-lst)
+  (let ((g!-lst (gensym "LST")))
+    `(let ((,g!-lst ,o!-lst))
+       (with-open-file (stream #?"$(*fname-prefix*)lisp-out.txt"
+			       :direction :output :if-exists :supersede)
+	 (iter (for ,pattern in ,g!-lst)
+	       ,@(if (atom pattern)
+		     `((format stream ,#?"$((stringify-symbol pattern)) = ~a;~%" ,pattern))
+		     (mapcar (lambda (x)
+			       `(format stream ,#?"$((stringify-symbol x)) = ~a;~%" ,x))
+			     pattern)))))))
 
 (defun mathematica-bulk-run (script-name)
   (multiple-value-bind (out err errno)
@@ -377,10 +379,13 @@
       (equal (slot-value horde1 'under-lst)
 	     (slot-value horde2 'under-lst))))
 
-(defmacro-driver! (for var n-in-diag-rotations horde)
+(defmacro-driver (for var n-in-diag-rotations horde)
   "Destructively rotate diagram in all possible ways, returning it to the same
 state, if iteration does not finish early"
-  (let ((kwd (if generate 'generate 'for)))
+  (let ((kwd (if generate 'generate 'for))
+	(g!-nrotations (gensym "NROTATIONS"))
+	(g!-horde (gensym "HORDE"))
+	(g!-tot-rotations (gensym "TOT-ROTATIONS")))
     `(progn (with ,g!-nrotations = 0)
 	    (with ,g!-horde = ,horde)
 	    (with ,g!-tot-rotations = (if (eq :empty ,g!-horde)
