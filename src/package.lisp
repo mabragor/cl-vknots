@@ -14,6 +14,7 @@
 	   #:n-dessin-recursion #:print-dessin-poly
 	   #:over-all-subdessins #:serialize2
 	   #:*rolfsen-total-numbers*
-	   #:compare-homfly-with-katlas #:compare-homfly-with-katlas1))
+	   #:compare-homfly-with-katlas #:compare-homfly-with-katlas1
+	   #:compare-actual-homfly-with-katlas #:compare-actual-homfly-with-katlas1))
 
 

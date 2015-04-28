@@ -27,20 +27,32 @@
 	     (t (1+ ,charge)))))
 	     
 
-(defun over-all-subdessins (dessin callback)
+(defun %over-all-subdessins (dessin callback keep-edge-counter kill-edge-counter)
   (labels ((rec (more-edges charge)
 	     ;; (format t "~a" (car more-edges))
 	     (if (not more-edges)
 		 (if callback (funcall callback dessin charge))
-		 (progn (rec (cdr more-edges) charge)
+		 (progn (rec (cdr more-edges) (funcall keep-edge-counter (car more-edges) charge))
 			(with-saved-edge-state (car more-edges)
 			  (kill-edge (car more-edges))
-			  (rec (cdr more-edges) (if (eq :b (slot-value (car more-edges) 'color))
-						    (1+ charge)
-						    (1- charge))))))))
+			  (rec (cdr more-edges) (funcall kill-edge-counter (car more-edges) charge)))))))
     (rec (slot-value dessin 'edges) 0)
     :success!))
 
+(defun count-edge-charge (edge charge)
+  (if (eq :b (slot-value edge 'color))
+      (1+ charge)
+      (1- charge)))
+
+(defun ignore-edge-charge (edge charge)
+  (declare (ignore edge))
+  charge)
+
+(defun over-all-subdessins (dessin callback)
+  (%over-all-subdessins dessin callback #'ignore-edge-charge #'count-edge-charge))
+
+(defun over-all-actual-subdessins (dessin callback)
+  (%over-all-subdessins dessin callback #'count-edge-charge #'ignore-edge-charge))
 
 (let ((acc  nil))
   (defun reset-simple-collector ()
@@ -369,8 +381,16 @@
   (over-all-subdessins dessin #'homfly-calculator)
   (color-charge dessin))
 
+(defun prehomfly-actual (dessin)
+  (reset-homfly-calculator)
+  (over-all-actual-subdessins dessin #'homfly-calculator)
+  (color-charge dessin))
+
 (defun prehomfly-serial (serial-dessin)
   (prehomfly (deserialize2 serial-dessin)))
+
+(defun prehomfly-actual-serial (serial-dessin)
+  (prehomfly-actual (deserialize2 serial-dessin)))
 
 (defun prehomfly-planar (planar-diagram)
   (prehomfly (planar->seifert planar-diagram)))
@@ -381,12 +401,25 @@
 	  (mathematica-serialize (homfly-calculator-output-lame) diag-fun)
 	  ")")))
 
+(defun lisp-actual-serial-homfly (serial-dessin &optional (diag-fun #'try-to-decompose-diag))
+  (let ((total-charge (prehomfly-actual-serial serial-dessin)))
+    (join "" (format nil "(q^(-N+1))^(~a) (" total-charge)
+	  (mathematica-serialize (homfly-calculator-output-lame) diag-fun)
+	  ")")))
+
   
 (defun homfly-serial-toolchain (serial-dessin)
   (let ((pre-expr (lisp-serial-homfly serial-dessin)))
     (mathematica-simplify-and-canonicalize (list pre-expr))
     (joinl " " (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
 		     (collect expr)))))
+
+(defun homfly-actual-serial-toolchain (serial-dessin)
+  (let ((pre-expr (lisp-actual-serial-homfly serial-dessin)))
+    (mathematica-simplify-and-canonicalize (list pre-expr))
+    (joinl " " (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
+		     (collect expr)))))
+
 
 (defun substitute-q-numbers (lst)
   (mathematica-bulk-exec expr #?"$(*fname-prefix*)substitute-q-values.m" lst))
@@ -475,8 +508,20 @@
 					    y))
 				   braids lst))))
 
+(defun compare-actual-homfly-with-katlas (lst)
+  (let ((braids (get-braid-reps lst)))
+    (mathematica-bulk-exec (expr1 expr2) #?"$(*fname-prefix*)compare-actual-homfly-with-katlas.m"
+			   (mapcar (lambda (x y)
+				     (list (homfly-actual-serial-toolchain (planar->seifert (braid->planar x)))
+					    y))
+				   braids lst))))
+
+
 (defun compare-homfly-with-katlas1 (knot)
   (car (compare-homfly-with-katlas (list knot))))
+
+(defun compare-actual-homfly-with-katlas1 (knot)
+  (car (compare-actual-homfly-with-katlas (list knot))))
 
 ;; OK, now I need this code also to:
 ;; * (done) take into account the cons-cells, that can be in place of just numbers
