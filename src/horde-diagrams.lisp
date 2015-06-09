@@ -86,7 +86,9 @@
 
 (defun grog (n)  
   (mapcar #'under-lst (remove-duplicates (remove-if #'easily-simplifiable-p
-						    (mapcar #'%%horde->horde (horde-divisions (* 2 n))))
+						    (mapcar #'%%horde->horde
+							    (remove-if #'disconnected-p
+								       (horde-divisions (* 2 n)))))
 					 :test #'horde-diagrams-equal-p)))
 
 
@@ -409,7 +411,7 @@ state, if iteration does not finish early"
 
 (defun easily-simplifiable-p (horde)
   (let ((lst (under-lst horde)))
-    (or (disconnected-p lst)
+    (or ;; (disconnected-p lst)
 	(two-in-a-row-p lst)
 	(anti-two-in-a-row-p lst))))
 
@@ -440,7 +442,36 @@ state, if iteration does not finish early"
 	    (return t))
 	(finally (return nil))))
 
-(defun disconnected-p (lst)
-  ;; TODO : for now we treat all diagrams as connected
-  nil)
+(defun hordes-intersect-p (horde1 horde2)
+  (let ((shorde1 (sort (copy-list horde1) #'<))
+	(shorde2 (sort (copy-list horde2) #'<)))
+    (or (and (< (car shorde1) (car shorde2))
+	     (> (cadr shorde1) (car shorde2))
+	     (< (cadr shorde1) (cadr shorde2)))
+	(and (< (car shorde2) (car shorde1))
+	     (> (cadr shorde2) (car shorde1))
+	     (< (cadr shorde2) (cadr shorde1))))))
+	
+    
+(defun disconnected-p (prehorde)
+  (let ((cluster (make-hash-table :test #'equal))
+	(new-hordes (make-hash-table :test #'equal))
+	(horde-intersections (make-hash-table :test #'equal)))
+    (iter (for horde in prehorde)
+	  (iter (for other-horde in prehorde)
+		(if (hordes-intersect-p horde other-horde)
+		    (push other-horde (gethash horde horde-intersections)))))
+    (setf (gethash (car prehorde) cluster) t)
+    (setf (gethash (car prehorde) new-hordes) t)
+    (iter (while (not (equal 0 (hash-table-count new-hordes))))
+	  (let ((new-intersections nil))
+	    (iter (for (new-horde nil) in-hashtable new-hordes)
+		  (setf new-intersections (append new-intersections (gethash new-horde horde-intersections))))
+	    (clrhash new-hordes)
+	    (iter (for potential-new-horde in new-intersections)
+		  (when (not (gethash potential-new-horde cluster))
+		    (setf (gethash potential-new-horde cluster) t
+			  (gethash potential-new-horde new-hordes) t)))))
+    (not (equal (hash-table-count cluster) (length prehorde)))))
+		    
 
