@@ -139,6 +139,34 @@
                             (\$(#1, #2) + ($((floor (* 360 (/ (1- (+ i delta)) n)))):$(radius))\$);")))))
     (say "}~%")))
 
+(defun %horde->puts (%horde &key (cmd-name "foo") (radius 20))
+  (with-output-env
+    (say #?"\\newcommand\\$(cmd-name)[2]{")
+    (with-indent
+	(say "\\put(#1,#2){")
+      (with-indent
+	  (say "\\thicklines")
+	(say #?"\\put(0,0){\circle{$((* 2 radius))}")
+	(say "\\thinlines")
+	(let ((n (length %horde)))
+	  (iter (for i from 1 to n)
+		(for delta in %horde)
+		(when (< 0 delta)
+		  (let ((xbegin ...)
+			(ybegin ...)
+			(xend ...)
+			(yend ...))
+		    (say #?"\\qbezier($(xbegin),$(ybegin))(0,0)()")
+
+		  
+		  (say #?"\\draw [very thick, red] (\$(#1, #2) + ($((floor (* 360 (/ (1- i) n)))):$(radius))\$)
+                            to [out=$((floor (+ 180 (* 360 (/ (1- i) n))))),
+                                in=$((floor (+ 180 (* 360 (/ (1- (+ i delta)) n)))))]
+                            (\$(#1, #2) + ($((floor (* 360 (/ (1- (+ i delta)) n)))):$(radius))\$);")))))
+
+      (say "}~%"))))
+
+
 (defun to-cifers (int)
   (mapcar (lambda (x)
 	    (parse-integer (string x)))
@@ -275,7 +303,7 @@
 		 (collect
 		     (regex-replace-all "\\^"
 					(regex-replace-all "\\\\left|\\\\right"
-							   (regex-replace-all "q\\(([^()]+)\\)"
+							   (regex-replace-all "q\\[([^\\[\\]]+)\\]"
 									      expr "[\\1]")
 							   "")
 					"\\textsuperscript")))))
