@@ -85,7 +85,8 @@
 					    
 
 (defun grog (n)  
-  (mapcar #'under-lst (remove-duplicates (mapcar #'%%horde->horde (horde-divisions (* 2 n)))
+  (mapcar #'under-lst (remove-duplicates (remove-if #'easily-simplifiable-p
+						    (mapcar #'%%horde->horde (horde-divisions (* 2 n))))
 					 :test #'horde-diagrams-equal-p)))
 
 
@@ -405,3 +406,41 @@ state, if iteration does not finish early"
 (defun simple-in-diag-rotations-test ()
   (iter (for diag n-in-diag-rotations (make-instance 'horde-diagram :under-lst '(2 3 -2 2 -3 -2)))
 	(collect (copy-list (under-lst diag)))))
+
+(defun easily-simplifiable-p (horde)
+  (let ((lst (under-lst horde)))
+    (or (disconnected-p lst)
+	(two-in-a-row-p lst)
+	(anti-two-in-a-row-p lst))))
+
+(defun two-in-a-row-p (lst)
+  (iter (for elt on lst)
+	(if (null (cdr elt))
+	    (if (and (> 0 (car elt))
+		     (< 1 (car lst))
+		     (equal (+ (length lst) (car elt))
+			    (car lst)))
+		(return t)))
+	(if (and (< 1 (car elt))
+		 (equal (car elt) (cadr elt)))
+	    (return t))
+	(finally (return nil))))
+
+(defun anti-two-in-a-row-p (lst)
+  (iter (for elt on lst)
+	(if (null (cdr elt))
+	    (if (and (> 0 (car elt))
+		     (< 0 (car lst))
+		     (equal (+ (length lst) (car elt))
+			    (+ 2 (car lst))))
+		(return t)))
+	(if (and (< 0 (car elt))
+		 (< 0 (cadr elt))
+		 (equal (car elt) (+ 2 (cadr elt))))
+	    (return t))
+	(finally (return nil))))
+
+(defun disconnected-p (lst)
+  ;; TODO : for now we treat all diagrams as connected
+  nil)
+

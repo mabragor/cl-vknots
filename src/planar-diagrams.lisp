@@ -16,6 +16,12 @@
     (b 3 4 5 6)
     (b 5 6 1 2)))
 
+(defparameter *virtual-trefoil*
+  '((b 1 2 3 4)
+    (n 3 4 5 6)
+    (b 5 6 1 2)))
+
+
 (defun bud-vertex (vertex n &optional vertex-id)
   (destructuring-bind (op lb rb lt rt) vertex
     (let* ((id (or vertex-id (gensym "VERTEX")))
@@ -113,3 +119,4 @@
 			 (w 14 17 13 16)
 			 (w 9 18 14 17)))
 			 
+(defparameter *curious-horde* '(6 3 5 6 -3 5 -6 -5 3 -6 -5 -3))
