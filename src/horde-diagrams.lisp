@@ -146,26 +146,29 @@
 	(say "\\put(#1,#2){")
       (with-indent
 	  (say "\\thicklines")
-	(say #?"\\put(0,0){\circle{$((* 2 radius))}")
-	(say "\\thinlines")
+	(with-indent (say "\\put(0,0){ \\linethickness{1mm}")
+	  (let ((control-point (* radius 0.9)))
+	    (say (frnl "\\qbezier(~,2f,0)(~,2f,~,2f)(0,~,2f)" radius control-point control-point radius))
+	    (say (frnl "\\qbezier(0,~,2f)(-~,2f,~,2f)(-~,2f,0)" radius control-point control-point radius))
+	    (say (frnl "\\qbezier(-~,2f,0)(-~,2f,-~,2f)(0,-~,2f)" radius control-point control-point radius))
+	    (say (frnl "\\qbezier(0,-~,2f)(~,2f,-~,2f)(~,2f,0)" radius control-point control-point radius))
+	    (say "}")))
+	(say "\\linethickness{0.5mm}")
 	(let ((n (length %horde)))
 	  (iter (for i from 1 to n)
 		(for delta in %horde)
 		(when (< 0 delta)
-		  (let ((xbegin ...)
-			(ybegin ...)
-			(xend ...)
-			(yend ...))
-		    (say #?"\\qbezier($(xbegin),$(ybegin))(0,0)()")
-
+		  (let ((phi-begin (* 2 pi (/ (1- i) n)))
+			(phi-end (* 2 pi (/ (1- (+ i delta)) n))))
+		    (let ((xbegin (* radius (cos phi-begin)))
+			  (ybegin (* radius (sin phi-begin)))
+			  (xend (* radius (cos phi-end)))
+			  (yend (* radius (sin phi-end))))
+		      (say (frnl "\\qbezier(~,2f,~,2f)(0,0)(~,2f,~,2f)"
+				 xbegin ybegin xend yend))))))))
+      (say "}~%"))
+    (say "}~%")))
 		  
-		  (say #?"\\draw [very thick, red] (\$(#1, #2) + ($((floor (* 360 (/ (1- i) n)))):$(radius))\$)
-                            to [out=$((floor (+ 180 (* 360 (/ (1- i) n))))),
-                                in=$((floor (+ 180 (* 360 (/ (1- (+ i delta)) n)))))]
-                            (\$(#1, #2) + ($((floor (* 360 (/ (1- (+ i delta)) n)))):$(radius))\$);")))))
-
-      (say "}~%"))))
-
 
 (defun to-cifers (int)
   (mapcar (lambda (x)
