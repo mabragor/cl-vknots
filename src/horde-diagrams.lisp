@@ -582,3 +582,6 @@ state, if iteration does not finish early"
 	(for elt in %horde)
 	(if (< 0 elt)
 	    (collect (list i (+ elt i))))))
+
+
+(defparameter *curious-diag-1* '(2 4 -2 5 13 -4 13 7 -5 7 2 4 -2 5 -7 -4 -7 -13 -5 -13))
