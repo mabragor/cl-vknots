@@ -296,6 +296,8 @@
 	  (mathematica-bulk-run ,script)
 	  (mathematica-bulk-receive)))
 
+;; (defun mathe
+
 (defun grog2 (n)
   (let ((it (grog n)))
     (mathematica-simplify-and-canonicalize (mapcar (lambda (x)
@@ -506,3 +508,71 @@ state, if iteration does not finish early"
     (not (equal (hash-table-count cluster) (length prehorde)))))
 		    
 
+(defun all-prehorde-flips (prehorde)
+  (let ((n (* 2 (length prehorde))))
+    (iter outer (for horde1 in prehorde)
+	  (iter (for horde2 in prehorde)
+		(if (hordes-intersect-p horde1 horde2)
+		    (in outer (collect (permute-prehorde prehorde
+							 (double-flip-permutation horde1
+										  horde2
+										  n)))))))))
+
+(defun horde-end-between (horde1 horde2)
+  (cond ((and (< (car horde1) (car horde2))
+	      (< (car horde2) (cadr horde1)))
+	 (car horde2))
+	((and (< (car horde1) (cadr horde2))
+	      (< (cadr horde2) (cadr horde1)))
+	 (cadr horde2))
+	(t (error "Somehow hordes ~a and ~a seem to not intersect" horde1 horde2))))
+      
+(defun horde-other-point (horde point)
+  (if (equal point (car horde))
+      (cadr horde)
+      (car horde)))
+
+(defun rotate-to-position (pos vector)
+  (let ((n (length vector)))
+    (let ((res (make-array n)))
+      (iter (for i from 0 below n)
+	    (setf (elt res i) (elt vector (mod (+ pos i) n))))
+      res)))
+
+(defun double-flip-permutation (horde1 horde2 n)
+  (let ((res (make-array n :element-type 'integer :initial-element 0))
+	(between-end (horde-end-between horde1 horde2)))
+    (let ((circle1 (make-array (- (cadr horde1) (car horde1)) :element-type 'integer :initial-element 0))
+	  (circle2 (make-array (- n (- (cadr horde1) (car horde1))) :element-type 'integer :initial-element 0)))
+      (iter (for dst-index from 0)
+	    (for src-index from (car horde1) below (cadr horde1))
+	    (setf (elt circle1 dst-index) src-index))
+      (iter (for dst-index from 0 below (- n (- (cadr horde1) (car horde1))))
+	    (for src-index from (cadr horde1))
+	    (setf (elt circle2 dst-index) (1+ (mod (1- src-index) n))))
+      ;; (list circle1 circle2))))
+      ;; between-end)))
+      (let ((rotated-circle1 (rotate-to-position (position between-end circle1)
+						 circle1))
+	    (rotated-circle2 (rotate-to-position (position (horde-other-point horde2 between-end)
+							   circle2)
+						 circle2)))
+	;; (list rotated-circle1 rotated-circle2)))))
+	(iter (for dest-index from (1- (car horde1)))
+	      (for elt in-vector rotated-circle1)
+	      (setf (elt res (mod dest-index n)) elt))
+	(iter (for dest-index from (1- (cadr horde1)))
+	      (for elt in-vector rotated-circle2)
+	      (setf (elt res (mod dest-index n)) elt))
+	(iter (for i from 1 to n)
+	      (for elt in-vector res)
+	      (collect (cons elt i)))))))
+    
+    
+
+(defun permute-prehorde (prehorde permutation)
+  (mapcar (lambda (edge)
+	    (mapcar (lambda (x)
+		      (cdr (assoc x permutation)))
+		    edge))
+	  prehorde))
