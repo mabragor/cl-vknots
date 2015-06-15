@@ -576,3 +576,9 @@ state, if iteration does not finish early"
 		      (cdr (assoc x permutation)))
 		    edge))
 	  prehorde))
+
+(defun %horde->prehorde (%horde)
+  (iter (for i from 1)
+	(for elt in %horde)
+	(if (< 0 elt)
+	    (collect (list i (+ elt i))))))
