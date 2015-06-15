@@ -215,10 +215,14 @@
 	       (let ((results (compare-homfly-with-katlas
 			       (iter (for i from 1 to total-num)
 				     (collect #?"Knot[$(n), $(i)]")))))
-		 (iter (for i from 1)
-		       (for res in results)
-		       (is (or (equal "1" res)
-			       (cl-ppcre:all-matches "HordeDiag" res))))))))
+		 (let ((n (length results))
+		       (covered 0))
+		   (iter (for i from 1)
+			 (for res in results)
+			 (cond ((equal "1" res) (incf covered) (is (equal t t)))
+			       ((cl-ppcre:all-matches "HordeDiag" res) (is (equal t t)))
+			       (t (is (equal t nil)))))
+		   (format t "~%Coverage: ~a/~a~%" covered n))))))
     (frob 3) (frob 4) (frob 5) (frob 6) (frob 7) (frob 8) (frob 9) (frob 10)
     ))
 
