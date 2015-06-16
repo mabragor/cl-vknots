@@ -1226,7 +1226,7 @@
   (iter (for edge in (slot-value dessin 'edges))
 	(if (not (alive-p edge))
 	    (next-iteration))
-	(summing (if (eq :b (slot-value edge 'color))
+	(summing (if (string= "B" (string (slot-value edge 'color)))
 		     1
 		     -1))))
 

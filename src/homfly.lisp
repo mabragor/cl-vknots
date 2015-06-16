@@ -22,8 +22,8 @@
   `(if top
        ,charge
        (cond ((consp ,place) (if (string= "B" (string (car ,place)))
-				(1+ ,charge)
-				(1- ,charge)))
+				 (1+ ,charge)
+				 (1- ,charge)))
 	     (t (1+ ,charge)))))
 	     
 
@@ -40,7 +40,7 @@
     :success!))
 
 (defun count-edge-charge (edge charge)
-  (if (eq :b (slot-value edge 'color))
+  (if (string= "B" (string (slot-value edge 'color)))
       (1+ charge)
       (1- charge)))
 
