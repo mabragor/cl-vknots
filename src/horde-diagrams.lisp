@@ -247,7 +247,7 @@
     (make-instance 'qed-dessin :cells (coerce pre-res 'list))))
 
 (defun groger2 (x)
-  (handler-case (decompose (%horde->qed-dessin x))
+  (handler-case (try-to-decompose-diag x)
     (error () "Fail")))
 
 (defun groger3 (x)
@@ -518,6 +518,31 @@ state, if iteration does not finish early"
 										  horde2
 										  n)))))))))
 
+(defun is-really-new (prehorde all-flips-so-far)
+  (let ((new-horde (%%horde->horde prehorde)))
+    (iter (for horde in all-flips-so-far)
+	  (if (horde-diagrams-equal-p new-horde horde)
+	      (return-from is-really-new nil)))
+    new-horde))
+
+(defun really-all-prehorde-flips (prehorde)
+  (let ((all-flips (list (%%horde->horde prehorde)))
+	(new-diags (list prehorde))
+	(old-new-diags nil))
+    (iter (while new-diags)
+	  (setf old-new-diags new-diags
+		new-diags nil)
+	  (iter (for new-diag in old-new-diags)
+		(iter (for new-prehorde in (all-prehorde-flips new-diag))
+		      (let ((it (is-really-new new-prehorde all-flips)))
+			(when it
+			  (push it all-flips)
+			  (push new-prehorde new-diags))))))
+    (mapcar (lambda (x)
+	      (%horde->prehorde (under-lst x)))
+	    all-flips)))
+
+
 (defun horde-end-between (horde1 horde2)
   (cond ((and (< (car horde1) (car horde2))
 	      (< (car horde2) (cadr horde1)))
@@ -572,9 +597,10 @@ state, if iteration does not finish early"
 
 (defun permute-prehorde (prehorde permutation)
   (mapcar (lambda (edge)
-	    (mapcar (lambda (x)
-		      (cdr (assoc x permutation)))
-		    edge))
+	    (sort (mapcar (lambda (x)
+			    (cdr (assoc x permutation)))
+			  edge)
+		  #'<))
 	  prehorde))
 
 (defun %horde->prehorde (%horde)
