@@ -17,14 +17,27 @@
     (b 5 6 1 2)))
 
 (defparameter *virtual-trefoil*
-  '((b 1 2 3 4)
+  '((w 1 2 3 4)
     (n 3 4 5 6)
-    (b 5 6 1 2)))
+    (w 5 6 1 2)))
 
 (defparameter *virtual-unknotted-trefoil*
   '((w 1 2 3 4)
     (n 3 4 5 6)
     (b 5 6 1 2)))
+
+(defparameter *3.1-vknot*
+  '((w 1 9 7 8)
+    (n 7 8 2 10)
+    (b 2 4 1 3)
+    (n 5 3 6 4)
+    (w 6 10 5 9)))
+
+(defparameter *3.2-vknot*
+  '((w 3 1 4 2)
+    (w 4 6 3 5)
+    (n 2 7 6 8)
+    (b 5 8 1 7)))
 
 
 (defun bud-vertex (vertex n &optional vertex-id)
@@ -65,6 +78,44 @@
 	(collect (bud-vertex vertex n (intern #?"V$(i)")) into res)
 	(finally (return (apply #'nconc res)))))
 
+(defun link-free-cable (diagram n)
+  (let ((total-charge (iter (for vertex in diagram)
+			    (cond ((string= "B" (string (car vertex))) (summing +1))
+				  ((string= "W" (string (car vertex))) (summing -1)))))
+	(my-diag (copy-tree diagram)))
+    (let ((begin-edge (cadar my-diag)))
+      (setf (cadar my-diag) `(begin ,begin-edge))
+      (iter (for vertex in my-diag)
+	    (iter (for edge on (cdr vertex))
+		  (if (equal begin-edge (car edge))
+		      (setf (car edge) `(end ,begin-edge)))))
+      (let ((num-flipovers (* n (abs total-charge))))
+	(nconc (cable my-diag n)
+	       (iter (for i from 1 to num-flipovers)
+		     (nconcing (flipover n i (if (< 0 total-charge) 'w 'b))))
+	       (iter (for i from 1 to n)
+		     (collect `(d (flipover ,(1+ num-flipovers) ,i) ((begin ,begin-edge) ,i)))
+		     (collect `(d ((end ,begin-edge) ,i) (flipover 1 ,i)))))))))
+
+	       
+
+(defun flipover (n start-num color)
+  (if (equal 2 n)
+      (copy-tree `((,color (flipover ,start-num 1) (flipover ,start-num 2)
+			   (flipover ,(1+ start-num) 1) (flipover ,(1+ start-num) 2))))
+      (let ((res (copy-tree `((,color (flipover ,start-num 1) (intraflipover ,start-num 2)
+				      (flipover ,(1+ start-num) 1) (flipover ,(1+ start-num) 2))
+			      (,color (flipover ,start-num ,(1- n)) (flipover ,start-num ,n)
+				      (intraflipover ,start-num ,(1- n)) (flipover ,(1+ start-num) ,n))))))
+	(nconc res
+	       (iter (for i from 2 to (- n 2))
+		     (collect (copy-tree `(,color (flipover ,start-num ,i)
+						  (intraflipover ,start-num ,(1+ i))
+						  (intraflipover ,start-num ,i)
+						  (flipover ,(1+ start-num) ,(1+ i)))))))
+	res)))
+
+		   
 
 (defun planar->seifert (diagram)
   (let ((the-hash (make-hash-table :test #'equal))
@@ -74,7 +125,7 @@
     (iter (for (op . args) in diagram)
 	  (if (equal 4 (length args))
 	      (destructuring-bind (lb rb lt rt) args
-		(if (eq 'n op)
+		(if (string= "N" (string op))
 		    (setf (gethash lb the-hash) (cons rt nil)
 			  (gethash rb the-hash) (cons lt nil))
 		    (setf (gethash lb the-hash) (cons lt (list op (incf e-edge-count)))
@@ -82,7 +133,7 @@
 		(setf (gethash lb b-hash) t
 		      (gethash rb b-hash) t))
 	      (destructuring-bind (bottom top) args
-		(cond ((eq :d op) (setf (gethash bottom the-hash) (cons top nil)))
+		(cond ((string= "D" (string op)) (setf (gethash bottom the-hash) (cons top nil)))
 		      (t (error "Don't know how to seifertize this ~a" op))))))
     (let ((cur-loop nil))
       (iter (for loop-start next (multiple-value-bind (got key val) (pophash b-hash)

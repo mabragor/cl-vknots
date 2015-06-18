@@ -5,7 +5,7 @@
 
 (cl-interpol:enable-interpol-syntax)
 
-
+(define-condition vknots-error (error) ())
 
 (defclass qed-dessin ()
   ((qed-cells :initarg :cells)))
@@ -746,7 +746,7 @@ if cells QD-loop has E-loops"
     (if-debug "~a" plan)
     (if (not plan)
 	(if toplevel
-	    (error "Unable to find a decomposition plan for ~a" (serialize-qed (car cons-of-dessin)))
+	    (error 'vknots-error "Unable to find a decomposition plan for ~a" (serialize-qed (car cons-of-dessin)))
 	    (progn (setf (car cons-of-dessin) (serialize-to-diags (car cons-of-dessin)))
 		   nil))
 	(let ((new-stuff (do-3.1-reidemeisters-then-something-else (car cons-of-dessin) (cdr plan))))
@@ -851,7 +851,7 @@ if cells QD-loop has E-loops"
   (if-debug "Decomposing diagram: ~a" %horde)
   (handler-case (mathematica-serialize (decompose (%horde->qed-dessin %horde))
 				       #'try-to-decompose-diag)
-    (error (e)
+    (vknots-error (e)
       (let ((res nil))
 	(if skip-flips
 	    (error e)
@@ -862,7 +862,7 @@ if cells QD-loop has E-loops"
 		   	     (declare (ignore x))
 			     ;; (format t "I'm here!")
 		   	     (return-from try-to-decompose-diag res))
-		   	   (error (e) (format t "~a~%" e))))
+		   	   (vknots-error (e) (format t "~a~%" e))))
 		   (just-print-diag %horde)))))))
 
 (defun mathematica-serialize (poly &optional (diag-decomposer #'just-print-diag))
@@ -883,7 +883,7 @@ if cells QD-loop has E-loops"
 	((eq 'diag (car poly)) (if (equal '(:empty) (cadr poly))
 				   "1"
 				   (joinl " * " (mapcar diag-decomposer (cadr poly)))))
-	(t (error "Don't yet knot how to MATHEMATICA-SERIALIZE this: ~a~%" poly))))
+	(t (error 'vknots-error "Don't yet knot how to MATHEMATICA-SERIALIZE this: ~a~%" poly))))
 
 
 
