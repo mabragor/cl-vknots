@@ -21,6 +21,24 @@
     (n 3 4 5 6)
     (w 5 6 1 2)))
 
+(defparameter *2.1-knot*
+  '((w 1 2 3 4)
+    (n 3 4 5 6)
+    (w 5 6 1 2))
+  "Vertices are white according to picture from Bar-Natan")
+
+(defparameter *2.1-knot-2-cabled-manually*
+  '((w (begin-1 1) (v1 1 0) (3 1) (v1 0 1)) (w (begin-1 2) (2 1) (v1 1 0) (v1 2 1))
+    (w (v1 2 1) (2 2) (v1 1 2) (4 2)) (w (v1 0 1) (v1 1 2) (3 2) (4 1))
+    (n (3 1) (v2 1 0) (5 1) (v2 0 1)) (n (3 2) (4 1) (v2 1 0) (v2 2 1))
+    (n (v2 2 1) (4 2) (v2 1 2) (6 2)) (n (v2 0 1) (v2 1 2) (5 2) (6 1))
+    (w (5 1) (v3 1 0) (end-1 1) (v3 0 1)) (w (5 2) (6 1) (v3 1 0) (v3 2 1))
+    (w (v3 2 1) (6 2) (v3 1 2) (2 2)) (w (v3 0 1) (v3 1 2) (end-1 2) (2 1))
+    (b (end-1 1) (end-1 2) a b) (b a b c d) (b c d e f) (b e f (begin-1 1) (begin-1 2))
+    )
+  "Manually unlinked 2-cabled diagram of 2.1 knot")
+
+
 (defparameter *virtual-unknotted-trefoil*
   '((w 1 2 3 4)
     (n 3 4 5 6)
