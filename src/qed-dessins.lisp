@@ -862,7 +862,9 @@ if cells QD-loop has E-loops"
 		   	     (declare (ignore x))
 			     ;; (format t "I'm here!")
 		   	     (return-from try-to-decompose-diag res))
-		   	   (vknots-error (e) (format t "~a~%" e))))
+		   	   (vknots-error (e)
+			     ;; (format t "~a~%" e)
+			     )))
 		   (just-print-diag %horde)))))))
 
 (defun mathematica-serialize (poly &optional (diag-decomposer #'just-print-diag))

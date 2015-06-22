@@ -38,6 +38,11 @@
     )
   "Manually unlinked 2-cabled diagram of 2.1 knot")
 
+(defparameter *4.1-knot-morse*
+  '((w 8 2 7 1)
+    (w 3 1 4 2)
+    (b 5 4 6 8)
+    (b 6 7 5 3)))
 
 (defparameter *virtual-unknotted-trefoil*
   '((w 1 2 3 4)
@@ -57,6 +62,33 @@
     (n 2 7 6 8)
     (b 5 8 1 7)))
 
+(defparameter *3.3-vknot*
+  '((w 3 1 4 2)
+    (n 4 6 3 5)
+    (w 7 5 8 6)
+    (n 8 2 10 9)
+    (w 10 9 7 1)))
+
+(defparameter *3.4-vknot*
+  '((w 3 1 4 2)
+    (n 4 6 3 5)
+    (w 7 5 8 6)
+    (n 10 9 7 1)
+    (b 8 2 10 9)))
+
+(defparameter *3.5-vknot*
+  '((n 1 2 3 4)
+    (w 3 4 5 6)
+    (w 5 6 7 8)
+    (n 7 8 9 10)
+    (w 9 10 1 2)))
+
+(defparameter *3.7-vknot*
+  '((n 1 2 3 4)
+    (w 3 4 5 6)
+    (w 5 6 7 8)
+    (n 7 8 9 10)
+    (b 9 10 1 2)))
 
 (defun bud-vertex (vertex n &optional vertex-id)
   (destructuring-bind (op lb rb lt rt) vertex
@@ -112,26 +144,32 @@
 	       (iter (for i from 1 to num-flipovers)
 		     (nconcing (flipover n i (if (< 0 total-charge) 'w 'b))))
 	       (iter (for i from 1 to n)
-		     (collect `(d (flipover ,(1+ num-flipovers) ,i) ((begin ,begin-edge) ,i)))
-		     (collect `(d ((end ,begin-edge) ,i) (flipover 1 ,i)))))))))
+		     (collect `(d (flipover ,(1+ num-flipovers) ,i)
+				  ,(if (equal 1 n)
+				       `(begin ,begin-edge)
+				       `((begin ,begin-edge) ,i))))
+		     (collect `(d ,(if (equal 1 n)
+				       `(end ,begin-edge)
+				       `((end ,begin-edge) ,i))
+				  (flipover 1 ,i)))))))))
 
 	       
 
 (defun flipover (n start-num color)
-  (if (equal 2 n)
-      (copy-tree `((,color (flipover ,start-num 1) (flipover ,start-num 2)
-			   (flipover ,(1+ start-num) 1) (flipover ,(1+ start-num) 2))))
-      (let ((res (copy-tree `((,color (flipover ,start-num 1) (intraflipover ,start-num 2)
-				      (flipover ,(1+ start-num) 1) (flipover ,(1+ start-num) 2))
-			      (,color (flipover ,start-num ,(1- n)) (flipover ,start-num ,n)
-				      (intraflipover ,start-num ,(1- n)) (flipover ,(1+ start-num) ,n))))))
-	(nconc res
-	       (iter (for i from 2 to (- n 2))
-		     (collect (copy-tree `(,color (flipover ,start-num ,i)
-						  (intraflipover ,start-num ,(1+ i))
-						  (intraflipover ,start-num ,i)
-						  (flipover ,(1+ start-num) ,(1+ i)))))))
-	res)))
+  (cond ((equal 1 n) (copy-tree `((d (flipover ,start-num 1) (flipover ,(1+ start-num) 1)))))
+	((equal 2 n) (copy-tree `((,color (flipover ,start-num 1) (flipover ,start-num 2)
+					  (flipover ,(1+ start-num) 1) (flipover ,(1+ start-num) 2)))))
+	(t (let ((res (copy-tree `((,color (flipover ,start-num 1) (intraflipover ,start-num 2)
+					   (flipover ,(1+ start-num) 1) (flipover ,(1+ start-num) 2))
+				   (,color (flipover ,start-num ,(1- n)) (flipover ,start-num ,n)
+					   (intraflipover ,start-num ,(1- n)) (flipover ,(1+ start-num) ,n))))))
+	     (nconc res
+		    (iter (for i from 2 to (- n 2))
+			  (collect (copy-tree `(,color (flipover ,start-num ,i)
+						       (intraflipover ,start-num ,(1+ i))
+						       (intraflipover ,start-num ,i)
+						       (flipover ,(1+ start-num) ,(1+ i)))))))
+	     res))))
 
 		   
 

@@ -291,6 +291,10 @@
   (mathematica-bulk-send expr lst)
   (mathematica-bulk-run #?"$(*fname-prefix*)simple-script-input.m"))
 
+(defun mathematica-q-poly-canonicalize (lst)
+  (mathematica-bulk-send expr lst)
+  (mathematica-bulk-run #?"$(*fname-prefix*)q-poly-canonicalize.m"))
+
 (defmacro mathematica-bulk-exec (pattern script lst)
   `(progn (mathematica-bulk-send ,pattern ,lst)
 	  (mathematica-bulk-run ,script)
@@ -300,9 +304,9 @@
 
 (defun grog2 (n)
   (let ((it (grog n)))
-    (mathematica-simplify-and-canonicalize (mapcar (lambda (x)
-						     (groger3 (groger2 x)))
-						   it))
+    (mathematica-q-poly-canonicalize (mapcar (lambda (x)
+					       (groger3 (groger2 x)))
+					     it))
     (let ((dimens
 	   (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
 		 (collect
@@ -311,7 +315,7 @@
 							   (regex-replace-all "q\\[([^\\[\\]]+)\\]"
 									      expr "[\\1]")
 							   "")
-					"\\textsuperscript")))))
+					"\\textsuperscript ")))))
       (generate-tex-horde-section n it dimens))))
 
 (defun mk-dimensions-hash (diags dimens)
