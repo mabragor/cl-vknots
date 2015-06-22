@@ -21,6 +21,14 @@
     (n 3 4 5 6)
     (w 5 6 1 2)))
 
+(defparameter *virtual-trefoil-next*
+  '((w 1 2 3 4)
+    (b 3 4 5 6)
+    (w 5 6 7 8)
+    (n 7 8 9 10)
+    (w 9 10 1 2)))
+
+
 (defparameter *2.1-knot*
   '((w 1 2 3 4)
     (n 3 4 5 6)

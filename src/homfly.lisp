@@ -423,7 +423,7 @@
 
 (defun homfly-actual-serial-toolchain (serial-dessin)
   (let ((pre-expr (lisp-actual-serial-homfly serial-dessin)))
-    (mathematica-simplify-and-canonicalize (list pre-expr))
+    (mathematica-q-poly-canonicalize (list pre-expr))
     (joinl " " (iter (for expr in-file #?"$(*fname-prefix*)lisp-in.txt" using #'read-line)
 		     (collect expr)))))
 
