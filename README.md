@@ -1,8 +1,9 @@
 cl-vknots
 =========
 
-Assorted collection of tools to calculate (cabled) HOMFLY polynomials for (virtual) knots
-and links, from the Khovanov hypercube formalism.
+Convenient tools to calculate (cabled) HOMFLY polynomials for knots
+and links, usual and virtual, from the Khovanov hypercube formalism.
+
 
 This code is based on  work with A.Morozov and An.Morozov. The arXiv paper explaining
 the underlying ideas will follow, when it's ready.
@@ -17,15 +18,34 @@ Calculate HOMFLY polynomial for the twisted unknot.
 (homfly-serial-toolchian '((1 1) (2 1)))
 ```
 
-or, the same with query to Katlas of what is braid representation for twisted unknot,
-and subsequent conversion to Seifert form (the form in the example above)
+Same can be done more conveniently, by querying Katlas for braid representation for twisted unknot
+(call to GET-BRAID-REP1), then constructing planar diagram from braid (call to BRAID->PLANAR)
+and then constructing fat-graph form from planar diagram (call to PLANAR->SEIFERT).
+This fat graph form is exactly as in example above, so we feed it to HOMFLY-SERIAL-TOOLCHAIN.
 ```lisp
 (homfly-serial-toolchain (planar->seifert (braid->planar (get-braid-rep1 (wm-torus-knot 1 2)))))
 "-(q^(-1 + N)*(q*q[-1 + N] - q[N])*q[N])"			 
 ```
 
-Currently all answers for knots in Rolfsen table up to 10 crossings, that program can calculate,
-coincide with Katlas answers, modulo substitution q -> 1/q (the unit tests, in particular, include this check).
+For historical reasons, there are two HOMFLY-calculating functions, HOMFLY-SERIAL-TOOLCHAIN and
+HOMFLY-ACTUAL-SERIAL-TOOLCHAIN, which internally differ only in convention about q-weights
+of hypercube vertices (not to be confused with q-dimensions of vertices, which are the same).
+Outputs of these functions coincide upto change q -> 1/q
+
+
+Currently, program can calculate fundamental HOMFLY polynomials for all knots in Rolfsen table,
+and the check that this is the case is included in program's test-suite.
+To run it, do.
+```lisp
+(ql:quickload 'cl-vknots-tests)
+(in-package cl-vknots-tests)
+(explain! (run 'rolfsen-actual-homflies))
+```
+
+To calculate HOMFLY polynomial for individual knot (say, trefoil) from Rolfsen table, do
+```lisp
+(homfly-actual-serial-toolchain (planar->seifert (braid->planar (get-braid-rep1 "Knot[3,1]"))))
+```
 
 
 Basic ideas, embedded in the algorithm
@@ -42,6 +62,47 @@ Basic ideas, embedded in the algorithm
     can be reformulated as assignment of q-charge to vertices of the hypercube.
 
 
+
+Planar diagram format
+---------------------
+
+By no means is the algorithm limited to calculation of HOMFLY only for braids.
+It is just that braid representation is easy to fetch from Katlas. But you can
+always type arbitrary (possibly, virtual) planar diagram yourself.
+For example, for virtual trefoil (2.1-knot in terminology of www.math.toronto.edu/~drorbn/Students/GreenJ/
+planar diagram description is
+```lisp
+'((w 1 2 3 4)
+  (n 3 4 5 6)
+  (w 5 6 1 2))
+```
+The format is almost self-explanatory. We have a list of three vertices, two of them are "white"
+(letter W at the beginning of the sublist) and one is "sterile", or "neutral" (letter N at the beginning
+of the sublist). Further, we have 6 edges, connecting those vertices with each other, and
+remaining parts of the sublists describe, which edge connects, in order, to bottom left, bottom right, top left
+and top right corners of the given vertex. Corners are determined from the picture such that strands go
+from bottom left to top right and from bottom right to top left.
+
+More examples of manually typed planar diagrams can be found in src/planar-diagrams.lisp
+
+
+Cabling
+-------
+
+There are two functions to do cabling of a planar diagram
+  * CABLE -- does the very naive cabling
+  * LINK-FREE-CABLE -- cables with insertion of toric braid, which compensates pairwise
+  linking numbers of strands in the cable.
+
+For example, 2-cabled link-free answer for HOMFLY for virtual trefoil can be calculated
+like this
+```lisp
+(homfly-actual-serial-toolchain (planar->seifert (link-free-cable *2.1-knot*)))
+```
+Of course, variable *2.1-knot*, containing planar diagram of a virtual trefoil,
+should be defined beforehand (it is defined in src/planar-diagrams.lisp)
+
+
 TODO
 ----
 
@@ -50,7 +111,8 @@ TODO
   * do DWIM-HOMFLY function, which just does calculate HOMFLY for anything,
     without the need to remember all these chains of function calls (!)
   * add unit-tests for virtual knots
-  * add search over flips of the horde-diagrams, to tackle difficult cases
+  * (done) add search over flips of the horde-diagrams, to tackle difficult cases
+  * add fetching of Morse-link representation of the knot from Katlas
   * express HOMFLY in a-z variables.
   * add pre-calculation of horde-diagrams and memoization of results
   * write checks in Mathematica scripts, so that they don't hang and don't loop infinitely
