@@ -333,3 +333,41 @@
 			 (w 9 18 14 17)))
 			 
 (defparameter *curious-horde* '(6 3 5 6 -3 5 -6 -5 3 -6 -5 -3))
+
+(defun planar-diagram-p (thing)
+  (and (listp thing)
+       (iter (for elt in thing)
+	     ;; The main problem of this non-flexible approach --
+	     ;; that I give up as soon as something looks wrong
+	     ;;   Not doing this, at least superficially, looks
+	     ;;   to be resulting in a lot more work
+	     ;;   However, this, indeed, may be superficial resistance ...
+	     (cond ((not (listp elt)) (return nil))
+		   ((equal 3 (length elt)) (if (not (string= "D" (string (car elt))))
+					       (return nil)))
+		   ((equal 5 (length elt)) (if (not (or (string= "N" (string (car elt)))
+							(string= "B" (string (car elt)))
+							(string= "W" (string (car elt)))))
+					       (return nil)))
+		   (t (return nil)))
+	     (finally (return t)))))
+		   
+(defun serial-dessin-p (thing)
+  (and (listp thing)
+       (let ((num-hash (make-hash-table :test #'equal)))
+	 (iter outer (for elt in thing)
+	       (if (not (listp elt))
+		   (return-from outer nil)
+		   (iter (for subelt in (cdr elt))
+			 (cond ((integerp subelt) (incf (gethash subelt num-hash 0)))
+			       ((listp subelt) (if (not (and (or (string= "W" (string (car subelt)))
+								 (string= "B" (string (car subelt))))
+							     (integerp (cadr subelt))))
+						   (return-from outer nil)
+						   (incf (gethash (cadr subelt) num-hash 0))))
+			       (t (return-from outer nil)))))
+	       (finally (iter (for (key val) in-hashtable num-hash)
+			      (if (not (equal 2 val))
+				  (return-from outer nil)))
+			(return-from outer t))))))
+					     

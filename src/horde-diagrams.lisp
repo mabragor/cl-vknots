@@ -615,3 +615,20 @@ state, if iteration does not finish early"
 
 
 (defparameter *curious-diag-1* '(2 4 -2 5 13 -4 13 7 -5 7 2 4 -2 5 -7 -4 -7 -13 -5 -13))
+
+(defun prehorde-p (thing)
+  (and (listp thing)
+       (iter outer (for elt in thing)
+	     (if (not (and (listp elt)
+			   (equal 2 (length elt))
+			   (numberp (car elt))
+			   (numberp (cadr elt))))
+		 (return-from outer nil))
+	     (finally (return-from outer t)))))
+
+(defun %horde-p (thing)
+  (and (listp thing)
+       (iter (for elt in thing)
+	     (if (not (numberp elt))
+		 (return nil))
+	     (finally (return t)))))

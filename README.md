@@ -6,12 +6,38 @@ and links, usual and virtual, from the Khovanov hypercube formalism.
 
 
 This code is based on  work with A.Morozov and An.Morozov. The arXiv paper explaining
-the underlying ideas will follow, when it's ready.
+the underlying ideas can be found at http://arxiv.org/abs/1506.07516
 
 Note: some of the functionality (and most importantly, the tests) are implemented through
 interface with Wolfram Mathematica and Mathematica package KnotTheory, which can be
 downloaded from www.katlas.org. KnotTheory is to be placed under src/ subdirectory of this project.
 The incorrect setup here may lead to hangs of the machine. You've been warned!)
+
+Main interface
+--------------
+
+Main function is DWIM-HOMFLY, which (tries) to automatically determine,
+what you enter (planar diagram of a knot, description of fat graph, or a horde diagram)
+and act calculate HOMFLY for it
+
+```lisp
+;;; calculate HOMFLY for eight diagram (twisted unknot)
+(dwim-homfly '((b 1 2 1 2))) ;; input in form of planar diagram
+(dwim-homfly '((1 1) (2 1))) ;; input in form of dessin d'enfant
+```
+
+```lisp
+;;; calculate HOMFLY for virtual Hopf link
+(dwim-homfly '((1 2))) ;; input as horde diagram in form of edge numbers
+(dwim-homfly '(1 -1)) ;; input as horde diagram in form of edge lengths
+```
+
+The rest of this readme describes more esoteric functionality, in case
+this simple one is not working properly or is insufficient for your needs.
+
+
+The peculiarities
+-----------------
 
 Calculate HOMFLY polynomial for the twisted unknot.
 ```lisp

@@ -583,3 +583,51 @@
 
 (defparameter *rolfsen-total-numbers* '((3 . 1) (4 . 1) (5 . 2) (6 . 3) (7 . 7) (8 . 21) (9 . 49) (10 . 165)))
   
+;; Towards DWIM HOMFLIES
+;; Somehow, in determination of just what is the thing user puts
+;; I should be very flexible -- just binary match would not do
+;; (because there can be misprints etc.)
+;; I need to keep track of how similar a thing is to correct things
+;; and then, maybe, also give suggestions about how to correct?
+
+;; (defun looks-like-proper-list (thing)
+;;   (labels ((rec (subthing score level)
+;; 	     (if (null subthing)
+;; 		 (list score level)
+;; 		 ...)))
+;;     (rec thing 0 0)))
+;;   (and (consp thing)
+;;        (looks-like-proper-list (cdr thing))))
+
+;; (defun looks-like-planar-diagram (thing)
+;;   ...)
+
+;; OK, but first let's write non-flexible system and see, what happens
+(defun what-object-is-it (thing)
+  (cond ((planar-diagram-p thing) :planar-diagram)
+	((serial-dessin-p thing) :serialized-dessin)
+	((prehorde-p thing) :prehorde)
+	((%horde-p thing) :%horde)
+	(t :i-dont-know)))
+
+(defun dwim-homfly (thing)
+  (let ((type (what-object-is-it thing)))
+    (cond ((eq :planar-diagram type)
+	   (format t "I think, you've entered planar diagram, calculating ...")
+	   (homfly-actual-serial-toolchain (planar->seifert thing)))
+	  ((eq :serialized-dessin type)
+	   (format t "I think, you've entered dessin d'enfant, calculating ...")
+	   (homfly-actual-serial-toolchain thing))
+	  ((eq :prehorde type)
+	   (format t "I think, you've entered horde diagram in form of edge numbers, calculating ...")
+	   (homfly-actual-serial-toolchain (serialize-qed (%horde->qed-dessin (%%horde->%horde thing)))))
+	  ((eq :%horde type)
+	   (format t "I think, you've entered horde diagram in form of lengths of hordes, calculating ...")
+	   (homfly-actual-serial-toolchain (serialize-qed (%horde->qed-dessin thing))))
+	  ((eq :i-dont-know type)
+	   (error "I'm very sorry, but I can't yet understand, what you mean by: ~a~
+                   mayhaps, you misspelled something? I should be able to distinguish~
+descriptions of planar diagrams, dessins d'enfant (fat graphs) and horde diagrams,~
+both in form of edge numbers and in form of edge lengths.~
+If you think you typed correctly, but I'm still not understanding, please,~
+consider sending a bug report." thing)))))
