@@ -47,6 +47,8 @@ TODO
 
   A couple of things needs to be done for the instrument to be more useable
 
+  * do DWIM-HOMFLY function, which just does calculate HOMFLY for anything,
+    without the need to remember all these chains of function calls (!)
   * add unit-tests for virtual knots
   * add search over flips of the horde-diagrams, to tackle difficult cases
   * express HOMFLY in a-z variables.

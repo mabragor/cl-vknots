@@ -35,6 +35,43 @@
     (w 5 6 1 2))
   "Vertices are white according to picture from Bar-Natan")
 
+(defparameter *2.1-link-free-cabled-semi-manually*
+  '((w ((begin 1) 1) (v1 1 0) (begin (3 1)) (v1 0 1))
+    (w ((begin 1) 2) (2 1) (v1 1 0) (v1 2 1)) (w (v1 2 1) (2 2) (v1 1 2) (begin (4 2)))
+    (w (v1 0 1) (v1 1 2) (begin (3 2)) (begin (4 1))) (n (end (3 1)) (v2 1 0) (5 1) (v2 0 1))
+    (n (begin (3 1)) (begin (3 2)) (end (3 1)) (end (3 2)))
+    (n (begin (4 1)) (begin (4 2)) (end (4 1)) (end (4 2)))
+    (n (end (3 2)) (end (4 1)) (v2 1 0) (v2 2 1)) (n (v2 2 1) (end (4 2)) (v2 1 2) (6 2))
+    (n (v2 0 1) (v2 1 2) (5 2) (6 1)) (w (5 1) (v3 1 0) ((end 1) 1) (v3 0 1))
+    (w (5 2) (6 1) (v3 1 0) (v3 2 1)) (w (v3 2 1) (6 2) (v3 1 2) (2 2))
+    (w (v3 0 1) (v3 1 2) ((end 1) 2) (2 1))
+    (b (flipover 1 1) (flipover 1 2) (flipover 2 1) (flipover 2 2))
+    (b (flipover 2 1) (flipover 2 2) (flipover 3 1) (flipover 3 2))
+    (b (flipover 3 1) (flipover 3 2) (flipover 4 1) (flipover 4 2))
+    (b (flipover 4 1) (flipover 4 2) (flipover 5 1) (flipover 5 2))
+    (d (flipover 5 1) ((begin 1) 1)) (d ((end 1) 1) (flipover 1 1))
+    (d (flipover 5 2) ((begin 1) 2)) (d ((end 1) 2) (flipover 1 2))))
+
+(defparameter *2.1-link-free-cabled-semi-manually-2*
+  '((w ((begin 1) 1) (v1 1 0) (begin (3 1)) (v1 0 1))
+    (w ((begin 1) 2) (2 1) (v1 1 0) (v1 2 1)) (w (v1 2 1) (2 2) (v1 1 2) (begin (4 2)))
+    (w (v1 0 1) (v1 1 2) (begin (3 2)) (begin (4 1))) (n (end (3 1)) (v2 1 0) (5 1) (v2 0 1))
+    (n (begin (3 1)) (begin (3 2)) (end (3 1)) (end (3 2)))
+    ;; (n (begin (4 1)) (begin (4 2)) (end (4 1)) (end (4 2)))
+    (d (begin (4 1)) (end (4 1))) (d (begin (3 1)) (end (3 1)))
+    (n (end (3 2)) (end (4 1)) (v2 1 0) (v2 2 1)) (n (v2 2 1) (end (4 2)) (v2 1 2) (6 2))
+    (n (v2 0 1) (v2 1 2) (5 2) (6 1)) (w (5 1) (v3 1 0) ((end 1) 1) (v3 0 1))
+    (w (5 2) (6 1) (v3 1 0) (v3 2 1)) (w (v3 2 1) (6 2) (v3 1 2) (2 2))
+    (w (v3 0 1) (v3 1 2) ((end 1) 2) (2 1))
+    (b (flipover 1 1) (flipover 1 2) (flipover 2 1) (flipover 2 2))
+    (b (flipover 2 1) (flipover 2 2) (flipover 3 1) (flipover 3 2))
+    (b (flipover 3 1) (flipover 3 2) (flipover 4 1) (flipover 4 2))
+    (b (flipover 4 1) (flipover 4 2) (flipover 5 1) (flipover 5 2))
+    (d (flipover 5 1) ((begin 1) 1)) (d ((end 1) 1) (flipover 1 1))
+    (d (flipover 5 2) ((begin 1) 2)) (d ((end 1) 2) (flipover 1 2))))
+
+
+
 (defparameter *2.1-knot-2-cabled-manually*
   '((w (begin-1 1) (v1 1 0) (3 1) (v1 0 1)) (w (begin-1 2) (2 1) (v1 1 0) (v1 2 1))
     (w (v1 2 1) (2 2) (v1 1 2) (4 2)) (w (v1 0 1) (v1 1 2) (3 2) (4 1))
@@ -70,6 +107,13 @@
     (n 2 7 6 8)
     (b 5 8 1 7)))
 
+(defparameter *3.2-vknot-unknotted*
+  '((b 3 1 4 2)
+    (w 4 6 3 5)
+    (n 2 7 6 8)
+    (b 5 8 1 7)))
+
+
 (defparameter *3.3-vknot*
   '((w 3 1 4 2)
     (n 4 6 3 5)
@@ -91,12 +135,61 @@
     (n 7 8 9 10)
     (w 9 10 1 2)))
 
+(defparameter *3.5-vknot-unknotted*
+  '((n 1 2 3 4)
+    (b 3 4 5 6)
+    (w 5 6 7 8)
+    (n 7 8 9 10)
+    (w 9 10 1 2)))
+
+
 (defparameter *3.7-vknot*
   '((n 1 2 3 4)
     (w 3 4 5 6)
     (w 5 6 7 8)
     (n 7 8 9 10)
     (b 9 10 1 2)))
+
+(defparameter *4.94-vknot*
+  '((w 9 10 8 11)
+    (w 8 5 9 7)
+    (n 7 6 10 12)
+    (n 3 4 5 6)
+    (w 1 2 3 4)
+    (w 11 12 1 2)))
+
+(defparameter *4.94-vknot-unknotted-to-trefoil-1*
+  '((b 9 10 8 11)
+    (w 8 5 9 7)
+    (n 7 6 10 12)
+    (n 3 4 5 6)
+    (w 1 2 3 4)
+    (w 11 12 1 2)))
+
+(defparameter *4.94-vknot-unknotted-to-trefoil-2*
+  '((w 9 10 8 11)
+    (b 8 5 9 7)
+    (n 7 6 10 12)
+    (n 3 4 5 6)
+    (w 1 2 3 4)
+    (w 11 12 1 2)))
+
+(defparameter *4.94-vknot-unknotted-to-unknot-1*
+  '((w 9 10 8 11)
+    (w 8 5 9 7)
+    (n 7 6 10 12)
+    (n 3 4 5 6)
+    (b 1 2 3 4)
+    (w 11 12 1 2)))
+
+(defparameter *4.94-vknot-unknotted-to-unknot-2*
+  '((w 9 10 8 11)
+    (w 8 5 9 7)
+    (n 7 6 10 12)
+    (n 3 4 5 6)
+    (w 1 2 3 4)
+    (b 11 12 1 2)))
+
 
 (defun bud-vertex (vertex n &optional vertex-id)
   (destructuring-bind (op lb rb lt rt) vertex
