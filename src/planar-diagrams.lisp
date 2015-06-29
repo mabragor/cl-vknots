@@ -190,8 +190,17 @@
     (w 1 2 3 4)
     (b 11 12 1 2)))
 
-
 (defun bud-vertex (vertex n &optional vertex-id)
+  (if (equal 5 (length vertex))
+      (bud-usual-vertex vertex n vertex-id)
+      (bud-delta-vertex vertex n)))
+
+(defun bud-delta-vertex (vertex n)
+  (destructuring-bind (op bottom top) vertex
+    (iter (for i from 1 to n)
+	  (collect `(,op (,bottom ,i) (,top ,i))))))
+
+(defun bud-usual-vertex (vertex n &optional vertex-id)
   (destructuring-bind (op lb rb lt rt) vertex
     (let* ((id (or vertex-id (gensym "VERTEX")))
 	   (top (- (* 2 n) 2)))

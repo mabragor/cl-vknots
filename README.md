@@ -43,6 +43,19 @@ and act calculate HOMFLY for it
 The rest of this readme describes more esoteric functionality, in case
 this simple one is not working properly or is insufficient for your needs.
 
+Simple cabled answers
+---------------------
+
+DWIM-HOMFLY has :CABLE parameter, which lets you calculate link-free cabled
+version of HOMFLY
+
+```lisp
+(dwim-homfly "Knot[3,1]" :cable 2) ;; two strand cabled HOMFLY for trefoil
+```
+
+However, since cabling is defined only before going to dessins (i.e. not for dessins and hordes),
+when asked to calculate cabled HOMFLY for dessin, DWIM-HOMFLY just calculates fundamental (non-cabled)
+version.
 
 The peculiarities
 -----------------
