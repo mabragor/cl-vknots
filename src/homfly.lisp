@@ -608,6 +608,7 @@
 	((serial-dessin-p thing) :serialized-dessin)
 	((prehorde-p thing) :prehorde)
 	((%horde-p thing) :%horde)
+	((stringp thing) :mathematica-thing)
 	(t :i-dont-know)))
 
 (defun dwim-homfly (thing)
@@ -624,6 +625,9 @@
 	  ((eq :%horde type)
 	   (format t "I think, you've entered horde diagram in form of lengths of hordes, calculating ...")
 	   (homfly-actual-serial-toolchain (serialize-qed (%horde->qed-dessin thing))))
+	  ((eq :mathematica-thing type)
+	   (format t "I think, you've entered something in Mathematica notation, calculating ...")
+	   (homfly-actual-serial-toolchain (planar->seifert (braid->planar (get-braid-rep1 thing)))))
 	  ((eq :i-dont-know type)
 	   (error "I'm very sorry, but I can't yet understand, what you mean by: ~a~
                    mayhaps, you misspelled something? I should be able to distinguish~

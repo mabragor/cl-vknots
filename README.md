@@ -21,6 +21,13 @@ what you enter (planar diagram of a knot, description of fat graph, or a horde d
 and act calculate HOMFLY for it
 
 ```lisp
+;;; calculate HOMFLY for trefoil
+(dwim-homfly "Knot[3,1]") ;; specify input by number in Rolfsen table
+(dwim-homfly "TorusKnot[3,2]") ;; or explicitly as torus knot
+(dwin-homfly "TorusKnot[2,3]")
+```
+
+```lisp
 ;;; calculate HOMFLY for eight diagram (twisted unknot)
 (dwim-homfly '((b 1 2 1 2))) ;; input in form of planar diagram
 (dwim-homfly '((1 1) (2 1))) ;; input in form of dessin d'enfant
@@ -31,6 +38,7 @@ and act calculate HOMFLY for it
 (dwim-homfly '((1 2))) ;; input as horde diagram in form of edge numbers
 (dwim-homfly '(1 -1)) ;; input as horde diagram in form of edge lengths
 ```
+
 
 The rest of this readme describes more esoteric functionality, in case
 this simple one is not working properly or is insufficient for your needs.
