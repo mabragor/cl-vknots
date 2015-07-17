@@ -65,7 +65,7 @@
       it)))
 
 (defparameter lousy-predicates `((,#'reidemeister-1-able-p :1-able)
-				 (,#'virt-reidemeister-1-able-p :virt-1-able)
+				 ;; (,#'virt-reidemeister-1-able-p :virt-1-able)
 				 (,#'reidemeister-2.1-able-p :2.1-able)))
 
 
@@ -275,40 +275,40 @@
 		    (setf (gethash cell cell-hash) num)))))))
 			   
 
-(defun hordize-dessin (dessin)
-  (let ((the-qed-dessin dessin))
-    (if (not (slot-value dessin 'qed-cells))
-	'((0 :empty))
-	(destructuring-bind (node->loop loop->node) (gen-hordization-hashes dessin)
-	  (if-debug "HORDIZE-DESSIN: ~a ~a ~a ~a"
-		    (serialize-qed dessin)
-		    (slot-value dessin 'qed-cells)
-		    node->loop loop->node)
-	  (iter (for (cur-loop-num cur-loop-cells) next (multiple-value-bind (got key val) (pophash loop->node)
-							  (if (not got)
-							      (terminate)
-							      (list key val))))
-		(if-debug "  ~a ~a ~a ~a" cur-loop-num cur-loop-cells node->loop loop->node)
-		(let ((n-flips 0))
-		  (iter (initially (setq cell-place nil))
-			(for cell-place next (if-first-time cur-loop-cells
-							    (if (not (cdr cell-place))
-								(terminate)
-								(cdr cell-place))))
-			(if-debug "  ~{~a~^ ~}" cell-place)
-			(when (and (cerr (car cell-place))
-				   (not (equal cur-loop-num (gethash (cerr (car cell-place)) node->loop))))
-			  (if-debug "  cur-loop-num ~a ~a ~a"
-				    cur-loop-num
-				    (cerr (car cell-place))
-				    (gethash (cerr (car cell-place)) node->loop))
-			  (glue-loop cell-place node->loop loop->node)
-			  (if-debug "  after glue: ~{~a~^ ~}" cell-place)
-			  (incf n-flips)))
-		  (if-debug "  after all glues: ~a" cur-loop-cells)
-		  (let ((it (make-instance 'qed-dessin :cells cur-loop-cells)))
-		    (if-debug "  qed-dessin is ~a" (serialize-qed it))
-		    (collect (list n-flips (%%horde->horde (qed-dessin->%%horde it)))))))))))
+;; (defun hordize-dessin (dessin)
+;;   (let ((the-qed-dessin dessin))
+;;     (if (not (slot-value dessin 'qed-cells))
+;; 	'((0 :empty))
+;; 	(destructuring-bind (node->loop loop->node) (gen-hordization-hashes dessin)
+;; 	  (if-debug "HORDIZE-DESSIN: ~a ~a ~a ~a"
+;; 		    (serialize-qed dessin)
+;; 		    (slot-value dessin 'qed-cells)
+;; 		    node->loop loop->node)
+;; 	  (iter (for (cur-loop-num cur-loop-cells) next (multiple-value-bind (got key val) (pophash loop->node)
+;; 							  (if (not got)
+;; 							      (terminate)
+;; 							      (list key val))))
+;; 		(if-debug "  ~a ~a ~a ~a" cur-loop-num cur-loop-cells node->loop loop->node)
+;; 		(let ((n-flips 0))
+;; 		  (iter (initially (setq cell-place nil))
+;; 			(for cell-place next (if-first-time cur-loop-cells
+;; 							    (if (not (cdr cell-place))
+;; 								(terminate)
+;; 								(cdr cell-place))))
+;; 			(if-debug "  ~{~a~^ ~}" cell-place)
+;; 			(when (and (cerr (car cell-place))
+;; 				   (not (equal cur-loop-num (gethash (cerr (car cell-place)) node->loop))))
+;; 			  (if-debug "  cur-loop-num ~a ~a ~a"
+;; 				    cur-loop-num
+;; 				    (cerr (car cell-place))
+;; 				    (gethash (cerr (car cell-place)) node->loop))
+;; 			  (glue-loop cell-place node->loop loop->node)
+;; 			  (if-debug "  after glue: ~{~a~^ ~}" cell-place)
+;; 			  (incf n-flips)))
+;; 		  (if-debug "  after all glues: ~a" cur-loop-cells)
+;; 		  (let ((it (make-instance 'qed-dessin :cells cur-loop-cells)))
+;; 		    (if-debug "  qed-dessin is ~a" (serialize-qed it))
+;; 		    (collect (list n-flips (%%horde->horde (qed-dessin->%%horde it)))))))))))
 
 
 
@@ -334,9 +334,9 @@
 			 (push (list horde it) (gethash (horde-length horde) diags))
 			 (return-from outer it)))))))
 
-(defun hordize-the-dessin! (diags)
-  (iter (for (nflips horde) in (hordize-dessin the-qed-dessin))
-	(collect (list nflips (find-or-create-place horde diags)))))
+;; (defun hordize-the-dessin! (diags)
+;;   (iter (for (nflips horde) in (hordize-dessin the-qed-dessin))
+;; 	(collect (list nflips (find-or-create-place horde diags)))))
     
 
 
@@ -347,18 +347,9 @@
 	  diags (make-hash-table :test #'equal)))
   (defun homfly-calculator (dessin charge)
     (if-debug "HOMFLY CALCULATOR: considering new dessin ~a" (serialize2 dessin))
-    (multiple-value-bind (n-factors n-1-factors 2-factors min-one-factors qed-dessin)
-	(lousy-simplify-dessin dessin)
-      (if-debug "Factors are: ~a ~a ~a ~a" n-factors n-1-factors 2-factors min-one-factors)
-      (let ((the-qed-dessin qed-dessin))
-	(push `(* ,@(if (not (zerop n-factors)) `((** (q "N") ,n-factors)))
-		  ,@(if (not (zerop n-1-factors)) `((** (q "N-1") ,n-1-factors)))
-		  ,@(if (not (zerop 2-factors)) `((** (q "2") ,2-factors)))
-		  ,@(if (not (zerop min-one-factors)) `((** "-1" ,min-one-factors)))
-		  ,@(if (not (zerop charge)) `((** "-1/q" ,charge)))
-		  ,@(iter (for (nflips place) in (hordize-the-dessin! diags))
-			  (collect `(* (** "-1" ,nflips) (diag ,place)))))
-	      acc))))
+    (push `(* ,@(if (not (zerop charge)) `((** "-1/q" ,charge)))
+	      ,(decompose (deserialize-qed (serialize2 dessin t))))
+	  acc))
   (defun homfly-calculator-different-hordes ()
     (iter (for (nil hordes) in-hashtable diags)
 	  (appending (mapcar (lambda (x)

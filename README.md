@@ -4,6 +4,8 @@ cl-vknots
 Convenient tools to calculate (cabled) HOMFLY polynomials for knots
 and links, usual and virtual, from the Khovanov hypercube formalism.
 
+This branch specifically attempts to calculate everything without flips.
+Just to see, how far we can go without them.
 
 This code is based on  work with A.Morozov and An.Morozov. The arXiv paper explaining
 the underlying ideas can be found at http://arxiv.org/abs/1506.07516

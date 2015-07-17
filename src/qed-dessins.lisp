@@ -219,11 +219,11 @@ if cells QD-loop has E-loops"
 	 (3.1-drift ,g!-cell)))))
 
 (defparameter predicates `((,#'reidemeister-1-able-p :1-able :short)
-			   (,#'virt-reidemeister-1-able-p :virt-1-able :short)
+			   ;; (,#'virt-reidemeister-1-able-p :virt-1-able :short)
 			   (,#'reidemeister-2.1-able-p :2.1-able :short)
 			   (,#'reidemeister-2.2-able-p :2.2-able)
-			   (,#'virt-reidemeister-2.1-able-p :virt-2.1-able)
-			   (,#'virt-reidemeister-2.2-able-p :virt-2.2-able)
+			   ;; (,#'virt-reidemeister-2.1-able-p :virt-2.1-able)
+			   ;; (,#'virt-reidemeister-2.2-able-p :virt-2.2-able)
 			   ))
 
 (defun simplifiable-p (dessin)
@@ -734,11 +734,11 @@ if cells QD-loop has E-loops"
     (%find-cons-dessins dessin-poly)
     *accumulator*))
 
-(defun serialize-to-diags (qed-dessin)
-  (cons '*
-	(mapcar (lambda (x)
-		  `(* (** "-1" ,(car x)) (diag (,(under-lst (cadr x))))))
-		(hordize-dessin qed-dessin))))
+;; (defun serialize-to-diags (qed-dessin)
+;;   (cons '*
+;; 	(mapcar (lambda (x)
+;; 		  `(* (** "-1" ,(car x)) (diag (,(under-lst (cadr x))))))
+;; 		(hordize-dessin qed-dessin))))
 
 (defun decomposition-step (cons-of-dessin)
   (declare (special toplevel))
