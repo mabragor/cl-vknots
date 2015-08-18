@@ -512,7 +512,7 @@ if cells QD-loop has E-loops"
 	    (debug-frob))
 	  (debug-frob)))
       (if-debug "Res of 1-reid is: ~a" res)
-      `(* (q "N-1") ,res))))
+      `(* (q "N+1") ,res))))
 
 (defun do-virt-1-reidemeister (qed-dessin node)
   (with-slots (qed-dessins) qed-dessin
@@ -522,7 +522,7 @@ if cells QD-loop has E-loops"
 	(with-removed-nodes (node (cqrr node)) qed-dessin
 	  (with-tmp-links ((dq t-node b-node))
 	    (setf res (tighten-loops (copy-dessin qed-dessin))))))
-      `(* (- (q "N-1")) ,res))))
+      `(* (q "N+1") ,res))))
 
 
 (defun dessin-cell-hash (dessin)
@@ -602,7 +602,7 @@ if cells QD-loop has E-loops"
 	  (with-tmp-links ((dq lt-node rb-node)
 			   (dq rt-node lb-node))
 	    (setf res-contract (tighten-loops (copy-dessin qed-dessin))))))
-      `(+ (* (q "N-2") ,res-forget)
+      `(+ (* (q "N+2") ,res-forget)
 	  ,res-contract))))
 
 (defun do-tight (dessin node)
@@ -625,7 +625,7 @@ if cells QD-loop has E-loops"
 	  (with-tmp-links ((dq lt-node lb-node)
 			   (dq rt-node rb-node))
 	    (setf res-forget (tighten-loops (copy-dessin qed-dessin))))))
-      `(+ (* (q "N-2") ,res-contract)
+      `(+ (* (q "N+2") ,res-contract)
 	  ,res-forget))))
 
 
@@ -644,8 +644,8 @@ if cells QD-loop has E-loops"
 	  (with-tmp-links ((dq lt-node lb-node)
 			   (dq rt-node rb-node))
 	    (setf res-forget (tighten-loops (copy-dessin qed-dessin))))))
-      `(- (+ (* (q "N-2") ,res-forget)
-	     ,res-contract)))))
+      `(+ (* (q "N+2") ,res-forget)
+	     ,res-contract))))
 
 
 

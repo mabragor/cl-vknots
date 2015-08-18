@@ -347,7 +347,7 @@
 	  diags (make-hash-table :test #'equal)))
   (defun homfly-calculator (dessin charge)
     (if-debug "HOMFLY CALCULATOR: considering new dessin ~a" (serialize2 dessin))
-    (push `(* ,@(if (not (zerop charge)) `((** "-1/q" ,charge)))
+    (push `(* ,@(if (not (zerop charge)) `((** "-q" ,charge)))
 	      ,(decompose (deserialize-qed (serialize2 dessin t))))
 	  acc))
   (defun homfly-calculator-different-hordes ()
@@ -401,7 +401,7 @@
 
 (defun lisp-actual-serial-homfly (serial-dessin &optional (diag-fun #'try-to-decompose-diag))
   (let ((total-charge (prehomfly-actual-serial serial-dessin)))
-    (join "" (format nil "(q^(-N+1))^(~a) (" total-charge)
+    (join "" (format nil "(-q^(-N))^(~a) (" total-charge)
 	  (mathematica-serialize (homfly-calculator-output-lame) diag-fun)
 	  ")")))
 
