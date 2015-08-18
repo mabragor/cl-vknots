@@ -401,7 +401,7 @@
 
 (defun lisp-actual-serial-homfly (serial-dessin &optional (diag-fun #'try-to-decompose-diag))
   (let ((total-charge (prehomfly-actual-serial serial-dessin)))
-    (join "" (format nil "(-q^(-N))^(~a) (" total-charge)
+    (join "" (format nil "(-q^(-N-1))^(~a) (" total-charge)
 	  (mathematica-serialize (homfly-calculator-output-lame) diag-fun)
 	  ")")))
 
