@@ -908,3 +908,65 @@ if cells QD-loop has E-loops"
 
 
 (defparameter *almost-closed-torus* '((1 1 6 2) (2 1 3 2 4) (3 3 4 6)))
+
+
+(defun dessin-valencies (dessin)
+  (let ((res (make-hash-table :test #'equal)))
+    (iter (for (id . edges) in dessin)
+	  (push id (gethash (length edges) res)))
+    (sort (hash->assoc res) #'> :key #'car)))
+
+(defun all-permutations (lst &optional (remain lst))
+  (cond ((null remain) nil)
+	((null (rest lst)) (list lst))
+	(t (append (mapcar (lambda (l)
+			     (cons (first lst) l))
+			   (all-permutations (rest lst)))
+		   (all-permutations (append (rest lst) (list (first lst)))
+				     (rest remain))))))
+
+(defun all-vertex-maps (verts1 verts2)
+  (mapcar (lambda (perm)
+	    (mapcar (lambda (x y)
+		      (cons x y))
+		    verts1 perm))
+	  (all-permutations verts2)))
+
+(define-condition no-maps (error) ())
+
+;; OK, let's write the non-iterator function first and then we'll see...
+(defun vertex-maps (dessin1 dessin2)
+  (let ((maps nil)
+	(vals1 (dessin-valencies dessin1))
+	(vals2 (dessin-valencies dessin2)))
+    (if (equal (length vals1) (length vals2))
+	(labels ((rec (cur-map valencies1 valencies2)
+		   (if (not valencies1)
+		       (push cur-map maps)
+		       (destructuring-bind (val1 . vertices1) (car valencies1)
+			 (destructuring-bind (val2 . vertices2) (car valencies2)
+			   (if (equal val1 val2)
+			       (iter (for vmap in (all-vertex-maps vertices1 vertices2))
+				     (rec (nconc vmap cur-map)
+					  (cdr valencies1)
+					  (cdr valencies2)))
+			       (error 'no-maps)))))))
+	  (handler-case (rec nil vals1 vals2)
+	    (no-maps () nil))))
+    maps))
+      
+
+(defmacro-driver! (for var in-vertex-bijections (dessin1 dessin2))
+  (let ((kwd (if generate 'generate 'for)))
+    `(progn (with ,g!-iter = ,iter)
+	    (,kwd ,var next (let ((next-val (handler-case (next-iter ,g!-iter)
+					      (stop-iteration () (terminate)))))
+			      next-val)))))
+
+
+(defun dessins-bijectable-p (dessin1 dessin2)
+  "Compares two (serialized) dessins by trying to build a bijection between them"
+  ;; iterate over all bijections of vertices
+  ;; should I write an ITERATE iterator for this?
+  (iter (for vertex-bijection in-vertex-bijections (dessin1 dessin2))
+	...)

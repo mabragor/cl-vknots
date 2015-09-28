@@ -3,6 +3,7 @@
 (defpackage #:cl-vknots
   (:use #:cl #:iterate #:cg-common-ground)
   (:shadowing-import-from #:clesh #:script)
+  (:shadowing-import-from #:defmacro-enhance #:defmacro-driver!)
   (:shadowing-import-from #:cl-ppcre #:regex-replace-all)
   (:export #:decompose #:deserialize-qed #:serialize-qed
 	   #:q #:torus-dessin
