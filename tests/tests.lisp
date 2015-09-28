@@ -242,3 +242,11 @@
     ))
 
 
+(test dessin-bijections
+  (is (equal '(((b . d) (a . c)) ((1 . 2)))
+	     (dessins-bijectable-p '((a 1) (b 1)) '((c 2) (d 2)))))
+  (is (equal '(((1 . 2)) nil)
+	     (dessins-bijectable-p '((1)) '((2)))))
+  (is (equal '(((a . b)) ((1 . 1)))
+	     (dessins-bijectable-p '((a 1 1)) '((b 1 1))))))
+  
