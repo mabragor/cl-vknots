@@ -953,20 +953,118 @@ if cells QD-loop has E-loops"
 			       (error 'no-maps)))))))
 	  (handler-case (rec nil vals1 vals2)
 	    (no-maps () nil))))
-    maps))
+    (nreverse maps)))
       
 
-(defmacro-driver! (for var in-vertex-bijections (dessin1 dessin2))
-  (let ((kwd (if generate 'generate 'for)))
-    `(progn (with ,g!-iter = ,iter)
-	    (,kwd ,var next (let ((next-val (handler-case (next-iter ,g!-iter)
-					      (stop-iteration () (terminate)))))
-			      next-val)))))
+(defclass vertex () ())
+(defclass edge () ())
+
+(defmacro with-vertex-maps ((vertex-map) &body body)
+  `(let ((vertex->nums (make-hash-table :test #'eq))
+	 (num1->vertex (make-hash-table :test #'equal))
+	 (num2->vertex (make-hash-table :test #'equal))
+	 (num1->num2 (make-hash-table :test #'equal))
+	 (num2->num1 (make-hash-table :test #'equal)))
+     (declare (special vertex->nums num1->vertex num2->vertex num1->num2 num2->num1))
+     (iter (for (num1 . num2) in ,vertex-map)
+	   (let ((it (make-instance 'vertex)))
+	     (setf (gethash it vertex->nums) (cons num1 num2)
+		   (gethash num1 num1->vertex) it
+		   (gethash num2 num2->vertex) it
+		   (gethash num1 num1->num2) num2
+		   (gethash num2 num2->num1) num1)))
+     ,@body))
 
 
+(define-condition match-failed (error) ())
+
+(defun already-scanned-p (dessin-id edge-id env)
+  (let ((fun (cond ((equal 1 dessin-id) #'car)
+		   ((equal 2 dessin-id) #'cdr)
+		   (t (error "Wrong use of ALREADY-SCANNED-P.~
+                              Expected index 1 or 2 but got: ~a" dessin-id)))))
+    (labels ((rec (cur-env)
+	       (if (not (null cur-env))
+		   (let ((it (cdr (assoc edge-id (funcall fun (car cur-env)) :test #'equal))))
+		     (or it
+			 (rec (cdr cur-env)))))))
+      (rec env))))
+		   
+(defun vertex-edges (vert dessin)
+  (cdr (assoc vert dessin :test #'equal)))
+
+(defun other-vertex-of-an-edge (vert edge dessin)
+  (iter (for (vert-id . edges) in dessin)
+	(if (and (not (equal vert vert-id))
+		 (find edge edges :test #'equal))
+	    (return-from other-vertex-of-an-edge vert-id))))
+
+(defun to-vert-class (dessin-id vert-id)
+  (declare (special num1->vertex num2->vertex))
+  (gethash vert-id
+	   (cond ((equal 1 dessin-id)
+		  num1->vertex)
+		 ((equal 2 dessin-id)
+		  num2->vertex)
+		 (t (error "Wrong use of ALREADY-SCANNED-P.~
+                            Expected index 1 or 2 but got: ~a" dessin-id)))))
+
+  
+
+(defun try-to-construct-env-patch (offset)
+  (declare (special vertex->nums num1->vertex num2->vertex num1->num2 num2->num1
+		    dessin1 dessin2 vert1 vert2 edge-env valency))
+  (let ((new-env1 nil)
+	(new-env2 nil))
+    (iter (for i from 0 below valency)
+	  (let ((edge-id1 (nth i (vertex-edges vert1 dessin1)))
+		(edge-id2 (nth (mod (+ i offset) valency) (vertex-edges vert2 dessin2))))
+	    (let ((edge1 (already-scanned-p 1 edge-id1 edge-env))
+		  (edge2 (already-scanned-p 2 edge-id2 edge-env)))
+	      (cond ((and edge1 edge2)
+		     (if (not (eq edge1 edge2))
+			 (error 'match-failed)))
+		    ((and (not edge1) (not edge2))
+		     (let ((other-vert1 (to-vert-class 1 (other-vertex-of-an-edge vert1 edge-id1 dessin1)))
+			   (other-vert2 (to-vert-class 2 (other-vertex-of-an-edge vert2 edge-id2 dessin2))))
+		       (if (not (eq other-vert1 other-vert2))
+			   (error 'match-failed)
+			   (let ((new-edge (make-instance 'edge)))
+			     (push (cons edge-id1 new-edge) new-env1)
+			     (push (cons edge-id2 new-edge) new-env2)))))
+		    (t (error 'match-failed))))))
+    (cons new-env1 new-env2)))
+		
+
+(defun env->edge-map (env)
+  (iter outer (for env-patch in env)
+	(iter (for (edge-id1 . edge1) in (car env-patch))
+	      (for (edge-id2 . edge2) in (cdr env-patch))
+	      (if (not (eq edge1 edge2))
+		  (error "Corrupted edge env -- wrong order/missing of edges")
+		  (in outer (collect (cons edge-id1 edge-id2)))))))
+			
 (defun dessins-bijectable-p (dessin1 dessin2)
   "Compares two (serialized) dessins by trying to build a bijection between them"
-  ;; iterate over all bijections of vertices
-  ;; should I write an ITERATE iterator for this?
-  (iter (for vertex-bijection in-vertex-bijections (dessin1 dessin2))
-	...)
+  (declare (special dessin1 dessin2))
+  (iter (for vertex-map in (vertex-maps dessin1 dessin2))
+	(with-vertex-maps (vertex-map)
+	  (labels ((rec-match (vertices-to-check edge-env)
+		     (declare (special edge-env))
+		     (if (not vertices-to-check)
+			 (return-from dessins-bijectable-p
+			   (list vertex-map
+				 (env->edge-map edge-env))))
+		     (destructuring-bind (vert1 . vert2) (car vertices-to-check)
+		       (declare (special vert1 vert2))
+		       (let ((valency (length (cdr (assoc vert1 dessin1 :test #'equal)))))
+			 (declare (special valency))
+			 (iter (for offset from 0 below valency)
+			       (handler-case (rec-match (cdr vertices-to-check)
+							(cons (try-to-construct-env-patch offset)
+							      edge-env))
+				 (match-failed () (next-iteration))))))))
+	    (rec-match vertex-map nil))))
+  nil)
+	    
+		     
