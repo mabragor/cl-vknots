@@ -243,10 +243,14 @@
 
 
 (test dessin-bijections
-  (is (equal '(((b . d) (a . c)) ((1 . 2)))
-	     (dessins-bijectable-p '((a 1) (b 1)) '((c 2) (d 2)))))
-  (is (equal '(((1 . 2)) nil)
-	     (dessins-bijectable-p '((1)) '((2)))))
-  (is (equal '(((a . b)) ((1 . 1)))
-	     (dessins-bijectable-p '((a 1 1)) '((b 1 1))))))
+  (macrolet ((frob (res x y)
+	       `(is (equal ',res (dessins-bijectable-p ',x ',y)))))
+    (frob (((b . d) (a . c)) ((1 . 2))) ((a 1) (b 1)) ((c 2) (d 2)))
+    (frob (((1 . 2)) nil) ((1)) ((2)))
+    (frob (((a . b)) ((1 . 1))) ((a 1 1)) ((b 1 1)))
+    (frob nil ((a 1 1)) ((b 1) (c 1)))
+    (frob nil ((a 1 2 3) (b 1 2 3)) ((a 1 2 3) (b 3 2 1)))
+    (frob (((A . C) (C . A) (B . B)) ((3 . 3) (2 . 2) (1 . 1)))
+	  ((a 1) (b 1 2 3) (c 2 3)) ((a 3 2) (b 1 2 3) (c 1)))
+    ))
   
