@@ -1,9 +1,9 @@
 ;;;; package.lisp
 
 (defpackage #:cl-vknots
-  (:use #:cl #:iterate #:cg-common-ground)
+  (:use #:cl #:iterate #:cg-common-ground #:cl-coroutine)
   (:shadowing-import-from #:clesh #:script)
-  (:shadowing-import-from #:defmacro-enhance #:defmacro-driver!)
+  (:shadowing-import-from #:defmacro-enhance #:defmacro-driver! #:defmacro!)
   (:shadowing-import-from #:cl-ppcre #:regex-replace-all)
   (:export #:decompose #:deserialize-qed #:serialize-qed
 	   #:q #:torus-dessin

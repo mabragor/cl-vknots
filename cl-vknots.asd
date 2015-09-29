@@ -13,7 +13,7 @@
   :version "0.1"
   :depends-on (#:iterate #:cl-ppcre #:cl-interpol
 			 #:alexandria #:clesh #:cg-common-ground
-			 #:defmacro-enhance)
+			 #:defmacro-enhance #:cl-coroutine)
   :pathname "src/"
   :components ((:file "package")
 	       (:file "debug")

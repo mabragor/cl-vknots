@@ -91,6 +91,11 @@
 								       (horde-divisions (* 2 n)))))
 					 :test #'horde-diagrams-equal-p)))
 
+(defun distinct-horde-diags (n)  
+  (mapcar #'under-lst (remove-duplicates (mapcar #'%%horde->horde
+						 (horde-divisions (* 2 n)))
+					 :test #'horde-diagrams-equal-p)))
+
 
 (defmacro with-output-env (&body body)
   `(let ((indent 0))

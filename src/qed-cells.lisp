@@ -11,7 +11,8 @@
 (defclass qed-cell ()
   ((q :initarg :q :initform nil)
    (e :initarg :e :initform nil)
-   (d :initarg :d :initform nil)))
+   (d :initarg :d :initform nil)
+   (label :initarg :label :initform nil)))
 
 (defun qed (q &optional e d)
   (make-instance 'qed-cell :q q :e e :d d))

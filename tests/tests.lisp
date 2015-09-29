@@ -84,7 +84,7 @@
 
 (test deserialize-serialize-loops
   (macrolet ((frob (x &optional y)
-	       `(is (equal ',x (serialize-qed (deserialize-qed ',(or y x)))))))
+	       `(is (dessins-bijectable-p ',x (serialize-qed (deserialize-qed ',(or y x)))))))
     (frob ((1)))
     (frob ((1) (2)))
     (frob ((1) (2) (3)))
@@ -209,6 +209,19 @@
 		    (4 7 8 9))))
     ))
 
+(test dessin-bijections
+  (macrolet ((frob (res x y)
+	       `(is (equal ',res (dessins-bijectable-p ',x ',y)))))
+    (frob (((b . d) (a . c)) ((1 . 2))) ((a 1) (b 1)) ((c 2) (d 2)))
+    (frob (((1 . 2)) nil) ((1)) ((2)))
+    (frob (((a . b)) ((1 . 1))) ((a 1 1)) ((b 1 1)))
+    (frob nil ((a 1 1)) ((b 1) (c 1)))
+    (frob nil ((a 1 2 3) (b 1 2 3)) ((a 1 2 3) (b 3 2 1)))
+    (frob (((A . C) (C . A) (B . B)) ((3 . 3) (2 . 2) (1 . 1)))
+	  ((a 1) (b 1 2 3) (c 2 3)) ((a 3 2) (b 1 2 3) (c 1)))
+    ))
+  
+
 (test rolfsen-homflies
   (labels ((frob (n)
 	     (let ((total-num (cdr (assoc n *rolfsen-total-numbers*))))
@@ -242,15 +255,3 @@
     ))
 
 
-(test dessin-bijections
-  (macrolet ((frob (res x y)
-	       `(is (equal ',res (dessins-bijectable-p ',x ',y)))))
-    (frob (((b . d) (a . c)) ((1 . 2))) ((a 1) (b 1)) ((c 2) (d 2)))
-    (frob (((1 . 2)) nil) ((1)) ((2)))
-    (frob (((a . b)) ((1 . 1))) ((a 1 1)) ((b 1 1)))
-    (frob nil ((a 1 1)) ((b 1) (c 1)))
-    (frob nil ((a 1 2 3) (b 1 2 3)) ((a 1 2 3) (b 3 2 1)))
-    (frob (((A . C) (C . A) (B . B)) ((3 . 3) (2 . 2) (1 . 1)))
-	  ((a 1) (b 1 2 3) (c 2 3)) ((a 3 2) (b 1 2 3) (c 1)))
-    ))
-  
