@@ -866,7 +866,147 @@ if cells QD-loop has E-loops"
 	    (push (nreverse cur-loop) res)))
       (nreverse res))))
 
-			  
+(defun next-real-cell (cell)
+  (let ((next-cell (cqrr cell)))
+    (if (not next-cell) (error "Broken loop in the dessin"))
+    (iter (while (not (cerr next-cell)))
+	  (setf next-cell (cqrr next-cell))
+	  (if (not next-cell) (error "Broken loop in the dessin")))
+    next-cell))
+
+(defun 1-rule-site-p (cell)
+  (let* ((ncell (next-real-cell cell))
+	 (nncell (next-real-cell ncell)))
+    (if (and (let ((it (list cell ncell nncell (cerr cell) (cerr ncell) (cerr nncell))))
+	       (equal (length it) (length (remove-duplicates it :test #'eq))))
+	     (eq (next-real-cell (cerr cell))
+		 (cerr nncell)))
+	(list cell ncell nncell))))
+
+(defun n-3-rule-site-p (cell used-cells)
+  (let* ((ncell (next-real-cell cell))
+	 (nncell (next-real-cell ncell)))
+    (if (and (let ((it (list cell ncell nncell (cerr cell) (cerr ncell) (cerr nncell))))
+	       (equal (length it) (length (remove-duplicates it :test #'eq))))
+	     (not (or (gethash ncell used-cells)
+		      (gethash nncell used-cells)
+		      (gethash cell used-cells)))
+	     (eq (next-real-cell nncell)
+		 cell))
+	(list cell ncell nncell))))
+
+
+(defun all-1-rule-sites (qed-dessin)
+  (lambda-coro ()
+    (iter (for cell in (slot-value qed-dessin 'qed-cells))
+	  (if (not (cerr cell))
+	      (next-iteration)
+	      (let ((it (1-rule-site-p cell)))
+		(if it
+		    (yield it)))))))
+
+(defun all-n-3-rule-sites (qed-dessin)
+  (let ((used-cells (make-hash-table)))
+    (lambda-coro ()
+      (iter (for cell in (slot-value qed-dessin 'qed-cells))
+	    (if (not (cerr cell))
+		(next-iteration)
+		(let ((it (n-3-rule-site-p cell used-cells)))
+		  (when it
+		    (iter (for thing in it)
+			  (setf (gethash thing used-cells) t))
+		    (yield it))))))))
+
+(defun mutate-by-naive-1-rule (cell ncell nncell)
+  (let* ((lt-cell (q-unlink! (cerr nncell)))
+	 (lb-cell (d-unlink! (cerr cell)))
+	 (rt-cell (q-unlink! (cerr ncell)))
+	 (rb-cell (d-unlink! (cerr ncell))))
+    (dq-link! lt-cell (cerr ncell))
+    (dq-link! (cerr ncell) lb-cell)
+    (dq-link! rt-cell (cerr nncell))
+    (dq-link! (cerr cell) rb-cell)))
+
+(defun swap-labels (cell1 cell2)
+  (with-slots ((label1 label)) cell1
+    (with-slots ((label2 label)) cell2
+      (let ((it label1))
+	(setf label1 label2
+	      label2 it)))))
+
+(defun mutate-by-naive-n-3-rule (cell ncell nncell)
+  (let* ((q-cell (q-unlink! (cerr cell)))
+	 (d-cell (d-unlink! (cerr cell)))
+	 (q-ncell (q-unlink! (cerr ncell)))
+	 (d-ncell (d-unlink! (cerr ncell)))
+	 (q-nncell (q-unlink! (cerr nncell)))
+	 (d-nncell (d-unlink! (cerr nncell))))
+    (swap-labels ncell nncell)
+    (dq-link q-cell (cerr cell))
+    (dq-link (cerr cell) d-ncell)
+    (dq-link q-nncell (cerr ncell))
+    (dq-link (cerr ncell) d-cell)
+    (dq-link q-ncell (cerr nncell))
+    (dq-link (cerr nncell) d-nncell)))
+  
+(defmacro! with-1-rule-mutation ((o!-cell o!-ncell o!-nncell) &body body)
+  `(unwind-protect (progn (mutate-by-naive-1-rule ,o!-cell ,o!-ncell ,o!-nncell)
+			  ,@body)
+     (mutate-by-naive-1-rule ,o!-cell ,o!-ncell ,o!-nncell)))
+
+(defmacro! with-n-3-rule-mutation ((o!-cell o!-ncell o!-nncell) &body body)
+  `(unwind-protect (progn (mutate-by-naive-n-3-rule ,o!-cell ,o!-ncell ,o!-nncell)
+			  ,@body)
+     (mutate-by-naive-n-3-rule ,o!-cell ,o!-ncell ,o!-nncell)))
+
+
+				    
+
+(defun compose-new-cluster-entry (new-dessin parent-dessin mutation-type cell ncell nncell)
+  (list new-dessin
+	(cons parent-dessin
+	      (cons mutation-type
+		    (mapcar (lambda (x)
+			      (slot-value x 'label))
+			    (list cell ncell nncell))))))
+(defun grow-everything (qed-dessin)
+  (let ((new-cells nil))
+    (with-slots (qed-cells) qed-dessin
+      (iter (for cell in qed-cells)
+	    (push (q-grow cell) new-cells)
+	    (push (d-grow cell) new-cells))
+      (setf qed-cells (nconc new-cells qed-cells))))
+  qed-dessin)
+
+
+
+(defun mutation-cluster (dessin)
+  (let ((cluster (list (list dessin nil)))
+	(leaf-dessins (list dessin)))
+    (macrolet ((frob (coro-call mutation-macro mutation-type)
+		 `(iter (for (cell ncell nncell) in-coroutine ,coro-call)
+			(,mutation-macro
+			 (cell ncell nncell)
+			 (let ((new-dessin (serialize-qed qed-dessin)))
+			   (when (not (find new-dessin cluster
+					    :key #'car
+					    :test #'dessins-bijectable-p))
+			     (push new-dessin new-leaf-dessins)
+			     (push (compose-new-cluster-entry new-dessin
+							      leaf-dessin
+							      ',mutation-type
+							      cell ncell nncell)
+				   cluster)))))))
+      (iter (while leaf-dessins)
+	    (let ((new-leaf-dessins nil))
+	      (iter (for leaf-dessin in leaf-dessins)
+		    (let ((qed-dessin (grow-everything (deserialize-qed leaf-dessin))))
+		      (frob (all-1-rule-sites qed-dessin) with-1-rule-mutation :p)
+		      (frob (all-n-3-rule-sites qed-dessin) with-n-3-rule-mutation :a)))
+	      (setf leaf-dessins new-leaf-dessins))))
+    cluster))
+	  
+    
 			
 
 
@@ -1201,3 +1341,15 @@ if cells QD-loop has E-loops"
 		    (push serial-dessin cur-dessins)
 		    (yield serial-dessin)))))))
     
+
+(defun dessins-clusters (n-edges)
+  (let ((clusters nil))
+    (lambda-coro ()
+      (iter outer (for dessin in-coroutine (all-distinct-dessins n-edges))
+	    (iter (for cluster in clusters)
+		  (if (find dessin cluster :key #'car :test #'dessins-bijectable-p)
+		      (in outer (next-iteration))))
+	    (let ((it (mutation-cluster dessin)))
+	      (push it clusters)
+	      (yield it))))))
+		 
