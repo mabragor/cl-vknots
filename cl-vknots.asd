@@ -17,6 +17,7 @@
   :pathname "src/"
   :components ((:file "package")
 	       (:file "debug")
+	       (:file "coro")
 	       (:file "qed-cells")
                (:file "cl-vknots")
 	       (:file "qed-dessins")

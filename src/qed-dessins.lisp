@@ -1255,18 +1255,6 @@ if cells QD-loop has E-loops"
 	    (rec-match vertex-map nil))))
   nil)
 
-(defmacro-driver (for var in-coroutine coro &optional with-arg (arg nil arg-p))
-  (let ((kwd (if generate 'generate 'for))
-	(g!-coro (gensym "G!-CORO")))
-    `(progn (with ,g!-coro = ,coro)
-	    ;; multiple evaluation of arg is intended
-	    (,kwd ,var next (let ((vals (multiple-value-list (funcall ,g!-coro ,@(if arg-p `(,arg))))))
-			      (if (not vals)
-				  (terminate)
-				  (car vals)))))))
-
-(defmacro coexit! ()
-  `(coexit (values)))
 
 (defun range (n)
   (defcoroutine %range ()
@@ -1290,11 +1278,6 @@ if cells QD-loop has E-loops"
 	(for my-thing2 in-coroutine (range 20))
 	(collect (list my-thing my-thing2))))
 
-(defmacro! lambda-coro (arg &body body)
-  `(progn (defcoroutine ,g!-name ,arg
-	    ,@body
-	    (coexit!))
-	  (make-coroutine ',g!-name)))
 
 (defun %%all-flip-dessin (qed-dessin remaining-cells)
   (lambda-coro ()
@@ -1352,4 +1335,23 @@ if cells QD-loop has E-loops"
 	    (let ((it (mutation-cluster dessin)))
 	      (push it clusters)
 	      (yield it))))))
-		 
+
+(defparameter *3-clusters*		 
+  '(((((1 1 2 3 1 2 3)) NIL))
+    ((((1 3) (2 1) (3 2) (4 2 1 3)) (((1 1 2 3) (2 1 2 3)) :A 3 2 1)) (((1 1 2 3) (2 1 2 3)) NIL))
+    ((((1 1 2 3 2 1 3)) NIL))
+    ((((1 1 2 3) (2 2 1 3)) NIL))
+    ((((1 1 2 3 2 3) (2 1)) (((1 1 2 1 3) (2 3 2)) :P 3 1 2)) (((1 1 2 1 3) (2 3 2)) NIL))
+    ((((1 1 2) (2 3 1) (3 2 3)) NIL))
+    ((((1 1 2 3 3 2 1)) NIL))
+    ((((1 1 2 3 2 1) (2 3)) NIL))
+    ((((1 1 2 1) (2 3 2) (3 3)) NIL))
+    ((((1 1 2 1) (2 3 3 2)) NIL))
+    ((((1 1) (2 2 1) (3 3 2) (4 3)) NIL))
+    ((((1 1) (2 2 3 2 1) (3 3)) NIL))
+    ((((1 1 2 3 2 3 1)) NIL))
+    ((((1 1 2 3 1) (2 2 3)) NIL))
+    ((((1 1) (2 2 3 1) (3 3 2)) NIL))
+    ((((1 1 2 2 3 3 1)) NIL))
+    ((((1 1 2 2 3 1) (2 3)) NIL))
+    ((((1 1 2 3 1) (2 2) (3 3)) NIL))))
