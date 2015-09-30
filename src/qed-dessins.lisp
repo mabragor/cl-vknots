@@ -874,48 +874,9 @@ if cells QD-loop has E-loops"
 	  (if (not next-cell) (error "Broken loop in the dessin")))
     next-cell))
 
-(defun 1-rule-site-p (cell)
-  (let* ((ncell (next-real-cell cell))
-	 (nncell (next-real-cell ncell)))
-    (if (and (let ((it (list cell ncell nncell (cerr cell) (cerr ncell) (cerr nncell))))
-	       (equal (length it) (length (remove-duplicates it :test #'eq))))
-	     (eq (next-real-cell (cerr cell))
-		 (cerr nncell)))
-	(list cell ncell nncell))))
-
-(defun n-3-rule-site-p (cell used-cells)
-  (let* ((ncell (next-real-cell cell))
-	 (nncell (next-real-cell ncell)))
-    (if (and (let ((it (list cell ncell nncell (cerr cell) (cerr ncell) (cerr nncell))))
-	       (equal (length it) (length (remove-duplicates it :test #'eq))))
-	     (not (or (gethash ncell used-cells)
-		      (gethash nncell used-cells)
-		      (gethash cell used-cells)))
-	     (eq (next-real-cell nncell)
-		 cell))
-	(list cell ncell nncell))))
 
 
-(defun all-1-rule-sites (qed-dessin)
-  (lambda-coro ()
-    (iter (for cell in (slot-value qed-dessin 'qed-cells))
-	  (if (not (cerr cell))
-	      (next-iteration)
-	      (let ((it (1-rule-site-p cell)))
-		(if it
-		    (yield it)))))))
 
-(defun all-n-3-rule-sites (qed-dessin)
-  (let ((used-cells (make-hash-table)))
-    (lambda-coro ()
-      (iter (for cell in (slot-value qed-dessin 'qed-cells))
-	    (if (not (cerr cell))
-		(next-iteration)
-		(let ((it (n-3-rule-site-p cell used-cells)))
-		  (when it
-		    (iter (for thing in it)
-			  (setf (gethash thing used-cells) t))
-		    (yield it))))))))
 
 (defun mutate-by-naive-1-rule (cell ncell nncell)
   (let* ((lt-cell (q-unlink! (cerr nncell)))
@@ -1058,6 +1019,7 @@ if cells QD-loop has E-loops"
 	((eq 'diag (car poly)) (if (equal '(:empty) (cadr poly))
 				   "1"
 				   (joinl " * " (mapcar diag-decomposer (cadr poly)))))
+	((eq 'perm-dessin (car poly)) #?"PermDessin[$((cadr poly)), $((caddr poly))]")
 	(t (error 'vknots-error "Don't yet knot how to MATHEMATICA-SERIALIZE this: ~a~%" poly))))
 
 
@@ -1352,4 +1314,253 @@ if cells QD-loop has E-loops"
 	    (let ((it (mutation-cluster dessin)))
 	      (push it clusters)
 	      (yield it))))))
-		 
+
+(defun serialize-list (lst)
+  (format nil "(~{~a~^ ~})" (mapcar (lambda (x)
+				      (if (listp x)
+					  (serialize-list x)
+					  (format nil "~a" x)))
+				    lst)))
+
+(defun gen-permanent-distinct-dessins (n-edges)
+  (with-open-file (stream #?"~/quicklisp/local-projects/cl-vknots/permanent-dessins-$(n-edges).txt"
+			  :direction :output :if-exists :supersede)
+    (iter (for dessin in-coroutine (all-distinct-dessins n-edges))
+	  (format stream "~a~%" (serialize-list dessin))))
+  :success!)
+
+(defparameter *perm-dessins-hash* (make-hash-table :test #'equal))
+
+(defun load-perm-dessins-from-file (n-edges)
+  (iter (for elt in-file #?"~/quicklisp/local-projects/cl-vknots/permanent-dessins-$(n-edges).txt"
+	     using #'read)
+	(collect elt)))
+				    
+
+(defun perm-dessins (n-edges)
+  (or (gethash n-edges *perm-dessins-hash*)
+      (setf (gethash n-edges *perm-dessins-hash*)
+	    (load-perm-dessins-from-file n-edges))))
+	      
+
+(defun find-permanent-name (dessin)
+  (let ((n-edges (/ (apply #'+ (mapcar (lambda (x)
+					 (length (cdr x)))
+				       dessin))
+		    2)))
+    ;; OK, this is kind of kludgy, but what of it?...
+    (if (equal 0 n-edges)
+	"q[N]"
+	(let ((perm-dessins (perm-dessins n-edges)))
+	  (iter (for perm-dessin in perm-dessins)
+		(for i from 0)
+		(if (dessins-bijectable-p dessin perm-dessin)
+		    (return-from find-permanent-name `(perm-dessin ,n-edges ,i))))
+	  (error "Somehow I was unable to find permanent version of this dessin: ~a~%"
+		 dessin)))))
+	  
+(defmacro! with-saved-dessin-cells ((o!-dessin) &body body)
+  `(let ((,g!-cells (copy-list (slot-value ,o!-dessin 'qed-cells))))
+     (unwind-protect (progn ,@body)
+       (setf (slot-value ,o!-dessin 'qed-cells) ,g!-cells))))
+
+(defun n-1-rule-site-p (cell used-cells)
+  (declare (ignore used-cells))
+  (let* ((other-cell (cerr cell))
+	 (ncell (next-real-cell other-cell)))
+    (if (and (not (eq other-cell cell))
+	     (eq ncell other-cell))
+	(list cell))))
+
+(defun 2-rule-site-p (cell used-cells)
+  (let* ((other-cell (cerr cell))
+	 (ncell (next-real-cell cell))
+	 (nother-cell (next-real-cell cell)))
+    (if (and (let ((it (list cell ncell other-cell nother-cell)))
+	       (equal (length it) (length (remove-duplicates it :test #'eq))))
+	     (not (or (gethash ncell used-cells)
+		      (gethash other-cell used-cells)
+		      (gethash nother-cell used-cells)
+		      (gethash cell used-cells)))
+	     (eq nother-cell (cerr ncell)))
+	(list cell other-cell ncell nother-cell))))
+
+(defun 1-rule-site-p (cell used-cells)
+  (declare (ignore used-cells))
+  (let* ((ncell (next-real-cell cell))
+	 (nncell (next-real-cell ncell)))
+    (if (and (let ((it (list cell ncell nncell (cerr cell) (cerr ncell) (cerr nncell))))
+	       (equal (length it) (length (remove-duplicates it :test #'eq))))
+	     (eq (next-real-cell (cerr cell))
+		 (cerr nncell)))
+	(progn ;; (format t "~{~a~^ ~}~%"
+	       ;; 	       (mapcar (lambda (x)
+	       ;; 			 (format nil "(~a ~a)" x (slot-value x 'label)))
+	       ;; 		       (list cell ncell nncell (cerr cell) (cerr ncell) (cerr nncell)
+	       ;; 			     (next-real-cell (cerr cell)))))
+	       (list cell ncell nncell)))))
+
+(defun n-3-rule-site-p (cell used-cells)
+  (let* ((ncell (next-real-cell cell))
+	 (nncell (next-real-cell ncell)))
+    (if (and (let ((it (list cell ncell nncell (cerr cell) (cerr ncell) (cerr nncell))))
+	       (equal (length it) (length (remove-duplicates it :test #'eq))))
+	     (not (or (gethash ncell used-cells)
+		      (gethash nncell used-cells)
+		      (gethash cell used-cells)))
+	     (eq (next-real-cell nncell)
+		 cell))
+	(list cell ncell nncell))))
+
+(defun n-2-rule-site-p (cell used-cells)
+  (let* ((loop-cell cell)
+	 (nloop-cell (next-real-cell loop-cell))
+	 (other-cell (cerr cell)))
+    (if (and (eq loop-cell
+		 (next-real-cell nloop-cell))
+	     (let ((it (list cell loop-cell nloop-cell other-cell)))
+	       (equal (length it) (length (remove-duplicates it :test #'eq))))
+	     (not (or (gethash cell used-cells)
+		      (gethash other-cell used-cells))))
+	(list cell other-cell))))
+
+(defun all-rule-sites (qed-dessin predicate)
+  (let ((used-cells (make-hash-table)))
+    (lambda-coro ()
+      (iter (for cell in (slot-value qed-dessin 'qed-cells))
+	    (if (cerr cell)
+		(let ((it (funcall predicate cell used-cells)))
+		  (when it
+		    (iter (for thing in it)
+			  (setf (gethash thing used-cells) t))
+		    (yield it))))))))
+
+(defun all-n-1-rule-sites (qed-dessin)
+  (all-rule-sites qed-dessin #'n-1-rule-site-p))
+
+(defun all-2-rule-sites (qed-dessin)
+  (all-rule-sites qed-dessin #'2-rule-site-p))
+
+(defun all-n-2-rule-sites (qed-dessin)
+  (all-rule-sites qed-dessin #'n-2-rule-site-p))
+
+(defun all-1-rule-sites (qed-dessin)
+  (all-rule-sites qed-dessin #'1-rule-site-p))
+
+(defun all-n-3-rule-sites (qed-dessin)
+  (all-rule-sites qed-dessin #'n-3-rule-site-p))
+
+
+(defun all-n-1-exprs (qed-dessin)
+  (iter (for (cell) in-coroutine (all-n-1-rule-sites qed-dessin))
+	(with-saved-dessin-cells (qed-dessin)
+	  (let ((q-cell (q-unlink! cell))
+		(d-cell (d-unlink! cell)))
+	    (dq-link! q-cell d-cell)
+	    (extract-connected-component cell qed-dessin)
+	    (collect `(* "q[N-1]" ,(find-permanent-name (serialize-qed qed-dessin))))
+	    (q-unlink! d-cell)
+	    (dq-link! q-cell cell)
+	    (dq-link! cell d-cell)))))
+
+(defun all-2-exprs (qed-dessin)
+  (iter (for (lb-cell rb-cell lt-cell rt-cell) in-coroutine (all-2-rule-sites qed-dessin))
+	(with-saved-dessin-cells (qed-dessin)
+	  (let ((q-lt-cell (q-unlink! lt-cell))
+		(q-rt-cell (q-unlink! rt-cell))
+		(q-lb-cell (q-unlink! lb-cell))
+		(q-rb-cell (q-unlink! rb-cell)))
+	    (dq-link! q-lt-cell lb-cell)
+	    (dq-link! q-rt-cell rb-cell)
+	    (extract-connected-component lt-cell qed-dessin)
+	    (collect `(* "q[2]" ,(find-permanent-name (serialize-qed qed-dessin))))
+	    (q-unlink! lb-cell)
+	    (q-unlink! rb-cell)
+	    (dq-link! q-lt-cell lt-cell)
+	    (dq-link! q-rt-cell rt-cell)
+	    (dq-link! q-lb-cell lb-cell)
+	    (dq-link! q-rb-cell rb-cell)))))
+
+(defun extract-connected-component (cell qed-dessin)
+  (let ((component-cells (let ((it (make-hash-table)))
+			   (setf (gethash cell it) t)
+			   it))
+	(leaf-cells (list cell)))
+    (iter (while leaf-cells)
+	  (let ((new-leaf-cells nil))
+	    (iter (for leaf-cell in leaf-cells)
+		  (iter (for fun in '(cqrr cerr cdrr))
+			(let ((it (funcall fun leaf-cell)))
+			  (when (and it
+				     (not (gethash it component-cells)))
+			    (setf (gethash it component-cells) t)
+			    (push it new-leaf-cells)))))
+	    (setf leaf-cells new-leaf-cells)))
+    (with-slots (qed-cells) qed-dessin
+      (iter (for qed-cell in qed-cells)
+	    (if (gethash qed-cell component-cells)
+		(collect qed-cell into new-dessin-qed-cells)
+		(collect qed-cell into old-dessin-qed-cells))
+	    (finally (setf qed-cells old-dessin-qed-cells)
+		     (return (make-instance 'qed-dessin
+					    :cells new-dessin-qed-cells)))))))
+    
+
+(defun divide-into-connected-components (qed-dessin)
+  (with-slots (qed-cells) qed-dessin
+    (iter (while qed-cells)
+	  (collect (extract-connected-component (car qed-cells) qed-dessin)))))
+
+
+(defun expression-for-possibly-disconnected-dessin (qed-dessin)
+  (let ((lst (divide-into-connected-components qed-dessin)))
+    (if (equal 1 (length lst))
+	(find-permanent-name (serialize-qed (car lst)))
+	`(* ,@(mapcar (lambda (x)
+			(find-permanent-name (serialize-qed x)))
+		      lst)))))
+
+
+(defun all-n-2-exprs (qed-dessin)
+  (iter (for (l-cell r-cell) in-coroutine (all-n-2-rule-sites qed-dessin))
+	(with-saved-dessin-cells (qed-dessin)
+	  (let ((q-l-cell (q-unlink! l-cell))
+		(d-l-cell (d-unlink! l-cell))
+		(q-r-cell (q-unlink! r-cell))
+		(d-r-cell (d-unlink! r-cell)))
+	    (extract-connected-component l-cell qed-dessin)
+	    (let* ((forget (unwind-protect (progn (dq-link! q-l-cell d-l-cell)
+						  (dq-link! q-r-cell d-r-cell)
+						  (expression-for-possibly-disconnected-dessin qed-dessin))
+			     (q-unlink! d-l-cell)
+			     (q-unlink! d-r-cell)))
+		   (contract (unwind-protect (progn (dq-link! q-l-cell d-r-cell)
+						    (dq-link! q-r-cell d-l-cell)
+						    (expression-for-possibly-disconnected-dessin qed-dessin))
+			       (q-unlink! d-l-cell)
+			       (q-unlink! d-r-cell))))
+	      (collect `(+ (* "q[N-2]" ,forget)
+			   ,contract)))
+	    (dq-link! q-l-cell l-cell)
+	    (dq-link! l-cell d-l-cell)
+	    (dq-link! q-r-cell r-cell)
+	    (dq-link! r-cell d-r-cell)))))
+
+
+
+(defun decompose-only-once (dessin)
+  "Input: serialized dessin -- output -- polynomial in permanently named dessins"
+  (let ((qed-dessin (grow-everything (deserialize-qed dessin))))
+    (nconc (all-n-1-exprs qed-dessin)
+	   (all-2-exprs qed-dessin)
+	   (all-n-2-exprs qed-dessin))))
+
+    
+(defun potentially-nontrivial-relations (n-edges)  
+  (remove-if-not (lambda (x)
+		   (> (length x) 1))
+		 (mapcar #'decompose-only-once (collect-coro (all-distinct-dessins n-edges)))))
+
+
+;; OK, this one was the first cut on how to extract relations,
+;; and already I see that without Mathamatica comparison nothing much can be done ...

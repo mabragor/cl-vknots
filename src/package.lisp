@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:cl-vknots
-  (:use #:cl #:iterate #:cg-common-ground #:cl-coroutine)
+  (:use #:cl #:iterate #:cg-common-ground #:cl-coroutine #:cl-fad)
   (:shadowing-import-from #:clesh #:script)
   (:shadowing-import-from #:defmacro-enhance #:defmacro-driver! #:defmacro!)
   (:shadowing-import-from #:cl-ppcre #:regex-replace-all)
