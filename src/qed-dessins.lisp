@@ -1547,3 +1547,93 @@ if cells QD-loop has E-loops"
 
 ;; OK, this one was the first cut on how to extract relations,
 ;; and already I see that without Mathamatica comparison nothing much can be done ...
+
+(defun lock-file-p (layer)
+  ;; TODO : actually implement the locking
+  nil)
+
+(defun make-lock-file (layer)
+  ;; TODO : actually implement the locking
+  nil)
+
+(defun err-script (str)
+  (multiple-value-bind (out err errno) (clesh:script str)
+    (if (equal 0 errno)
+	out
+	(error err))))
+
+(defun construct-parallel-sub-dessin-expr (dessin edge nedge nnedge)
+  (let ((qed-dessin (deserialize-qed dessin)))
+    (iter (for cell in (slot-value qed-dessin 'qed-cells))
+	  (if (equal edge (slot-value cell 'label))
+	      (let ((it (1-rule-site-p cell nil)))
+		(if it
+		    (destructuring-bind (cell ncell nncell) it
+		      (declare (ignore cell))
+		      (when (and (equal nedge (slot-value ncell 'label))
+				 (equal nnedge (slot-value nncell 'label)))
+			(setf (cerr (cerr ncell)) nil
+			      (cerr ncell) nil
+			      (cerr (cerr nncell)) nil
+			      (cerr nncell) nil)
+			(return-from construct-parallel-sub-dessin-expr
+			  (expression-for-possibly-disconnected-dessin qed-dessin))))))))
+    (error "I can't find the following parallel edge sequence ~a ~a ~a in~
+            dessin ~a~%" edge nedge nnedge dessin)))
+
+(defun construct-antiparallel-sub-dessin-expr (dessin edge nedge nnedge)
+  (let ((qed-dessin (deserialize-qed dessin))
+	(aux-hash (make-hash-table)))
+    (iter (for cell in (slot-value qed-dessin 'qed-cells))
+	  (if (equal edge (slot-value cell 'label))
+	      (let ((it (n-3-rule-site-p cell aux-hash)))
+		(if it
+		    (destructuring-bind (cell ncell nncell) it
+		      (when (and (equal nedge (slot-value ncell 'label))
+				 (equal nnedge (slot-value nncell 'label)))
+			(setf (cerr (cerr cell)) nil
+			      (cerr cell) nil
+			      (cerr (cerr ncell)) nil
+			      (cerr ncell) nil
+			      (cerr (cerr nncell)) nil
+			      (cerr nncell) nil)
+			(return-from construct-antiparallel-sub-dessin-expr
+			  (expression-for-possibly-disconnected-dessin qed-dessin))))))))
+    (error "I can't find the following antiparallel edge sequence ~a ~a ~a in~
+            dessin ~a~%" edge nedge nnedge dessin)))
+
+
+(defun construct-sub-dessin-expr (dessin type edge nedge nnedge)
+  (cond ((eq :p type) (construct-parallel-sub-dessin-expr dessin edge nedge nnedge))
+	((eq :a type) (construct-antiparallel-sub-dessin-expr dessin edge nedge nnedge))
+	(t (error "Unknown sub-dessin type: ~a" type))))
+
+(defun find-nontrivial-relations-using-mathematica (layer)
+  (when (lock-file-p layer)
+    (format t "The lock file for the given layer is there, not doing anything.")
+    (return-from find-nontrivial-relations-using-mathematica))
+  (let ((fname #?"~/quicklisp/local-projects/cl-vknots/dessins-dims-$(layer).m")
+	(cluster-fname #?"~/quicklisp/local-projects/cl-vknots/dessins-cluster-rels-$(layer).m"))
+    (err-script #?"rm -f $(fname) && touch $(fname)")
+    (err-script #?"rm -f $(cluster-fname) && touch $(cluster-fname)")
+    (iter (for cluster in-coroutine (dessins-clusters layer))
+	  (iter (for (dessin path) in cluster)
+		(with-open-file (stream fname :direction :output :if-exists :append)
+		  (format stream "PermDessinDecompositions[~{~a~^, ~}] = {~{~a~^, ~}};~%"
+			  (cdr (find-permanent-name dessin))
+			  (mapcar #'mathematica-serialize (decompose-only-once dessin))))
+		(when path
+		  (destructuring-bind (parent-dessin type edge nedge nnedge) path
+		    (with-open-file (stream cluster-fname :direction :output :if-exists :append)
+		      (format stream "expr = (~a - ~a * (~a)) - (~a - ~a * (~a));~%"
+			      (mathematica-serialize (find-permanent-name dessin))
+			      (if (eq :p type) "1" "q[N-3]")
+			      (mathematica-serialize (construct-sub-dessin-expr dessin type edge nedge nnedge))
+			      (mathematica-serialize (find-permanent-name parent-dessin))
+			      (if (eq :p type) "1" "q[N-3]")
+			      (mathematica-serialize
+			       (construct-sub-dessin-expr parent-dessin type edge nedge nnedge))))))
+		)))
+  ;; TODO : now, what needs to be done is just to call the appropriate Mathematica script
+  (make-lock-file layer))
+  
