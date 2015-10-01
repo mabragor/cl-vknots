@@ -902,7 +902,7 @@ if cells QD-loop has E-loops"
 	 (d-ncell (d-unlink! (cerr ncell)))
 	 (q-nncell (q-unlink! (cerr nncell)))
 	 (d-nncell (d-unlink! (cerr nncell))))
-    (swap-labels ncell nncell)
+    ;; (swap-labels ncell nncell)
     (dq-link q-cell (cerr cell))
     (dq-link (cerr cell) d-ncell)
     (dq-link q-nncell (cerr ncell))
@@ -920,8 +920,6 @@ if cells QD-loop has E-loops"
 			  ,@body)
      (mutate-by-naive-n-3-rule ,o!-cell ,o!-ncell ,o!-nncell)))
 
-
-				    
 
 (defun compose-new-cluster-entry (new-dessin parent-dessin mutation-type cell ncell nncell)
   (list new-dessin
@@ -1597,6 +1595,7 @@ if cells QD-loop has E-loops"
 			      (cerr ncell) nil
 			      (cerr (cerr nncell)) nil
 			      (cerr nncell) nil)
+			(extract-connected-component cell qed-dessin)
 			(return-from construct-antiparallel-sub-dessin-expr
 			  (expression-for-possibly-disconnected-dessin qed-dessin))))))))
     (error "I can't find the following antiparallel edge sequence ~a ~a ~a in~
