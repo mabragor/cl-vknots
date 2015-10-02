@@ -219,8 +219,23 @@
     (frob nil ((a 1 2 3) (b 1 2 3)) ((a 1 2 3) (b 3 2 1)))
     (frob (((A . C) (C . A) (B . B)) ((3 . 3) (2 . 2) (1 . 1)))
 	  ((a 1) (b 1 2 3) (c 2 3)) ((a 3 2) (b 1 2 3) (c 1)))
+    (frob nil
+	  ((1 1) (2 2 3 4 1) (3 5 2 4) (4 6 3 6 5))
+	  ((1 2 3 2 5) (2 3 4 1) (3 6) (4 5 6 1) (5 4)))
     ))
-  
+
+(test decompose-only-once
+  (macrolet ((frob (res x)
+	       `(is (equal ',res (decompose-only-once ',x)))))
+    (frob nil ((1 1 1)))
+    (frob ((* "q[N-1]" "q[N]") (* "q[N-1]" "q[N]")) ((1 1) (2 1)))
+    (frob ((* "q[2]" (CL-VKNOTS::PERM-DESSIN 1 0))) ((1 1 2 1 2)))
+    (frob ((* "q[2]" (CL-VKNOTS::PERM-DESSIN 1 1))
+	   (+ (* "q[N-2]" "q[N]") (* "q[N]" "q[N]"))
+	   (+ (* "q[N-2]" "q[N]") (* "q[N]" "q[N]")))
+	  ((1 1 2) (2 1 2)))
+    ))
+      
 
 (test rolfsen-homflies
   (labels ((frob (n)

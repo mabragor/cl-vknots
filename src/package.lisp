@@ -17,7 +17,7 @@
 	   #:*rolfsen-total-numbers*
 	   #:compare-homfly-with-katlas #:compare-homfly-with-katlas1
 	   #:compare-actual-homfly-with-katlas #:compare-actual-homfly-with-katlas1
-	   #:dessins-bijectable-p
+	   #:dessins-bijectable-p #:decompose-only-once
 	   ))
 
 

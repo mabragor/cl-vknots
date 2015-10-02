@@ -1078,7 +1078,8 @@ if cells QD-loop has E-loops"
 		       (push cur-map maps)
 		       (destructuring-bind (val1 . vertices1) (car valencies1)
 			 (destructuring-bind (val2 . vertices2) (car valencies2)
-			   (if (equal val1 val2)
+			   (if (and (equal val1 val2)
+				    (equal (length vertices1) (length vertices2)))
 			       (iter (for vmap in (all-vertex-maps vertices1 vertices2))
 				     (rec (nconc vmap cur-map)
 					  (cdr valencies1)
@@ -1280,10 +1281,24 @@ if cells QD-loop has E-loops"
     (lambda-coro ()
       (iter (for horde in hordes)
 	    (iter (for serial-dessin in-coroutine (%horde->all-flip-dessins horde))
+		  (if (dessins-bijectable-p *missing-dessin* serial-dessin)
+		      (format t "Missing dessin is here: ~a~%" serial-dessin))
 		  (when (not (find serial-dessin cur-dessins :test #'dessins-bijectable-p))
 		    (push serial-dessin cur-dessins)
 		    (yield serial-dessin)))))))
-    
+
+(defun all-distinct-dessins-with-valencies (valencies)
+  (let ((n-edges (/ (apply #'+ (mapcar (lambda (x)
+					 (* (car x) (cadr x)))
+				       valencies))
+		    2)))
+    (lambda-coro ()
+      (iter (for dessin in-coroutine (all-distinct-dessins n-edges))
+	    (if (equal valencies
+		       (mapcar (lambda (x)
+				 (list (car x) (length (cdr x))))
+			       (dessin-valencies dessin)))
+		(yield dessin))))))
 
 (defun dessins-clusters (n-edges)
   (let ((clusters nil))
@@ -1356,7 +1371,7 @@ if cells QD-loop has E-loops"
 (defun 2-rule-site-p (cell used-cells)
   (let* ((other-cell (cerr cell))
 	 (ncell (next-real-cell cell))
-	 (nother-cell (next-real-cell cell)))
+	 (nother-cell (next-real-cell other-cell)))
     (if (and (let ((it (list cell ncell other-cell nother-cell)))
 	       (equal (length it) (length (remove-duplicates it :test #'eq))))
 	     (not (or (gethash ncell used-cells)
@@ -1394,9 +1409,9 @@ if cells QD-loop has E-loops"
 	(list cell ncell nncell))))
 
 (defun n-2-rule-site-p (cell used-cells)
-  (let* ((loop-cell cell)
+  (let* ((loop-cell (cerr cell))
 	 (nloop-cell (next-real-cell loop-cell))
-	 (other-cell (cerr cell)))
+	 (other-cell (cerr nloop-cell)))
     (if (and (eq loop-cell
 		 (next-real-cell nloop-cell))
 	     (let ((it (list cell loop-cell nloop-cell other-cell)))
@@ -1494,12 +1509,13 @@ if cells QD-loop has E-loops"
 
 
 (defun expression-for-possibly-disconnected-dessin (qed-dessin)
-  (let ((lst (divide-into-connected-components qed-dessin)))
-    (if (equal 1 (length lst))
-	(find-permanent-name (serialize-qed (car lst)))
-	`(* ,@(mapcar (lambda (x)
-			(find-permanent-name (serialize-qed x)))
-		      lst)))))
+  (with-saved-dessin-cells (qed-dessin)
+    (let ((lst (divide-into-connected-components qed-dessin)))
+      (if (equal 1 (length lst))
+	  (find-permanent-name (serialize-qed (car lst)))
+	  `(* ,@(mapcar (lambda (x)
+			  (find-permanent-name (serialize-qed x)))
+			lst))))))
 
 
 (defun all-n-2-exprs (qed-dessin)
@@ -1634,5 +1650,9 @@ if cells QD-loop has E-loops"
 			       (construct-sub-dessin-expr parent-dessin type edge nedge nnedge))))))
 		)))
   ;; TODO : now, what needs to be done is just to call the appropriate Mathematica script
+  (err-script #?"~/quicklisp/local-projects/cl-vknots/src/find-dessin-relations.m $(layer)")
   (make-lock-file layer))
   
+(defparameter *missing-dessin* '((1 2 3 2 5) (2 3 4 1) (3 6) (4 5 6 1) (5 4)))
+(defparameter *another-curious-dessin* '((1 1) (2 2 3 4 1) (3 5 2 4) (4 6 3 6 5)))
+(defparameter *missing-dessin-1* '((1 1 3) (2 2) (3 4) (4 3 4 2) (5 1)))

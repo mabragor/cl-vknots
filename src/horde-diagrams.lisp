@@ -48,8 +48,11 @@
 (defmethod rotate-counterclockwise (smth)
   ())
 
+(defun %horde->horde (%horde)
+  (make-instance 'horde-diagram :under-lst %horde))
+
 (defun %%horde->horde (%%horde)
-  (make-instance 'horde-diagram :under-lst (%%horde->%horde %%horde)))
+  (%horde->horde (%%horde->%horde %%horde)))
 
 (defun under-lst (horde)
   (if (eq :empty horde)
@@ -637,3 +640,11 @@ state, if iteration does not finish early"
 	     (if (not (numberp elt))
 		 (return nil))
 	     (finally (return t)))))
+
+
+(defun is-horde-in-all-distinct-hordes (%horde n)
+  (let ((horde (%horde->horde %horde)))
+    (remove-if-not (lambda (x)
+		     (horde-diagrams-equal-p horde
+					     (%horde->horde (copy-list x))))
+		   (distinct-horde-diags n))))
