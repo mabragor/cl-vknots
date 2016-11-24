@@ -1623,6 +1623,15 @@ if cells QD-loop has E-loops"
 	((eq :a type) (construct-antiparallel-sub-dessin-expr dessin edge nedge nnedge))
 	(t (error "Unknown sub-dessin type: ~a" type))))
 
+(defun clean-aux-files ()
+  (let ((work-dir "~/quicklisp/local-projects/cl-vknots"))
+    (err-script #?"rm -f $(work-dir)/permanent-dessin-*.txt")
+    (err-script #?"echo '((1))' > $(work-dir)/permanent-dessin-0.txt")
+    (err-script #?"rm -f $(work-dir)/dessins-dims-*.m")
+    (err-script #?"rm -f $(work-dir)/dessins-cluster-rels-*.m")
+    (err-script #?"rm -f $(work-dir)/dessins-through-atomic-*.m")
+    (err-script #?"rm -f $(work-dir)/dessins-decomp-rels-*.m")))
+
 (defun find-nontrivial-relations-using-mathematica (layer)
   (when (lock-file-p layer)
     (format t "The lock file for the given layer is there, not doing anything.")
