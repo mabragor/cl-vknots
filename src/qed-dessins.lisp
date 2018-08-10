@@ -1632,6 +1632,13 @@ if cells QD-loop has E-loops"
     (err-script #?"rm -f $(work-dir)/dessins-through-atomic-*.m")
     (err-script #?"rm -f $(work-dir)/dessins-decomp-rels-*.m")))
 
+;; OK, here's how this function works
+;; file dessins-dims-$(i).m -- contains dimensions on i-th layer, decomposed once in all possible ways
+;; file dessins-cluster-rels-$(i).m -- contains cluster relations on i-th layer
+;; file dessins-through-atomic-$(i).m -- contains expressions for dessins decomposed as far as possible
+;; file dessins-decomp-rels-$(i).m -- contains relations between atomic dessins, that are obtained from simple relations
+;; 
+
 (defun find-nontrivial-relations-using-mathematica (layer)
   (when (lock-file-p layer)
     (format t "The lock file for the given layer is there, not doing anything.")
@@ -1642,10 +1649,12 @@ if cells QD-loop has E-loops"
     (err-script #?"rm -f $(cluster-fname) && touch $(cluster-fname)")
     (iter (for cluster in-coroutine (dessins-clusters layer))
 	  (iter (for (dessin path) in cluster)
+		;; We construct all the simple relations and dump them to dessins-dims-$i.m
 		(with-open-file (stream fname :direction :output :if-exists :append)
 		  (format stream "PermDessinDecompositions[~{~a~^, ~}] = {~{~a~^, ~}};~%"
 			  (cdr (find-permanent-name dessin))
 			  (mapcar #'mathematica-serialize (decompose-only-once dessin))))
+		;; We construct all the cluster relations and dump them to dessins-cluster-rels-$i.m
 		(when path
 		  (destructuring-bind (parent-dessin type edge nedge nnedge) path
 		    (with-open-file (stream cluster-fname :direction :output :if-exists :append)
