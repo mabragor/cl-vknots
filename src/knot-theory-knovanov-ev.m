@@ -235,11 +235,11 @@ NegAdjEigenvalues[] :=
 FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
     Module[{specs = List[eigenvaluesSpecs]},
 	   Module[{comb = EigenvalueUnknownCombAdvanced[specs],
-		   indets = EigenvalueIndetsAdvanced[specs],
-		   correctionFactors = Map[Module[{power = #[[1]] /. {k -> 0}},
-						  Map[#^power &, Rest[#]]] &,
-					   specs]},
-		  (* List[comb, indets, correctionFactors]; *)
+		   indets = EigenvalueIndetsAdvanced[specs]},
+		   (* correctionFactors = Map[Module[{power = #[[1]] /. {k -> 0}}, *)
+		   (* 				  Map[#^power &, Rest[#]]] &, *)
+		   (* 			   specs] *)
+		  (* Print[List[comb, indets, correctionFactors]]; *)
 		  Module[{eqns = Map[(family @@ #) - (comb @@ #) == 0 &,
 				     Tuples[Map[Range[0, Length[#] - 1 - 1] &,
 						specs]]]},
@@ -248,15 +248,21 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 				   Message["More than one solution to a linear system"],
 				   Module[{indices = Tuples[Map[Range[0, Length[#] - 1 - 1 + extraPoints]&,
 								specs]]},
-					  Print[Tally[Map[If[0 === FullSimplify[(family @@ #) - (comb @@ #) /. ans[[1]]],
-					  		     0,
-					  		     nz] &,
-					  		  indices]]];
-					  Map[Rule[#[[1]],
-						   FullSimplify[1/(Times @@ MapIndexed[correctionFactors[[#2[[1]], #1]] &,
-										       (List @@ #[[1]])])
-								#[[2]]]] &,
-					      ans[[1]]]]]]]]];
+					  Module[{check = Tally[Map[If[0 === FullSimplify[(family @@ #) - (comb @@ #) /. ans[[1]]],
+								       0,
+								       nz] &,
+								    indices]]},
+						 If[1 === Length[check],
+						    Module[{},
+							   Print[check];
+							   Map[Rule[#[[1]],
+								    ExpandNumerator[
+									FullSimplify[(* 1/(Times
+											@@ MapIndexed[correctionFactors[[#2[[1]], #1]] &,
+												      (List @@ #[[1]])]) *)
+										     #[[2]]]]] &,
+							       ans[[1]]]],
+						    Module[{}, Print[check]; checkFailed]]]]]]]]];
 
 (* ### Archive the previous evaluation attempts ### *)
 (* FitFamilyWithEigenvalues[TwoStrandKhovanov, PosFundEigenvalues[]] *)
@@ -267,11 +273,18 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 (* Block[{C = 2, DD = 2}, *)
 (*       FitFamilyWithEigenvalues[Kh[FigeightLikePD[1, -#-1]][q,t] &, PosFundEigenvalues[]]] *)
 
-Block[{C = 2, DD = 2},
+Block[{C = 2, DD = 2, extraPoints = 1},
       FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
-						Kh[FigeightLikePDAlt[2 k1 + 3, k2+2]][q,t]],
-				       {2 k + 3} ~Join~ NegAdjEigenvalues[],
-				       {k+2} ~Join~ PosFundEigenvalues[]]]
+						Kh[FigeightLikePDAlt[k2+1, 2 k1 + 3]][q,t]],
+				       {2 k + 3} ~Join~ PosAdjEigenvalues[],
+				       {k+1} ~Join~ NegFundEigenvalues[]]]
+
+
+
+Block[{C = 2, DD = 2, extraPoints = 2},
+      FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+						Kh[FigeightLikePDAlt[k1+1, 3]][q,t]],
+				       {k+1} ~Join~ NegFundEigenvalues[]]]
 
 
 
