@@ -263,6 +263,185 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 										     #[[2]]]]] &,
 							       ans[[1]]]],
 						    Module[{}, Print[check]; checkFailed]]]]]]]]];
+PlanarDiagramToAdvancedStructures[pd_PD] :=
+    (* ### Massage the terse format of the planar diagram ### *)
+    (* ### into more convenient collection of maps, which is more suitable to for asking actual questions about PD ### *)
+    Module[{nextEdge = <||>,
+	    prevEdge = <||>,
+	    edgeCrossingsIn = <||>,
+	    edgeCrossingsOut = <||>},
+	   Scan[Function[{crossing},
+			 (* Print[crossing]; *)
+			 Cases[List[crossing],
+			       whole:X[a_, b_, c_, d_] :>
+			       Module[{},
+				      (* Print["I'm here"]; *)
+				      nextEdge[a] = c;
+				      prevEdge[c] = a;
+				      edgeCrossingsIn[a] = whole;
+				      edgeCrossingsOut[c] = whole;
+				      If[1 == Abs[b - d],
+					 (* ### ^^ If we are not at the "gluing" of the loop ### *)
+					 If[d > b,
+					    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
+							       edgeCrossingsIn[b] = whole,
+							       edgeCrossingsOut[d] = whole],
+					    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
+							       edgeCrossingsIn[d] = whole,
+							       edgeCrossingsOut[b] = whole]],
+					 If[d > b,
+					    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
+							       edgeCrossingsIn[d] = whole,
+							       edgeCrossingsOut[b] = whole],
+					    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
+							       edgeCrossingsIn[b] = whole,
+							       edgeCrossingsOut[d] = whole]]]]]],
+		List @@ pd];
+	   Module[{connectedComponents = FindConnectedComponents[nextEdge]},
+		  PDExtended[nextEdge, prevEdge, edgeCrossingsIn, edgeCrossingsOut, connectedComponents]]];
+FindConnectedComponents[nextEdge_] :=
+    Module[{freeEdges = nextEdge,
+	    connectedComponents = {}},
+	   While[0 =!= Length[freeEdges],
+		 Module[{curMin = RandomChoice[Keys[freeEdges]]},
+			KeyDropFrom[freeEdges, curMin];
+			Module[{cur = curMin},
+			       Module[{curComponent = {cur}},
+				      While[nextEdge[cur] =!= curMin,
+					    cur = nextEdge[cur];
+					    KeyDropFrom[freeEdges, cur];
+					    AppendTo[curComponent, cur]];
+				      AppendTo[connectedComponents, curComponent]]]]];
+	   connectedComponents];
+XToYPM[X[a_, b_, c_, d_]] :=
+    If[1 == Abs[b - d],
+       If[b < d,
+	  Ym[a, b, d, c],
+	  Yp[d, a, c, b]],
+       If[b < d,
+	  Yp[d, a, c, b],
+	  Ym[a, b, d, c]]];
+CheeksResolution[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_],
+		 x_X] :=
+    (* ### The )(-resolution of the Jones (Khovanov) skein relation ### *)
+    Module[{theY = XToYPM[x],
+	    nnextEdge = nextEdge,
+	    pprevEdge = prevEdge},
+	   nnextEdge[theY[[1]]] = "f";
+	   nnextEdge["f"] = theY[[3]];
+	   pprevEdge[theY[[3]]] = "f";
+	   pprevEdge["f"] = theY[[1]];
+	   nnextEdge[theY[[2]]] = "e";
+	   nnextEdge["e"] = theY[[4]];
+	   pprevEdge[theY[[4]]] = "e";
+	   pprevEdge["e"] = theY[[2]];
+	   Module[{newConnectedComponents = FindConnectedComponents[nnextEdge]},
+		  Module[{diag = (Join[Select[DeleteDuplicates[Values[edgeCrossingsIn]],
+					       # =!= x &],
+					{X[theY[[2]], "f", "e", theY[[1]]], X["e", "f", theY[[4]], theY[[3]]]}]
+				  /. MapIndexed[Rule[#1, #2[[1]]] &,
+						Flatten[newConnectedComponents]])},
+			 (* Print["Cheek diag: ", diag]; *)
+			 (PD @@ diag)]]];
+CupCapResolution[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_],
+		 x_X] :=
+    (* The v/^-resolution of the skein relation ### *)
+    Module[{theY = XToYPM[x],
+	    nnextEdge = nextEdge,
+	    pprevEdge = prevEdge},
+	   (* Print["theY: ", theY]; *)
+	   Module[{firstToArrive = Null,
+		   cur = theY[[4]]},
+		  While[True,
+			cur = nnextEdge[cur];
+			(* Print[cur]; *)
+			If[cur === theY[[1]],
+			   CompoundExpression[firstToArrive = "a"; Break[]]];
+			If[cur === theY[[2]],
+			   CompoundExpression[firstToArrive = "b"; Break[]]]];
+		  (* Print[firstToArrive]; *)
+		  (* ### vv Reglue the arcs in appropriate way ### *)
+		  Module[{pairsToReverse = {}},
+			 Module[{curCur = If["a" === firstToArrive, theY[[2]], theY[[1]]]},
+				Module[{curNext = pprevEdge[curCur], (* ii = 0, *) tmp = Null},
+				       While[And[theY[[3]] =!= curCur, True (* ii < 10 *)],
+					     (* ii += 1; *)
+					     AppendTo[pairsToReverse, {curNext, curCur}];
+					     nnextEdge[curCur] = curNext;
+					     tmp = curNext;
+					     curNext = pprevEdge[curNext];
+					     pprevEdge[tmp] = curCur;
+					     curCur = tmp]]];
+			 (* Print[nnextEdge, pprevEdge, pairsToReverse]; *)
+			 Module[{ppLeft = theY[[3]],
+				 nnLeft = theY[[4]],
+				 ppRight = If["a" === firstToArrive, theY[[1]], theY[[2]]],
+				 nnRight = If["a" === firstToArrive, theY[[2]], theY[[1]]]},
+				nnextEdge[ppLeft] = "f";
+				nnextEdge["f"] = nnLeft;
+				pprevEdge[nnLeft] = "f";
+				pprevEdge["f"] = ppLeft;
+				nnextEdge[ppRight] = "e";
+				nnextEdge["e"] = nnRight;
+				pprevEdge[nnRight] = "e";
+				pprevEdge["e"] = ppRight;
+				Module[{newConnectedComponents = FindConnectedComponents[nnextEdge]},
+				       Module[{preDiag = (Join[Select[DeleteDuplicates[Values[edgeCrossingsIn]],
+								      # =!= x &],
+							       If["a" == firstToArrive,
+								  {X[ppRight,"f", "e", ppLeft], X["e", "f", nnRight, nnLeft]},
+								  {X["e", ppLeft, nnRight, "f"], X[ppRight, nnLeft, "e", "f"]}]]
+							  (* /. {X[a_, b_, c_, d_] :> *)
+							  (*     Module[{newAC = If[MemberQ[pairsToReverse, {a, c}], *)
+							  (* 			 {c, a}, *)
+							  (* 			 {a, c}], *)
+							  (* 	      newBD = If[Or[MemberQ[pairsToReverse, {b, d}], *)
+							  (* 			    MemberQ[pairsToReverse, {d, b}]], *)
+							  (* 			 {d, b}, *)
+							  (* 			 {b, d}]}, *)
+							  (* 	     X[newAC[[1]], newBD[[1]], newAC[[2]], newBD[[2]]]]} *)
+							 )},
+					      (* Print["preDiag: ", preDiag]; *)
+					      Module[{prePreDiag = (preDiag
+								    /. MapIndexed[Rule[#1, #2[[1]]] &,
+										  Flatten[newConnectedComponents]])
+						      /. {whole:X[a_, b_, c_, d_] :>
+							  If[Or[And[1 == Abs[c - a], c < a],
+								And[1 =!= Abs[c - a], c > a]],
+							     X[c, d, a, b],
+							     whole]}},
+						     (* Print["diag: ", prePreDiag]; *)
+						     (PD @@ prePreDiag)]]]]]]];
+(* PD[TorusKnot[3,2]] *)
+(* CheeksResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
+(* 		 X[1,5,2,4]] *)
+(* Jones[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
+	 (* 		       X[1,5,2,4]]] *)
+PosNegIndex[pd_PD] :=
+    Plus @@ Map[If[Yp === Head[XToYPM[#]],
+		   +1,
+		   -1] &,
+		List @@ pd];
+CheckKhovanovSkein[knot_, crossingNum_] :=
+    Module[{pd = PD[knot]},
+	   Module[{crossing = pd[[crossingNum]]},
+		  Module[{cheekRes = CheeksResolution[PlanarDiagramToAdvancedStructures[pd], crossing],
+			  cupcapRes = CupCapResolution[PlanarDiagramToAdvancedStructures[pd], crossing]},
+			 (* Print["Indices: ", PosNegIndex[pd], " ", PosNegIndex[cheekRes], " ", PosNegIndex[cupcapRes]]; *)
+			 If[Yp === Head[XToYPM[crossing]],
+			    Expand[Simplify[Kh[pd][q,t]
+					    - q Kh[cheekRes][q,t]
+					    - t q^2 (t q^3)^((PosNegIndex[pd] - 1 - PosNegIndex[cupcapRes])/2) Kh[cupcapRes][q,t]]],
+			    Expand[Simplify[Kh[pd][q,t]
+					    - 1/q Kh[cheekRes][q,t]
+					    - (t^(-1) q^(-2) (t q^3)^((PosNegIndex[pd] + 1 - PosNegIndex[cupcapRes])/2)
+					       Kh[cupcapRes][q,t])]]]]]];
+
+(* Kh[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
+(* 		    X[1,5,2,4]], *)
+(*    Program->"JavaKh"][q,t] *)
+
+CheckKhovanovSkein[BR[2, {-1, -1, -1, -1,-1,-1,-1}], 1]
 
 (* ### Archive the previous evaluation attempts ### *)
 (* FitFamilyWithEigenvalues[TwoStrandKhovanov, PosFundEigenvalues[]] *)
@@ -272,12 +451,110 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 (*       FitFamilyWithEigenvalues[Kh[FigeightLikePD[1, # - 1]][q,t] &, NegFundEigenvalues[]]] *)
 (* Block[{C = 2, DD = 2}, *)
 (*       FitFamilyWithEigenvalues[Kh[FigeightLikePD[1, -#-1]][q,t] &, PosFundEigenvalues[]]] *)
+(* Kh[TorusKnot[2,-2]][q,t] *)
 
-Block[{C = 2, DD = 2, extraPoints = 1},
-      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
-						Kh[FigeightLikePDAlt[k2+1, 2 k1 + 3]][q,t]],
-				       {2 k + 3} ~Join~ PosAdjEigenvalues[],
-				       {k+1} ~Join~ NegFundEigenvalues[]]]
+Block[{C = 2, DD = 2},
+      Kh[FigeightLikePDAlt[-1, 1]][q,t]]
+
+Block[{C = 2, DD = 2},
+      Kh[FigeightLikePDAlt[-2, 4]][q,t]]
+
+XsToYPMs[expr_] :=
+    (* ### Convert notation for crossings of the planar diagram into more intuitive form: ### *)
+    (* ### the positive and negative crossings, where indices are in the order:
+       lower-left, lower-right, upper-left, upper-right ### *)
+    (* ### "Lower" indices are the incoming ones, upper are "outgoing" ones ### *)
+    (expr /. {X[a_, b_, c_, d_] :> If[b < d,
+				      Ym[a, b, d, c],
+				      Yp[d, a, c, b]]});
+YPMsToXs[expr_] :=
+    (* ### Convert notation for crossings back to the counter-intuitive notation, but which is understood by KnotTheory ### *)
+    (expr /. {Ym[a_, b_, c_, d_] :> X[a, b, d, c],
+	      Yp[a_, b_, c_, d_] :> X[b, d, c, a]});
+CheckPlanarDiagram[lst_PD] :=
+    Module[{lstLst = List @@ lst},
+	   Module[{indices = Tally[Flatten[Map[List @@ # &, lstLst]]]},
+		  Module[{indsFirst = Map[#[[1]] &, indices]},
+			 Module[{max = Max @@ indsFirst,
+				 min = Min @@ indsFirst},
+				If[Sort[indices, #1[[1]] < #2[[1]] &] === Map[{#, 2} &, Range[min, max]],
+				   CheckPassed,
+				   CheckFailed]]]]];
+
+(* ### Learn the evolution coefficient matrix for the UR region ### *)
+ansPP13 = Block[{C = 2, DD = 2, extraPoints = 2},
+		With[{aSeries = k + 1,
+		      bSeries = 2 k + 3},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+							       Kh[FigeightLikePDAlt[aSeries /. {k -> k2},
+										    bSeries /. {k -> k1}]][q,t]],
+						      {bSeries} ~Join~ PosAdjEigenvalues[],
+						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
+ansPP21 = Block[{C = 2, DD = 2, extraPoints = 2},
+		With[{aSeries = k + 2,
+		      bSeries = 2 k + 1},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+							       Kh[FigeightLikePDAlt[aSeries /. {k -> k2},
+										    bSeries /. {k -> k1}]][q,t]],
+						      {bSeries} ~Join~ PosAdjEigenvalues[],
+						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
+Print["check that answers coincide: ", Tally[ansPP13 - ansPP21]];
+ansPP13 // TeXForm;
+ansUR = ansPP13;
+
+(* ### Learn the evolution coefficient matrix for the UL region ### *)
+ansNP01 = Block[{C = 2, DD = 2, extraPoints = 1},
+		With[{aSeries = -k,
+		      bSeries = 2 k + 1},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+							       Kh[FigeightLikePDAlt[aSeries /. {k -> k2},
+										    bSeries /. {k -> k1}]][q,t]],
+						      {bSeries} ~Join~ PosAdjEigenvalues[],
+						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
+ansNP01 // TeXForm;
+ansUL = ansNP01;
+
+(* ### Learn the evolution coefficient matrix for the LL region ### *)
+ansNN13 = Block[{C = 2, DD = 2, extraPoints = 2},
+		With[{aSeries = -k - 1,
+		      bSeries = -2 k - 3},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+							       Kh[FigeightLikePDAlt[aSeries /. {k -> k2},
+										    bSeries /. {k -> k1}]][q,t]],
+						      {bSeries} ~Join~ PosAdjEigenvalues[],
+						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
+ansNN21 = Block[{C = 2, DD = 2, extraPoints = 2},
+		With[{aSeries = -k - 2,
+		      bSeries = -2 k - 1},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+							       Kh[FigeightLikePDAlt[aSeries /. {k -> k2},
+										    bSeries /. {k -> k1}]][q,t]],
+						      {bSeries} ~Join~ PosAdjEigenvalues[],
+						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
+Print["check that answers coincide: ", Tally[ansNN13 - ansNN21]];
+ansNN13 // TeXForm;
+ansLL = ansNN13;
+
+(* ### Learn the evolution coefficient matrix for the LR region ### *)
+ansPN01 = Block[{C = 2, DD = 2, extraPoints = 2},
+		With[{aSeries = k,
+		      bSeries = -2 k - 1},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+							       Kh[FigeightLikePDAlt[aSeries /. {k -> k2},
+										    bSeries /. {k -> k1}]][q,t]],
+						      {bSeries} ~Join~ PosAdjEigenvalues[],
+						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
+ansPN01 // TeXForm;
+ansLR = ansPN01;
+
+Block[{i = 2, j = 3},
+      List[Simplify[(AA[i,j] /. ansLR) / (AA[i,j] /. ansLL)],
+	   Simplify[(AA[i,j] /. ansUL) / (AA[i,j] /. ansLL)],
+	   Simplify[(AA[i,j] /. ansUR) / (AA[i,j] /. ansUL)]]]
+
+                           
+           2   2   2
+Out[26]= {q , q , q }
 
 
 
