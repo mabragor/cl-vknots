@@ -429,19 +429,39 @@ CheckKhovanovSkein[knot_, crossingNum_] :=
 			  cupcapRes = CupCapResolution[PlanarDiagramToAdvancedStructures[pd], crossing]},
 			 (* Print["Indices: ", PosNegIndex[pd], " ", PosNegIndex[cheekRes], " ", PosNegIndex[cupcapRes]]; *)
 			 If[Yp === Head[XToYPM[crossing]],
-			    Expand[Simplify[Kh[pd][q,t]
-					    - q Kh[cheekRes][q,t]
-					    - t q^2 (t q^3)^((PosNegIndex[pd] - 1 - PosNegIndex[cupcapRes])/2) Kh[cupcapRes][q,t]]],
-			    Expand[Simplify[Kh[pd][q,t]
-					    - 1/q Kh[cheekRes][q,t]
-					    - (t^(-1) q^(-2) (t q^3)^((PosNegIndex[pd] + 1 - PosNegIndex[cupcapRes])/2)
-					       Kh[cupcapRes][q,t])]]]]]];
+			    Expand[Simplify[(Kh[pd][q,t]
+			    		     - q Kh[cheekRes][q,t]
+			    		     - t q^2 (t q^3)^((PosNegIndex[pd] - 1 - PosNegIndex[cupcapRes])/2) Kh[cupcapRes][q,t]
+			    		    )/(1+t)]],
+			    (* {Expand[Simplify[Kh[pd, Program->"FastKh"][q,t] *)
+			    (* 		     - (t^(-2) q^(-2) (t q^3)^((PosNegIndex[pd] - 1 - PosNegIndex[cupcapRes])/2) *)
+			    (* 			Kh[cupcapRes, Program->"FastKh"][q,t])]] *)
+			    (*  Expand[Simplify[Kh[cheekRes, Program->"FastKh"][q,t]]]}, *)
+			    Expand[Simplify[(Kh[pd][q,t]
+					     - 1/q Kh[cheekRes][q,t]
+					     - (t^(-1) q^(-2) (t q^3)^((PosNegIndex[pd] + 1 - PosNegIndex[cupcapRes])/2)
+						Kh[cupcapRes][q,t]))/(1+t)]]]]]];
+
+				    
 
 (* Kh[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
 (* 		    X[1,5,2,4]], *)
 (*    Program->"JavaKh"][q,t] *)
 
-CheckKhovanovSkein[BR[2, {-1, -1, -1, -1,-1,-1,-1}], 1]
+CheckKhovanovSkein[Knot[8,19], 1]
+
+Block[{n = 12},
+      Module[{knots = AllKnots[n]},
+	     Scan[Function[{knot},
+			   If[Not[MemberQ[Map[Length[CoefficientRules[#, {t, t^(-1)}]] &,
+					      Table[CheckKhovanovSkein[knot, i], {i, 1, n}]],
+					  1]],
+			      Print["Knot doesn't have monomial cut: ", knot]]],
+		  knots];
+	     Print["n: ", n, " done"]]];
+(* ### Here we've found non-monomial knot ### *)
+(* ### Knot doesn't have monomial cut: Knot[11, NonAlternating, 81] ### *)
+
 
 (* ### Archive the previous evaluation attempts ### *)
 (* FitFamilyWithEigenvalues[TwoStrandKhovanov, PosFundEigenvalues[]] *)
@@ -502,6 +522,8 @@ Print["check that answers coincide: ", Tally[ansPP13 - ansPP21]];
 ansPP13 // TeXForm;
 ansUR = ansPP13;
 
+(* Factor[Simplify[ansUR /. {t -> -1}]] *)
+                                                                                                                                       
 (* ### Learn the evolution coefficient matrix for the UL region ### *)
 ansNP01 = Block[{C = 2, DD = 2, extraPoints = 1},
 		With[{aSeries = -k,
@@ -513,6 +535,10 @@ ansNP01 = Block[{C = 2, DD = 2, extraPoints = 1},
 						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
 ansNP01 // TeXForm;
 ansUL = ansNP01;
+
+Factor[Simplify[
+    {{AA[1,1], AA[1,2] + AA[1,3]},
+     {AA[2,1], AA[2,2] + AA[2,3]}} /. (ansUR /. {t -> -1})]] // TeXForm
 
 (* ### Learn the evolution coefficient matrix for the LL region ### *)
 ansNN13 = Block[{C = 2, DD = 2, extraPoints = 2},
@@ -535,6 +561,8 @@ Print["check that answers coincide: ", Tally[ansNN13 - ansNN21]];
 ansNN13 // TeXForm;
 ansLL = ansNN13;
 
+Factor[Simplify[ansLL /. {t -> -1}]]
+
 (* ### Learn the evolution coefficient matrix for the LR region ### *)
 ansPN01 = Block[{C = 2, DD = 2, extraPoints = 2},
 		With[{aSeries = k,
@@ -546,6 +574,147 @@ ansPN01 = Block[{C = 2, DD = 2, extraPoints = 2},
 						      {aSeries} ~Join~ NegFundEigenvalues[]]]];
 ansPN01 // TeXForm;
 ansLR = ansPN01;
+
+MyJones[a_, b_] :=
+    ({1, (-q^2)^b}
+     . ({{AA[1,1], AA[1,2]},{AA[2,1],AA[2,2]}} /. (ansLR /. {t -> -1}))
+     . {q^a, (-q^3)^a});
+
+MyKhUR[a_, b_] :=
+    ({1, (t q^2)^(b)}
+     . ({{AA[1,1], AA[1,2], AA[1,3]},{AA[2,1],AA[2,2],AA[2,3]}} /. ansUR)
+     . {q^(-a), (t q^3)^(-a), (-t q^3)^(-a)});
+MyKhUL[a_, b_] :=
+    ({1, (t q^2)^(b)}
+     . ({{AA[1,1], AA[1,2], AA[1,3]},{AA[2,1],AA[2,2],AA[2,3]}} /. ansUL)
+     . {q^(-a), (t q^3)^(-a), (-t q^3)^(-a)});
+MyKhLR[a_, b_] :=
+    ({1, (t q^2)^(b)}
+     . ({{AA[1,1], AA[1,2], AA[1,3]},{AA[2,1],AA[2,2],AA[2,3]}} /. ansLR)
+     . {q^(-a), (t q^3)^(-a), (-t q^3)^(-a)});
+MyKhLL[a_, b_] :=
+    ({1, (t q^2)^(b)}
+     . ({{AA[1,1], AA[1,2], AA[1,3]},{AA[2,1],AA[2,2],AA[2,3]}} /. ansLL)
+     . {q^(-a), (t q^3)^(-a), (-t q^3)^(-a)});
+
+Simplify[MyKh[-2,1]]
+
+Block[{sH = Null, a = -3, b = 1},
+      Expand[Simplify[If[sH === Null,
+			 Factor[Simplify[MyKh[a, b]]],
+			 (MyKh[a, b] - q^(2 sH - 1)(1+q^2))/(1 + t q^4)]]]]
+
+Block[{a = 10, b = 1},
+      Block[{sH = -(a/2 - 1)},
+	    Expand[Simplify[If[sH === Null,
+			       Factor[Simplify[MyKhUR[a, b]]],
+			       (MyKhUR[a, b] - q^(2 sH - 1)(1+q^2))/(1 + t q^4)]]]]]
+
+Block[{a = -10, b = 1},
+      Block[{sH = -a/2},
+	    Expand[Simplify[If[sH === Null,
+			       Factor[Simplify[MyKhUL[a, b]]],
+			       (MyKhUL[a, b] - q^(2 sH - 1)(1+q^2))/(1 + t q^4)]]]]]
+
+Block[{a = 10, b = -1},
+      Block[{sH = -a/2},
+	    Expand[Simplify[If[sH === Null,
+			       Factor[Simplify[MyKhLR[a, b]]],
+			       (MyKhLR[a, b] - q^(2 sH - 1)(1+q^2))/(1 + t q^4)]]]]]
+
+Block[{a = -10, b = -1},
+      Block[{sH = -a/2-1},
+	    Expand[Simplify[If[sH === Null,
+			       Factor[Simplify[MyKhLL[a, b]]],
+			       (MyKhLL[a, b] - q^(2 sH - 1)(1+q^2))/(1 + t q^4)]]]]]
+
+                                    
+
+
+Block[{sH = 10, a = 4, b = 5},
+      Expand[Simplify[If[sH === Null,
+			 Factor[Simplify[MyJones[a, b]]],
+			 (MyJones[a, b] - q^(2 sH - 1)(1+q^2))/(1 - q^4)]]]]
+
+
+Expand[Simplify[Factor[Simplify[({{AA[1,1] - (1+q^2) q^(1), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansUR)
+				/. {t -> -1}]] (q + 1/q)]]
+
+          
+             -2    2    4             -2    2       -2    2
+Out[207]= {{q   - q  - q , 1}, {-1 - q   - q , 1 + q   + q }}
+
+
+Expand[Factor[Simplify[{{AA[1,1] - (1+q^2) q^(1), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansUR]
+	      /(1+t q^4) (1 - t^2 q^4) (- q t + 1/q)]] // TeXForm
+
+         
+              1       2      4  2             1      2         1      2
+Out[23]= {{-(----) + q  t - q  t , 1}, {-1 + ---- + q  t, 1 - ---- - q  t}}
+              2                               2                2
+             q  t                            q  t             q  t
+
+
+Expand[Simplify[Factor[Simplify[({{AA[1,1] - (1+q^2) q^(-1), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansUL)
+				/. {t -> -1}]] (q + 1/q)]]
+
+         
+                          -2    2       -2    2
+Out[22]= {{-1, 1}, {-1 - q   - q , 1 + q   + q }}
+
+
+Expand[Factor[Simplify[{{AA[1,1] - (1+q^2) q^(-1), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansUL]
+	      /(1+t q^4) (1 - t^2 q^4) (- q t + 1/q)]] // TeXForm
+
+         
+Out[55]//TeXForm= \left(
+                  \begin{array}{cc}
+                   t & -t \\
+                   -q^2 t^2+t-\frac{1}{q^2} & q^2 t^2-t+\frac{1}{q^2} \\
+                  \end{array}
+                  \right)
+
+         
+                      -2        2  2   -2        2  2
+Out[21]= {{t, -t}, {-q   + t - q  t , q   - t + q  t }}
+
+
+Expand[Simplify[Factor[Simplify[({{AA[1,1] - (1+q^2) q^(-1), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansLR)
+				/. {t -> -1}]] (q + 1/q)]]
+
+         
+                          -2    2       -2    2
+Out[36]= {{-1, 1}, {-1 - q   - q , 1 + q   + q }}
+
+
+
+
+Expand[Factor[Simplify[{{AA[1,1] - (1+q^2) q^(-1), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansLR]
+	      /(1+t q^4) (1 - t^2 q^4) (- q t + 1/q)]] // TeXForm
+
+                      -2        2  2   -2        2  2
+Out[35]= {{t, -t}, {-q   + t - q  t , q   - t + q  t }}
+
+
+Expand[Simplify[Factor[Simplify[({{AA[1,1] - (1+q^2) q^(-3), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansLL)
+				/. {t -> -1}]] (q + 1/q)]]
+
+         
+             -4    -2    2             -2    2       -2    2
+Out[51]= {{-q   - q   + q , 1}, {-1 - q   - q , 1 + q   + q }}
+
+Expand[Factor[Simplify[{{AA[1,1] - (1+q^2) q^(-3), AA[1,2] + AA[1,3]},{AA[2,1], AA[2,2] + AA[2,3]}} /. ansLL]
+	      /(1+t q^4) (1 - t^2 q^4) (- q t + 1/q)]] // TeXForm
+
+         
+             -4   t     2  3   2    t     2    2  3    t      2    2  3
+Out[50]= {{-q   + -- - q  t , t }, {-- - t  + q  t , -(--) + t  - q  t }}
+                   2                 2                  2
+                  q                 q                  q
+
+
+
+
 
 Block[{i = 2, j = 3},
       List[Simplify[(AA[i,j] /. ansLR) / (AA[i,j] /. ansLL)],
