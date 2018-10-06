@@ -441,14 +441,122 @@ CheckKhovanovSkein[knot_, crossingNum_] :=
 					     - 1/q Kh[cheekRes][q,t]
 					     - (t^(-1) q^(-2) (t q^3)^((PosNegIndex[pd] + 1 - PosNegIndex[cupcapRes])/2)
 						Kh[cupcapRes][q,t]))/(1+t)]]]]]];
-
-				    
-
 (* Kh[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
 (* 		    X[1,5,2,4]], *)
 (*    Program->"JavaKh"][q,t] *)
+(* ### Braidosome is that smart program that does all the work I want to get done for me ### *)
+(* ### Example of input : BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]] ### *)
+(* ### This example describes the figure-eight-like knots ### *)
+Braidosome[spec_BraidSpec] :=
+    Module[{lst = List @@ spec},
+	   Module[{allResidues = Tuples[Map[Range[0, #[[1]] - 1] &, lst]]},
+		  allResidues]];
+FindLabelInBraidSpec[spec_BraidSpec, label_] :=
+    Module[{i,
+	    specLst = List @@ spec,
+	    res = {}},
+	   For[i = 1, i <= Length[spec], i ++,
+	       Module[{itIn = Position[specLst[[i, 3]], label]},
+		      res = res ~Join~ Map[II[specLst[[i, 2]], #[[1]] - 1] &, itIn]];
+	       Module[{itOut = Position[specLst[[i, 4]], label]},
+		      res = res ~Join~ Map[OO[specLst[[i, 2]], #[[1]] - 1] &, itOut]]];
+	   res];
+ConnectionScheme[spec_BraidSpec, choiceOfResidues_] :=
+    Module[{connections = <||>, i,
+	    lstSpec = List @@ spec},
+	   (* ### vv Create the hash, ready to be populated, and populate with connections inside the braids ### *)
+	   For[i = 1, i <= Length[lstSpec], i ++,
+	       Module[{braid = lstSpec[[i]]},
+		      Scan[Function[{index},
+				    connections[II[braid[[2]], index]] = {OO[braid[[2]],
+									     Mod[index - choiceOfResidues[[i]], braid[[1]]]],
+									  Null};
+				    connections[OO[braid[[2]], index]] = {II[braid[[2]],
+									     Mod[index + choiceOfResidues[[i]], braid[[1]]]],
+									  Null}],
+			   (* ### vv The 0-based numbering convention is for convenience of taking the Mod in shifts ### *)
+			   Range[0, braid[[1]] - 1]]]];
+	   (* ### vv Populate with connections that are outside the braids ### *)
+	   Module[{externalConnectionLabels = DeleteDuplicates[Join @@ Map[#[[3]] ~Join~ #[[4]] &, lstSpec]]},
+		  Scan[Function[{label},
+				Module[{it = FindLabelInBraidSpec[spec, label]},
+				       (* Print["label: ", label, " pos: ", it]; *)
+				       connections[[Key[it[[1]]], 2]] = it[[2]];
+				       connections[[Key[it[[2]]], 2]] = it[[1]]]],
+		       externalConnectionLabels]];
+	   connections];
+NormalizeConnectedComponent[connComp_] :=
+    Module[{minInput = Null,
+	    myConnComp = connComp}, (* ### << copy the list for our manipulations ### *)
+	   (* Print["my conn comp: ", myConnComp]; *)
+	   (* ### vv Find the minimal input leg of the braid with the minimal name of the evolution parameter ### *)
+	   Scan[Function[{node},
+			 If[And[II === Head[node],
+				Or[Null === minInput,
+				   1 === Order[node[[1]], minInput[[1]]],
+				   And[0 === Order[node[[1]], minInput[[1]]],
+				       1 === Order[node[[2]], minInput[[2]]]]]],
+			    minInput = node]],
+		connComp];
+	   (* Print["min input: ", minInput]; *)
+	   (* ### vv First connection in the component should be internal within the minimal braid ### *)
+	   Module[{pos = Position[myConnComp, minInput][[1,1]]},
+		  Module[{nextElt = myConnComp[[1 + Mod[pos + 1 - 1, Length[myConnComp]]]]},
+			 (* Print["next elt: ", nextElt]; *)
+			 If[Not[And[OO === Head[nextElt],
+				    nextElt[[1]] === minInput[[1]]]],
+			    myConnComp = Reverse[myConnComp]]]];
+	   (* ### vv Make the minimal element appear as first in list ### *)
+	   Module[{pos = Position[myConnComp, minInput][[1,1]]},
+		  myConnComp = Join[myConnComp[[pos ;; ]],
+				    myConnComp[[ ;; pos - 1]]]];
+	   myConnComp];
+(* ### Another version of routine that finds connected components and works on connection schemes ### *)
+ConnectedComponentsConnectionScheme[connScheme_] :=
+    Module[{freeNodes = Map[True &, connScheme],
+	    connectedComponents = {}},
+	   While[0 =!= Length[freeNodes],
+		 (* Print["freeNodes: ", freeNodes]; *)
+		 Module[{firstNode = Module[{it = Keys[freeNodes][[1]]},
+					    KeyDropFrom[freeNodes, it];
+					    it]},
+			Module[{curComponent = {firstNode},
+				curNode = firstNode,
+				prevNode = Null},
+			       While[True,
+				     Module[{nextNode = Select[connScheme[curNode], # =!= prevNode &][[1]]},
+					    (* Print["nextNode: ", nextNode]; *)
+					    If[nextNode === firstNode,
+					       Break[],
+					       CompoundExpression[prevNode = curNode,
+								  curNode = nextNode,
+								  KeyDropFrom[freeNodes, nextNode],
+								  AppendTo[curComponent, nextNode]]]]];
+			       AppendTo[connectedComponents, NormalizeConnectedComponent[curComponent]]]]];
+	   (* ### vv Sort the connected component so that their starting elements are in order ### *)
+	   Sort[connectedComponents,
+		Module[{it = Order[#1[[1]], #2[[1]]]},
+		       If[0 =!= it,
+			  it,
+			  Order[#1[[2]], #2[[2]]]]] &]];
 
-CheckKhovanovSkein[Knot[8,19], 1]
+		
+
+ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
+		 {0, 0}]
+
+ConnectedComponentsConnectionScheme[
+    ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
+		     {1, 1}]]
+
+                  
+Out[48]= {{II[a, 0], OO[a, 1], II[b, 0], OO[b, 1]}, 
+ 
+>    {II[a, 1], OO[a, 0], OO[b, 0], II[b, 1]}}
+
+
+
+
 
 Block[{n = 12},
       Module[{knots = AllKnots[n]},
@@ -472,13 +580,10 @@ Block[{n = 12},
 (* Block[{C = 2, DD = 2}, *)
 (*       FitFamilyWithEigenvalues[Kh[FigeightLikePD[1, -#-1]][q,t] &, PosFundEigenvalues[]]] *)
 (* Kh[TorusKnot[2,-2]][q,t] *)
-
-Block[{C = 2, DD = 2},
-      Kh[FigeightLikePDAlt[-1, 1]][q,t]]
-
-Block[{C = 2, DD = 2},
-      Kh[FigeightLikePDAlt[-2, 4]][q,t]]
-
+(* Block[{C = 2, DD = 2}, *)
+(*       Kh[FigeightLikePDAlt[-1, 1]][q,t]] *)
+(* Block[{C = 2, DD = 2}, *)
+(*       Kh[FigeightLikePDAlt[-2, 4]][q,t]] *)
 XsToYPMs[expr_] :=
     (* ### Convert notation for crossings of the planar diagram into more intuitive form: ### *)
     (* ### the positive and negative crossings, where indices are in the order:
