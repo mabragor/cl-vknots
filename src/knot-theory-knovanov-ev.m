@@ -444,13 +444,6 @@ CheckKhovanovSkein[knot_, crossingNum_] :=
 (* Kh[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
 (* 		    X[1,5,2,4]], *)
 (*    Program->"JavaKh"][q,t] *)
-(* ### Braidosome is that smart program that does all the work I want to get done for me ### *)
-(* ### Example of input : BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]] ### *)
-(* ### This example describes the figure-eight-like knots ### *)
-Braidosome[spec_BraidSpec] :=
-    Module[{lst = List @@ spec},
-	   Module[{allResidues = Tuples[Map[Range[0, #[[1]] - 1] &, lst]]},
-		  allResidues]];
 FindLabelInBraidSpec[spec_BraidSpec, label_] :=
     Module[{i,
 	    specLst = List @@ spec,
@@ -535,27 +528,83 @@ ConnectedComponentsConnectionScheme[connScheme_] :=
 			       AppendTo[connectedComponents, NormalizeConnectedComponent[curComponent]]]]];
 	   (* ### vv Sort the connected component so that their starting elements are in order ### *)
 	   Sort[connectedComponents,
-		Module[{it = Order[#1[[1]], #2[[1]]]},
-		       If[0 =!= it,
-			  it,
-			  Order[#1[[2]], #2[[2]]]]] &]];
+		DepthTwoLexiSort]];
+DepthTwoLexiSort[eltOne_, eltTwo_] :=
+    Module[{it = Order[eltOne[[1]], eltTwo[[1]]]},
+	   If[0 =!= it,
+	      it,
+	      Order[eltOne[[2]], eltTwo[[2]]]]];
+NextNodeIsInOrderQ[spec_BraidSpec, component_, i_, residues_] :=
+    Module[{item = component[[i]],
+	    nextItem = component[[1 + Mod[i, Length[component]]]],
+	    lstSpec = List @@ spec},
+	   And[OO === Head[nextItem],
+	       item[[1]] === nextItem[[1]],
+	       Module[{pos = Position[lstSpec, Condition[elt_, elt[[2]] === item[[1]]], {1}, Heads->False][[1,1]]},
+		      item[[2]] == Mod[nextItem[[2]] + residues[[pos]] (* ### << relevant residue ### *),
+				       (lstSpec)[[pos, 1]] (* ### << relevant braid thickness ### *)]]]];
+OrientationMasks[spec_BraidSpec, connectedComponents_, residues_] :=
+    Map[Function[{component},
+		  Module[{i, res = <||>},
+			 For[i = 1, i <= Length[component], i ++,
+			     If[II === Head[component[[i]]],
+				res[component[[i]]] = If[NextNodeIsInOrderQ[spec, component, i, residues],
+							 1,
+							 -1]]];
+			 res]],
+	 connectedComponents];
+(* ### Braidosome is that smart program that does all the work I want to get done for me ### *)
+(* ### Example of input : BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]] ### *)
+(* ### This example describes the figure-eight-like knots ### *)
+Braidosome[spec_BraidSpec] :=
+    pass;
+OrientationClusters[spec_BraidSpec] :=
+    Module[{lst = List @@ spec,
+	    theClusters = <||>},
+	   Module[
+	       {allResidues = Tuples[Map[Range[0, #[[1]] - 1] &, lst]]},
+	       Scan[Function[{residues},
+			     (* Print["residues: ", residues]; *)
+			     (* ### vv This formatting is crap, but we don't have the Module* (analog of LET* ) macro ### *)
+			     (* ### vv which would be appropriate to use here ### *)
+			     Module[
+				 {connScheme = ConnectionScheme[spec, residues]},
+				 Module[
+				     {connComps = ConnectedComponentsConnectionScheme[connScheme]},
+				     Module[
+					 {oriMasks = OrientationMasks[spec, connComps, residues]},
+					 Scan[Function[{oriChoice}, (* ### << short for 'orientation choice' ### *)
+						       Module[{i, totalOrientation = {}},
+							      For[i = 1, i <= Length[oriChoice], i ++,
+								  AppendTo[totalOrientation,
+									   Map[Rule[#[[1]],
+										    oriChoice[[i]] * #[[2]]] &,
+									       Normal[oriMasks[[i]]]]]];
+							      (* Print["total ori: ", totalOrientation]; *)
+							      Module[{key = (OriChoice @@ Sort[Join @@ totalOrientation,
+											       (* ### vv We sort by keys ### *)
+											       DepthTwoLexiSort[#1[[1]], #2[[1]]] &])},
+								     Module[{val = Lookup[theClusters, key, {}]},
+									    (* Print["val: ", val]; *)
+									    theClusters[key] = Append[val, residues]]]]],
+					      (* ### vv First component always contains II[a,0], so we fix sign freedom this way ### *)
+					      Map[{1} ~Join~ # &, Tuples[{1,-1}, Length[connComps] - 1]]]]]]],
+		    allResidues]];
+	   theClusters];
 
-		
 
 ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
-		 {0, 0}]
+		 {1,1}]
 
-ConnectedComponentsConnectionScheme[
-    ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
-		     {1, 1}]]
+Block[{spec = BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
+       residues = {1, 1}},
+      Block[{scheme = ConnectionScheme[spec, residues]},
+	    Block[{connComps = ConnectedComponentsConnectionScheme[scheme]},
+		  OrientationMasks[spec, connComps, residues]]]]
 
-                  
-Out[48]= {{II[a, 0], OO[a, 1], II[b, 0], OO[b, 1]}, 
- 
->    {II[a, 1], OO[a, 0], OO[b, 0], II[b, 1]}}
+DepthTwoLexiSort[II[a,0], II[b,0]]
 
-
-
+OrientationClusters[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]]
 
 
 Block[{n = 12},
