@@ -478,6 +478,17 @@ ConnectionScheme[spec_BraidSpec, choiceOfResidues_] :=
 				       connections[[Key[it[[2]]], 2]] = it[[1]]]],
 		       externalConnectionLabels]];
 	   connections];
+ExternalConnectionScheme[spec_BraidSpec] :=
+    Module[{connections = <||>, i,
+	    lstSpec = List @@ spec},
+	   Module[{externalConnectionLabels = DeleteDuplicates[Join @@ Map[#[[3]] ~Join~ #[[4]] &, lstSpec]]},
+		  Scan[Function[{label},
+				Module[{it = FindLabelInBraidSpec[spec, label]},
+				       (* Print["label: ", label, " pos: ", it]; *)
+				       connections[[Key[it[[1]]]]] = it[[2]];
+				       connections[[Key[it[[2]]]]] = it[[1]]]],
+		       externalConnectionLabels]];
+	   connections];
 NormalizeConnectedComponent[connComp_] :=
     Module[{minInput = Null,
 	    myConnComp = connComp}, (* ### << copy the list for our manipulations ### *)
@@ -591,21 +602,141 @@ OrientationClusters[spec_BraidSpec] :=
 					      Map[{1} ~Join~ # &, Tuples[{1,-1}, Length[connComps] - 1]]]]]]],
 		    allResidues]];
 	   theClusters];
+YpAbs[ll_, lr_, ul_, ur_, ori1_, ori2_] :=
+    (* ### ^^ the crossing that looks "positive" in the absolute frame: had both strands been oriented from down to up ### *)
+    If[And[ori1 == 1, ori2 == 1],
+       Yp[ll, lr, ul, ur],
+       If[And[ori1 == -1, ori2 == 1],
+	  Ym[lr, ur, ll, ul],
+	  If[And[ori1 == 1, ori2 == -1],
+	     Ym[ul, ll, ur, lr],
+	     If[And[ori1 == -1, ori2 == -1],
+		Yp[ur, ul, lr, ll],
+		Print["Caboom!"]]]]];
+YmAbs[ll_, lr_, ul_, ur_, ori1_, ori2_] :=
+    (* ### ^^ the crossing that looks "negative" in the absolute frame: had both strands been oriented from down to up ### *)
+    If[And[ori1 == 1, ori2 == 1],
+       Ym[ll, lr, ul, ur],
+       If[And[ori1 == -1, ori2 == 1],
+	  Yp[lr, ur, ll, ul],
+	  If[And[ori1 == 1, ori2 == -1],
+	     Yp[ul, ll, ur, lr],
+	     If[And[ori1 == -1, ori2 == -1],
+		Ym[ur, ul, lr, ll],
+		Print["Caboom!"]]]]];
+ExpandBraidIntoPositiveCrossings[braid_Braid, orientations_, winding_] :=
+    Module[{nWind,
+	    curOris = orientations,
+	    res = {},
+	    numStrands = braid[[1]],
+	    braidLabel = braid[[2]]},
+	   For[nWind = 1, nWind <= winding, nWind ++,
+	       AppendTo[res, Map[Function[{crossingIndex},
+					  YpAbs[IntHor[braidLabel, nWind, crossingIndex - 1],
+						IntVert[braidLabel, nWind - 1, crossingIndex],
+						IntVert[braidLabel, nWind, crossingIndex - 1],
+						IntHor[braidLabel, nWind, crossingIndex],
+						curOris[[crossingIndex]],
+						curOris[[crossingIndex + 1]]]],
+				 Range[1, numStrands - 1]]];
+	       curOris = Append[curOris[[2 ;; ]], curOris[[1]]]];
+	   (((Join @@ res) /. {IntHor[braidLabel, wind_, 0] :> IntVert[braidLabel, wind - 1, 0],
+			       IntHor[braidLabel, wind_, numStrands - 1] :> IntVert[braidLabel, wind, numStrands - 1]})
+	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
+		IntVert[braidLabel, winding, k_] :> OO[a, k]})];
+ExpandBraidIntoNegativeCrossings[braid_Braid, orientations_, winding_] :=
+    Module[{nWind,
+	    curOris = orientations,
+	    res = {},
+	    numStrands = braid[[1]],
+	    braidLabel = braid[[2]]},
+	   For[nWind = 1, nWind <= winding, nWind ++,
+	       AppendTo[res, Map[Function[{crossingIndex},
+					  YmAbs[IntVert[braidLabel, nWind - 1, crossingIndex - 1],
+						IntHor[braidLabel, nWind, crossingIndex],
+						IntHor[braidLabel, nWind, crossingIndex - 1],
+						IntVert[braidLabel, nWind, crossingIndex],
+						curOris[[crossingIndex]],
+						curOris[[crossingIndex + 1]]]],
+				 Range[1, numStrands - 1]]];
+	       curOris = Prepend[curOris[[ ;; -2]], curOris[[-1]]]];
+	   (((Join @@ res) /. {IntHor[braidLabel, wind_, 0] :> IntVert[braidLabel, wind, 0],
+			       IntHor[braidLabel, wind_, numStrands - 1] :> IntVert[braidLabel, wind - 1, numStrands - 1]})
+	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
+		IntVert[braidLabel, winding, k_] :> OO[a, k]})];
+ExpandBraidIntoZeroCrossings[braid_Braid, orientations_] :=
+    Module[{nWind,
+	    curOris = orientations,
+	    res = {},
+	    numStrands = braid[[1]],
+	    braidLabel = braid[[2]]},
+	   With[{nWind = 1},
+		AppendTo[res, Map[Function[{crossingIndex},
+					   YpAbs[IntHor[braidLabel, nWind, crossingIndex - 1],
+						 IntVert[braidLabel, nWind - 1, crossingIndex],
+						 IntVert[braidLabel, nWind, crossingIndex - 1],
+						 IntHor[braidLabel, nWind, crossingIndex],
+						 curOris[[crossingIndex]],
+						 curOris[[crossingIndex + 1]]]],
+				  Range[1, numStrands - 1]]];
+		curOris = Append[curOris[[2 ;; ]], curOris[[1]]]];
+	   With[{nWind = 2},
+		AppendTo[res, Map[Function[{crossingIndex},
+					   YmAbs[IntVert[braidLabel, nWind - 1, crossingIndex - 1],
+						 IntHor[braidLabel, nWind, crossingIndex],
+						 IntHor[braidLabel, nWind, crossingIndex - 1],
+						 IntVert[braidLabel, nWind, crossingIndex],
+						 curOris[[crossingIndex]],
+						 curOris[[crossingIndex + 1]]]],
+				  Range[1, numStrands - 1]]];
+		curOris = Prepend[curOris[[ ;; -2]], curOris[[-1]]]];
+	   (((Join @@ res) /. {IntHor[braidLabel, 1, 0] :> IntVert[braidLabel, 0, 0],
+			       IntHor[braidLabel, 1, numStrands - 1] :> IntVert[braidLabel, 1, numStrands - 1],
+			       IntHor[braidLabel, 2, 0] :> IntVert[braidLabel, 2, 0],
+			       IntHor[braidLabel, 2, numStrands - 1] :> IntVert[braidLabel, 1, numStrands - 1]})
+	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
+		IntVert[braidLabel, 2, k_] :> OO[a, k]})];
+ExpandBraidIntoCrossings[braid_Braid, orientations_, winding_] :=
+    If[winding > 0,
+       ExpandBraidIntoPositiveCrossings[braid, orientations, winding],
+       If[winding == 0,
+	  ExpandBraidIntoZeroCrossings[braid, orientations],
+	  ExpandBraidIntoNegativeCrossings[braid, orientations, Abs[winding]]]];
+PlanarDiagram[spec_BraidSpec, oriChoice_, windings_] :=
+    Module[{i, specLst = List @@ spec, acc = {}},
+	   For[i = 1, i <= Length[specLst], i ++,
+	       Module[{planeOris = Map[#[[2]] &, Select[List @@ oriChoice,
+							Function[{x},
+								 (* Print["x: ", x[[1,1]], " ", specLst[[i, 2]]]; *)
+								 Module[{it = (x[[1, 1]] === specLst[[i, 2]])},
+									(* Print["it: ", it]; *)
+									it]]]]},
+		      (* Print["planeOris: ", planeOris]; *)
+		      AppendTo[acc,
+			       ExpandBraidIntoCrossings[specLst[[i]], planeOris, windings[[i]]]]]];
+	   ((Join @@ acc)
+	    /. DeleteDuplicates[Map[Rule @@ Sort[List @@ #,
+						 If[And[II === Head[#1],
+							OO === Head[#2]],
+						    1,
+						    If[And[OO === Head[#1],
+							   II === Head[#2]],
+						       -1,
+						       DepthTwoLexiSort[#1, #2]]] &] &,
+				    Normal[ExternalConnectionScheme[spec]]]])];
+(* ExpandBraidIntoCrossings[Braid[2, a, {2, 1}, {4, 3}], {-1,1}, -2] *)
+(* ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]], *)
+(* 		 {1,1}] *)
+(* ExternalConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]] *)
+
+PlanarDiagram[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
+	      OriChoice[II[a, 0] -> 1, II[a, 1] -> -1, II[b, 0] -> -1, II[b, 1] -> 1],
+	      {0, 0}]
 
 
-ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
-		 {1,1}]
 
-Block[{spec = BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
-       residues = {1, 1}},
-      Block[{scheme = ConnectionScheme[spec, residues]},
-	    Block[{connComps = ConnectedComponentsConnectionScheme[scheme]},
-		  OrientationMasks[spec, connComps, residues]]]]
-
-DepthTwoLexiSort[II[a,0], II[b,0]]
-
-OrientationClusters[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]]
-
+(* DepthTwoLexiSort[II[a,0], II[b,0]] *)
+(* OrientationClusters[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]] *)
 
 Block[{n = 12},
       Module[{knots = AllKnots[n]},
