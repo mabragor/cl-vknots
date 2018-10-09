@@ -263,7 +263,7 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 										     #[[2]]]]] &,
 							       ans[[1]]]],
 						    Module[{}, Print[check]; checkFailed]]]]]]]]];
-PlanarDiagramToAdvancedStructures[pd_PD] :=
+PlanarDiagramToAdvancedStructures[pd_] :=
     (* ### Massage the terse format of the planar diagram ### *)
     (* ### into more convenient collection of maps, which is more suitable to for asking actual questions about PD ### *)
     Module[{nextEdge = <||>,
@@ -272,30 +272,41 @@ PlanarDiagramToAdvancedStructures[pd_PD] :=
 	    edgeCrossingsOut = <||>},
 	   Scan[Function[{crossing},
 			 (* Print[crossing]; *)
-			 Cases[List[crossing],
-			       whole:X[a_, b_, c_, d_] :>
-			       Module[{},
-				      (* Print["I'm here"]; *)
-				      nextEdge[a] = c;
-				      prevEdge[c] = a;
-				      edgeCrossingsIn[a] = whole;
-				      edgeCrossingsOut[c] = whole;
-				      If[1 == Abs[b - d],
-					 (* ### ^^ If we are not at the "gluing" of the loop ### *)
-					 If[d > b,
-					    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
-							       edgeCrossingsIn[b] = whole,
-							       edgeCrossingsOut[d] = whole],
-					    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
-							       edgeCrossingsIn[d] = whole,
-							       edgeCrossingsOut[b] = whole]],
-					 If[d > b,
-					    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
-							       edgeCrossingsIn[d] = whole,
-							       edgeCrossingsOut[b] = whole],
-					    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
-							       edgeCrossingsIn[b] = whole,
-							       edgeCrossingsOut[d] = whole]]]]]],
+			 Module[{a,b,c,d},
+				(* ### vv It is hard to pass by reference in Mathematica, that's why we don't split here ### *)
+				If[X === Head[crossing],
+				   CompoundExpression[{a,b,c,d} = List @@ crossing;
+						      (* Print["I'm here"]; *)
+						      nextEdge[a] = c;
+						      prevEdge[c] = a;
+						      edgeCrossingsIn[a] = crossing;
+						      edgeCrossingsOut[c] = crossing;
+						      If[1 == Abs[b - d],
+							 (* ### ^^ If we are not at the "gluing" of the loop ### *)
+							 If[d > b,
+							    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
+									       edgeCrossingsIn[b] = crossing,
+									       edgeCrossingsOut[d] = crossing],
+							    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
+									       edgeCrossingsIn[d] = crossing,
+									       edgeCrossingsOut[b] = crossing]],
+							 If[d > b,
+							    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
+									       edgeCrossingsIn[d] = crossing,
+									       edgeCrossingsOut[b] = crossing],
+							    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
+									       edgeCrossingsIn[b] = crossing,
+									       edgeCrossingsOut[d] = crossing]]]],
+				   If[Or[Yp === Head[crossing], Ym == Head[crossing]],
+				      CompoundExpression[{a,b,c,d} = List @@ crossing;
+							 nextEdge[a] = d;
+							 prevEdge[d] = a;
+							 edgeCrossingsIn[a] = crossing;
+							 edgeCrossingsOut[d] = crossing;
+							 nextEdge[b] = c;
+							 prevEdge[c] = b;
+							 edgeCrossingsIn[b] = crossing;
+							 edgeCrossingsOut[c] = crossing;]]]]],
 		List @@ pd];
 	   Module[{connectedComponents = FindConnectedComponents[nextEdge]},
 		  PDExtended[nextEdge, prevEdge, edgeCrossingsIn, edgeCrossingsOut, connectedComponents]]];
@@ -643,7 +654,7 @@ ExpandBraidIntoPositiveCrossings[braid_Braid, orientations_, winding_] :=
 	   (((Join @@ res) /. {IntHor[braidLabel, wind_, 0] :> IntVert[braidLabel, wind - 1, 0],
 			       IntHor[braidLabel, wind_, numStrands - 1] :> IntVert[braidLabel, wind, numStrands - 1]})
 	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
-		IntVert[braidLabel, winding, k_] :> OO[a, k]})];
+		IntVert[braidLabel, winding, k_] :> OO[braidLabel, k]})];
 ExpandBraidIntoNegativeCrossings[braid_Braid, orientations_, winding_] :=
     Module[{nWind,
 	    curOris = orientations,
@@ -663,7 +674,7 @@ ExpandBraidIntoNegativeCrossings[braid_Braid, orientations_, winding_] :=
 	   (((Join @@ res) /. {IntHor[braidLabel, wind_, 0] :> IntVert[braidLabel, wind, 0],
 			       IntHor[braidLabel, wind_, numStrands - 1] :> IntVert[braidLabel, wind - 1, numStrands - 1]})
 	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
-		IntVert[braidLabel, winding, k_] :> OO[a, k]})];
+		IntVert[braidLabel, winding, k_] :> OO[braidLabel, k]})];
 ExpandBraidIntoZeroCrossings[braid_Braid, orientations_] :=
     Module[{nWind,
 	    curOris = orientations,
@@ -695,7 +706,7 @@ ExpandBraidIntoZeroCrossings[braid_Braid, orientations_] :=
 			       IntHor[braidLabel, 2, 0] :> IntVert[braidLabel, 2, 0],
 			       IntHor[braidLabel, 2, numStrands - 1] :> IntVert[braidLabel, 1, numStrands - 1]})
 	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
-		IntVert[braidLabel, 2, k_] :> OO[a, k]})];
+		IntVert[braidLabel, 2, k_] :> OO[braidLabel, k]})];
 ExpandBraidIntoCrossings[braid_Braid, orientations_, winding_] :=
     If[winding > 0,
        ExpandBraidIntoPositiveCrossings[braid, orientations, winding],
@@ -715,23 +726,117 @@ PlanarDiagram[spec_BraidSpec, oriChoice_, windings_] :=
 		      AppendTo[acc,
 			       ExpandBraidIntoCrossings[specLst[[i]], planeOris, windings[[i]]]]]];
 	   ((Join @@ acc)
-	    /. DeleteDuplicates[Map[Rule @@ Sort[List @@ #,
-						 If[And[II === Head[#1],
-							OO === Head[#2]],
-						    1,
-						    If[And[OO === Head[#1],
-							   II === Head[#2]],
-						       -1,
-						       DepthTwoLexiSort[#1, #2]]] &] &,
-				    Normal[ExternalConnectionScheme[spec]]]])];
+	    /. (* {} *) DeleteDuplicates[Map[Rule @@ Sort[List @@ #,
+							  If[And[II === Head[#1],
+								 OO === Head[#2]],
+							     1,
+							     If[And[OO === Head[#1],
+								    II === Head[#2]],
+								-1,
+								DepthTwoLexiSort[#1, #2]]] &] &,
+					     Normal[ExternalConnectionScheme[spec]]]])];
+UnderIncomingCrossingQ[crossing_, edge_] :=
+    Or[And[Ym === Head[crossing],
+	   crossing[[1]] === edge],
+       And[Yp === Head[crossing],
+	   crossing[[2]] === edge]];
+ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_]] :=
+    Module[{i, j,
+	    myCC = connectedComponents},
+	   (* Print["myCC: ", myCC]; *)
+	   For[i = 1, i <= Length[myCC], i ++,
+	       Module[{foundCut = False},
+		      For[j = 1, j <= Length[myCC[[i]]], j ++,
+			  (* ### vv First we try to find good edge to cut the numbering at ### *)
+			  If[UnderIncomingCrossingQ[edgeCrossingsIn[myCC[[i, j]]],
+						    myCC[[i, j]]],
+			     CompoundExpression[myCC[[i]] = Join[myCC[[i, j + 1 ;; ]], myCC[[i, ;; j]]],
+						foundCut = True;
+						Break[]]]];
+		      If[Not[foundCut],
+			 CompoundExpression[
+			     (* ### vv If we hadn't found such an edge, we create a small loop ### *)
+			     Print["I'm in creating new crossing"];
+			     myCC[[i]] = myCC[[i]] ~Join~ {SmallLoopEdge[[i, 1]], SmallLoopEdge[[i, 2]]};
+			     Module[{it = prevEdge[myCC[[i, 1]]]},
+				    nextEdge[it] = SmallLoopEdge[[i, 1]];
+				    nextEdge[SmallLoopEdge[[i, 1]]] = SmallLoopEdge[[i, 2]];
+				    nextEdge[SmallLoopEdge[[i, 2]]] = myCC[[i, 1]];
+				    prevEdge[myCC[[i, 1]]] = SmallLoopEdge[[i, 2]];
+				    prevEdge[SmallLoopEdge[[i, 2]]] = SmallLoopEdge[[i, 1]];
+				    prevEdge[SmallLoopEdge[[i, 1]]] = it;
+				    Module[{oldCrossing = edgeCrossingOut[myCC[[i, 1]]],
+					    modifiedCrossing = (edgeCrossingOut[myCC[[i, 1]]]
+								/. {myCC[[i, 1]] -> SmallLoopEdge[[i, 1]]}),
+					    newCrossing = Yp[SmallLoopEdge[[i, 2]], SmallLoopEdge[[i, 1]],
+							     SmallLoopEdge[[i, 2]], myCC[[i, 1]]]},
+					   Scan[Function[{edge},
+							 If[edgeCrossingIn[edge] === oldCrossing,
+							    edgeCrossingIn[edge] = modifiedCrossing];
+							 If[edgeCrossingOut[edge] === oldCrossing,
+							    edgeCrossingOut[edge] = modifiedCrossing]],
+						List @@ modifiedCrossing];
+					   edgeCrossingOut[SmallLoopEdge[[i, 1]]] = modifiedCrossing;
+					   edgeCrossingIn[SmallLoopEdge[[i, 1]]] = newCrossing;
+					   edgeCrossingOut[SmallLoopEdge[[i, 2]]] = newCrossing;
+					   edgeCrossingIn[SmallLoopEdge[[i, 2]]] = newCrossing;
+					   edgeCrossingOut[myCC[[i, 1]]] = newCrossing;]]]]]];
+	   (* Print["myCC: ", myCC]; *)
+	   Module[{diag = (DeleteDuplicates[Values[edgeCrossingsIn]]
+			   /. MapIndexed[Rule[#1, #2[[1]]] &,
+					 Flatten[myCC]])},
+		  YPMsToXs[(PD @@ diag)]]];
+YPMsToXs[expr_] :=
+    (* ### Convert notation for crossings back to the counter-intuitive notation, but which is understood by KnotTheory ### *)
+    (expr /. {Ym[a_, b_, c_, d_] :> X[a, b, d, c],
+	      Yp[a_, b_, c_, d_] :> X[b, d, c, a]});
 (* ExpandBraidIntoCrossings[Braid[2, a, {2, 1}, {4, 3}], {-1,1}, -2] *)
 (* ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]], *)
 (* 		 {1,1}] *)
 (* ExternalConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]] *)
 
-PlanarDiagram[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
-	      OriChoice[II[a, 0] -> 1, II[a, 1] -> -1, II[b, 0] -> -1, II[b, 1] -> 1],
-	      {0, 0}]
+Block[{aa = 2, bb = 3},
+      Block[{pd = PlanarDiagram[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
+				OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[b, 0] -> 1, II[b, 1] -> -1],
+				{aa, bb}]},
+	    Module[{kh = Kh[ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[pd]]][q,t]},
+		   Print["kh: ", kh]]]];
+      
+
+pd
+
+(* ### Learn the evolution coefficient matrix for the UR region ### *)
+ansPP13 = Block[{extraPoints = 2},
+		With[{aSeries = k + 1,
+		      bSeries = 2 k + 3},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+							       Module[{it = Kh[ExtendedPDToUsual[
+								   PlanarDiagramToAdvancedStructures[
+								       PlanarDiagram[BraidSpec[Braid[2, a, {2, 1}, {4, 3}],
+											       Braid[2, b, {3, 1}, {4, 2}]],
+										     OriChoice[II[a, 0] -> 1,
+											       II[a, 1] -> 1,
+											       II[b, 0] -> 1,
+											       II[b, 1] -> -1],
+										     {(aSeries /. {k -> k2}),
+										      (bSeries /. {k -> k1})}]]]][q,t]},
+								      (* Print["Kh: ", it]; *)
+								      it]],
+						      {bSeries} ~Join~ NegAdjEigenvalues[],
+						      {aSeries} ~Join~ PosFundEigenvalues[]]]];
+
+ansPP13
+
+PlanarDiagramToAdvancedStructures[pd]
+
+
+Kh[ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[pd]]][q,t]
+
+         1
+Out[40]= - + q
+         q
+
+ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[pd]]
 
 
 
@@ -772,10 +877,6 @@ XsToYPMs[expr_] :=
     (expr /. {X[a_, b_, c_, d_] :> If[b < d,
 				      Ym[a, b, d, c],
 				      Yp[d, a, c, b]]});
-YPMsToXs[expr_] :=
-    (* ### Convert notation for crossings back to the counter-intuitive notation, but which is understood by KnotTheory ### *)
-    (expr /. {Ym[a_, b_, c_, d_] :> X[a, b, d, c],
-	      Yp[a_, b_, c_, d_] :> X[b, d, c, a]});
 CheckPlanarDiagram[lst_PD] :=
     Module[{lstLst = List @@ lst},
 	   Module[{indices = Tally[Flatten[Map[List @@ # &, lstLst]]]},
@@ -1464,3 +1565,4 @@ Block[{C = 2, DD = 2},
 (* 	     Simplify[(TwoStrandKhovanov[n] *)
 (* 		       - TwoStrandKhovanovTheor[n]) *)
 (* 		     ]]] *)
+
