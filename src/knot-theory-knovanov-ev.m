@@ -239,11 +239,12 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 		   (* correctionFactors = Map[Module[{power = #[[1]] /. {k -> 0}}, *)
 		   (* 				  Map[#^power &, Rest[#]]] &, *)
 		   (* 			   specs] *)
-		  (* Print[List[comb, indets, correctionFactors]]; *)
+		  Print["comb and indets: ", List[comb, indets, family]];
 		  Module[{eqns = Map[(family @@ #) - (comb @@ #) == 0 &,
 				     Tuples[Map[Range[0, Length[#] - 1 - 1] &,
 						specs]]]},
 			 Module[{ans = Solve[eqns, indets]},
+				(* Print["solved the system: ", ans]; *)
 				If[1 =!= Length[ans],
 				   Message["More than one solution to a linear system"],
 				   Module[{indices = Tuples[Map[Range[0, Length[#] - 1 - 1 + extraPoints]&,
@@ -742,13 +743,17 @@ UnderIncomingCrossingQ[crossing_, edge_] :=
 	   crossing[[2]] === edge]];
 ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_]] :=
     Module[{i, j,
-	    myCC = connectedComponents},
+	    myCC = connectedComponents,
+	    myNextEdge = nextEdge,
+	    myPrevEdge = prevEdge,
+	    myEdgeCrossingsIn = edgeCrossingsIn,
+	    myEdgeCrossingsOut = edgeCrosssingsOut},
 	   (* Print["myCC: ", myCC]; *)
 	   For[i = 1, i <= Length[myCC], i ++,
 	       Module[{foundCut = False},
 		      For[j = 1, j <= Length[myCC[[i]]], j ++,
 			  (* ### vv First we try to find good edge to cut the numbering at ### *)
-			  If[UnderIncomingCrossingQ[edgeCrossingsIn[myCC[[i, j]]],
+			  If[UnderIncomingCrossingQ[myEdgeCrossingsIn[myCC[[i, j]]],
 						    myCC[[i, j]]],
 			     CompoundExpression[myCC[[i]] = Join[myCC[[i, j + 1 ;; ]], myCC[[i, ;; j]]],
 						foundCut = True;
@@ -757,32 +762,32 @@ ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossin
 			 CompoundExpression[
 			     (* ### vv If we hadn't found such an edge, we create a small loop ### *)
 			     Print["I'm in creating new crossing"];
-			     myCC[[i]] = myCC[[i]] ~Join~ {SmallLoopEdge[[i, 1]], SmallLoopEdge[[i, 2]]};
-			     Module[{it = prevEdge[myCC[[i, 1]]]},
-				    nextEdge[it] = SmallLoopEdge[[i, 1]];
-				    nextEdge[SmallLoopEdge[[i, 1]]] = SmallLoopEdge[[i, 2]];
-				    nextEdge[SmallLoopEdge[[i, 2]]] = myCC[[i, 1]];
-				    prevEdge[myCC[[i, 1]]] = SmallLoopEdge[[i, 2]];
-				    prevEdge[SmallLoopEdge[[i, 2]]] = SmallLoopEdge[[i, 1]];
-				    prevEdge[SmallLoopEdge[[i, 1]]] = it;
-				    Module[{oldCrossing = edgeCrossingOut[myCC[[i, 1]]],
-					    modifiedCrossing = (edgeCrossingOut[myCC[[i, 1]]]
-								/. {myCC[[i, 1]] -> SmallLoopEdge[[i, 1]]}),
-					    newCrossing = Yp[SmallLoopEdge[[i, 2]], SmallLoopEdge[[i, 1]],
-							     SmallLoopEdge[[i, 2]], myCC[[i, 1]]]},
+			     myCC[[i]] = myCC[[i]] ~Join~ {SmallLoopEdge[i, 1], SmallLoopEdge[i, 2]};
+			     Module[{it = myPrevEdge[myCC[[i, 1]]]},
+				    myNextEdge[it] = SmallLoopEdge[i, 1];
+				    myNextEdge[SmallLoopEdge[i, 1]] = SmallLoopEdge[i, 2];
+				    myNextEdge[SmallLoopEdge[i, 2]] = myCC[[i, 1]];
+				    myPrevEdge[myCC[[i, 1]]] = SmallLoopEdge[i, 2];
+				    myPrevEdge[SmallLoopEdge[i, 2]] = SmallLoopEdge[i, 1];
+				    myPrevEdge[SmallLoopEdge[i, 1]] = it;
+				    Module[{oldCrossing = myEdgeCrossingOut[myCC[[i, 1]]],
+					    modifiedCrossing = (myEdgeCrossingOut[myCC[[i, 1]]]
+								/. {myCC[[i, 1]] -> SmallLoopEdge[i, 1]}),
+					    newCrossing = Yp[SmallLoopEdge[i, 2], SmallLoopEdge[i, 1],
+							     SmallLoopEdge[i, 2], myCC[i, 1]]},
 					   Scan[Function[{edge},
-							 If[edgeCrossingIn[edge] === oldCrossing,
-							    edgeCrossingIn[edge] = modifiedCrossing];
-							 If[edgeCrossingOut[edge] === oldCrossing,
-							    edgeCrossingOut[edge] = modifiedCrossing]],
+							 If[myEdgeCrossingIn[edge] === oldCrossing,
+							    myEdgeCrossingIn[edge] = modifiedCrossing];
+							 If[myEdgeCrossingOut[edge] === oldCrossing,
+							    myEdgeCrossingOut[edge] = modifiedCrossing]],
 						List @@ modifiedCrossing];
-					   edgeCrossingOut[SmallLoopEdge[[i, 1]]] = modifiedCrossing;
-					   edgeCrossingIn[SmallLoopEdge[[i, 1]]] = newCrossing;
-					   edgeCrossingOut[SmallLoopEdge[[i, 2]]] = newCrossing;
-					   edgeCrossingIn[SmallLoopEdge[[i, 2]]] = newCrossing;
-					   edgeCrossingOut[myCC[[i, 1]]] = newCrossing;]]]]]];
+					   myEdgeCrossingOut[SmallLoopEdge[i, 1]] = modifiedCrossing;
+					   myEdgeCrossingIn[SmallLoopEdge[i, 1]] = newCrossing;
+					   myEdgeCrossingOut[SmallLoopEdge[i, 2]] = newCrossing;
+					   myEdgeCrossingIn[SmallLoopEdge[i, 2]] = newCrossing;
+					   myEdgeCrossingOut[myCC[[i, 1]]] = newCrossing;]]]]]];
 	   (* Print["myCC: ", myCC]; *)
-	   Module[{diag = (DeleteDuplicates[Values[edgeCrossingsIn]]
+	   Module[{diag = (DeleteDuplicates[Values[myEdgeCrossingsIn]]
 			   /. MapIndexed[Rule[#1, #2[[1]]] &,
 					 Flatten[myCC]])},
 		  YPMsToXs[(PD @@ diag)]]];
@@ -790,10 +795,90 @@ YPMsToXs[expr_] :=
     (* ### Convert notation for crossings back to the counter-intuitive notation, but which is understood by KnotTheory ### *)
     (expr /. {Ym[a_, b_, c_, d_] :> X[a, b, d, c],
 	      Yp[a_, b_, c_, d_] :> X[b, d, c, a]});
+ThreeStrandKhovanov[aa_] :=
+    Block[{prePd = PlanarDiagram[BraidSpec[Braid[3, a, {1, 2, 3}, {4, 6, 7}],
+					   Braid[2, b, {6, 7}, {5, 3}],
+					   Braid[2, c, {4, 5}, {1, 2}]],
+				 OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[a, 2] -> 1,
+					   II[b, 0] -> 1, II[b, 1] -> 1,
+					   II[c, 0] -> 1, II[c, 1] -> 1],
+				 {aa, 0 ,0}]},
+	  Block[{pd = ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[prePd]]},
+		(* Print["pre pd: ", prePd]; *)
+		(* Print["pd: ", pd]; *)
+		Module[{it = Kh[pd][q,t]},
+		       it]]];
+FourStrandKhovanov[aa_] :=
+    Block[{prePd = PlanarDiagram[BraidSpec[Braid[4, a, {1, 2, 3, 4}, {5,6,7,8}],
+					   Braid[4, b, {5,6,7,8}, {1,2,3,4}]],
+				 OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[a, 2] -> 1, II[a,3] -> 1,
+					   II[b, 0] -> 1, II[b, 1] -> 1, II[b, 2] -> 1, II[b,3] -> 1],
+				 {aa, 0}]},
+	  Block[{pd = ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[prePd]]},
+		(* Print["pre pd: ", prePd]; *)
+		(* Print["pd: ", pd]; *)
+		Module[{it = Kh[pd][q,t]},
+		       it]]];
+FirstNonToricKhovanov[aa_] :=
+    Kh[PD[BR[3, Join @@ Table[{1, -2}, {i, 1, aa}]]]][q,t];
 (* ExpandBraidIntoCrossings[Braid[2, a, {2, 1}, {4, 3}], {-1,1}, -2] *)
 (* ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]], *)
 (* 		 {1,1}] *)
 (* ExternalConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]] *)
+
+theOrder = 6;
+eqns = Map[Function[{n},
+		    0 == (Plus @@ Map[Function[{delta}, FirstNonToricKhovanov[n + delta] CC[delta]], Range[1,theOrder]])],
+	   Range[1, theOrder + 1]];
+
+ans = Solve[eqns (* /. {t -> -1} *),
+	    Map[CC[#] &, Range[1,theOrder]]];
+
+FullSimplify[ans]
+
+                           2      4  2
+                     (1 + q  t + q  t ) CC[1]
+Out[6]= {{CC[2] -> -(------------------------), CC[3] -> CC[1], 
+                                2
+                               q  t
+ 
+                                      1      2
+>     CC[4] -> -CC[1], CC[5] -> (1 + ---- + q  t) CC[1], CC[6] -> -CC[1]}}
+                                      2
+                                     q  t
+
+Block[{k = 4},
+      With[{extra = (t q^3 (t q^2 + 1)^(3 k + 1)
+		     + q^(-1) (t q^2 + 1)^(3 k + 1)
+		     + t^(-2) q^(-3) (t q^2 + 1)^(3 k + 2)
+		    )},
+	   Expand[(Normal[Series[FirstNonToricKhovanov[2 + 3 k]
+				 - (extra /. {q -> 1/q, t -> 1/t})
+				 - extra,
+				 {q, 0, 0}]] /. {q -> 1/q, t -> 1/t})
+		 ]]]
+
+
+                                                                                          
+                                    3           3  2         5  2
+Out[132]= 2376 q + 2200 q t + 2265 q  t + 1803 q  t  + 1881 q  t  + 
+ 
+           5  3         7  3        7  4        9  4        9  5
+>    1276 q  t  + 1342 q  t  + 737 q  t  + 814 q  t  + 319 q  t  + 
+ 
+          11  5       11  6        13  6       13  7       15  7    19  9
+>    407 q   t  + 88 q   t  + 154 q   t  + 11 q   t  + 33 q   t  - q   t
+
+                                                                                          
+                                3         3  2       5  2       5  3
+Out[131]= 128 q + 124 q t + 99 q  t + 87 q  t  + 62 q  t  + 40 q  t  + 
+ 
+         7  3      7  4       9  4    13  6
+>    32 q  t  + 8 q  t  + 12 q  t  - q   t
+
+
+
+
 
 Block[{aa = 2, bb = 3},
       Block[{pd = PlanarDiagram[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
@@ -801,9 +886,225 @@ Block[{aa = 2, bb = 3},
 				{aa, bb}]},
 	    Module[{kh = Kh[ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[pd]]][q,t]},
 		   Print["kh: ", kh]]]];
-      
 
-pd
+Block[{n = 7},
+      Expand[FullSimplify[FirstNonToricKhovanov[n]
+			  - Sum[(t q^2)^i,{i,1,n}] q
+			  - Sum[(t q^2)^(-i),{i,1,n}] q^(-1)]]]
+
+
+Block[{n = 4},
+      ThreeStrandKhovanov[1 + 3 n]]
+
+Block[{n = 7},
+      Expand[ThreeStrandKhovanov[n]
+	     - q^(2 (n-2)) (q + q^3 + t^2 q^5 + t^3 q^9)]]
+
+Block[{n = 4},
+      FourStrandKhovanov[1 + 4 n]]
+
+
+ansPP13 = Block[{extraPoints = 2},
+		With[{aSeries = 1 + k},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+							       ThreeStrandKhovanov[aSeries /. {k -> k1}]],
+						      Join[{aSeries}, {q^2,
+								       t^(4/3) q^4,
+								       t^(4/3) q^4 Exp[2 Pi I/3],
+								       t^(4/3) q^4 Exp[2 Pi I 2/3]}]]]];
+
+TheExpr[n_] := ((AA[2] (t^(4/3) q^4)^n
+		 + AA[3] (t^(4/3) q^4 Exp[2 Pi I/3])^n
+		 + AA[4] (t^(4/3) q^4 Exp[2 Pi I 2/3])^n) /. ansPP13);
+ExprMatPower[n_] := 3 TheExpr[n-1]/TheExpr[-1]/(t^(4/3) q^4)^n;
+TheorMatPower[n_] := Tr[Table[AA[i,j], {i, 1, 3}, {j, 1, 3}]
+			. MatrixPower[{{0, 1, 0}, {0, 0, 1}, {1, 0, 0}}, n]];
+
+eqns = Map[TheorMatPower[#] - ExprMatPower[#] == 0 &, Range[0, 17]];
+
+ans = FullSimplify[Solve[eqns,
+			 Flatten[Table[AA[i,j], {i, 1, 3}, {j, 1, 3}]]]][[1]];
+
+FullSimplify[(TheorMatPower[1] /. ans) /. {AA[1,1] -> 1, AA[2,2] -> 1, AA[1,2] -> 0, AA[2,3] -> 0, AA[1,3] -> 0, AA[2,1] -> 0}]
+
+ans (* /. {AA[1,1] -> 1, AA[2,2] -> 1, AA[1,2] -> 0, AA[2,3] -> 0, AA[1,3] -> 0, AA[2,1] -> 0} *)
+
+Apart[AA[3,2] t^(1/3) /. ans /. {AA[1,3] -> 0, AA[2,1] -> 0}, t]
+
+FullSimplify[TheorMatPower[3] /. ans]
+
+Out[73]= 3
+
+                2       2   2
+         3 + 3 q  (1 + q ) t
+Out[72]= ---------------------
+          2/3       2    4  2
+         t    (1 + q  + q  t )
+
+                 2                   2       2         4      2
+         -6 + 3 q  (-2 + t (1 + t + q  (1 + t  (t + 2 q  t + q  (1 + 3 t)))))
+Out[71]= --------------------------------------------------------------------
+                            4/3       4          2    4  2
+                           t    (1 + q  t) (1 + q  + q  t )
+
+Out[70]= 3
+
+FullSimplify[ExprMatPower[0]]
+
+FullSimplify[ExprMatPower[2] - ExprMatPower[1]^2]
+
+             8       2         6  4
+Out[55]= -((q  (1 + q ) (-1 + q  t ) 
+ 
+                2      8  4    6  2                2     4               3
+>        (-4 + t  + 3 q  t  + q  t  (-1 + 4 t + 8 t ) + q  t (4 - t + 5 t ) + 
+ 
+            2                     3              4   2       2    4  2 2
+>          q  (-4 + t (4 + 4 t + t )))) / ((1 + q  t)  (1 + q  + q  t ) ))
+
+M = Table[AA[i,j], {i, 1, 3}, {j, 1, 3}];
+
+Tr[MatrixPower[M, 2]]
+
+                 2                                 2
+Out[48]= AA[1, 1]  + 2 AA[1, 2] AA[2, 1] + AA[2, 2]  + 2 AA[1, 3] AA[3, 1] + 
+ 
+                                   2
+>    2 AA[2, 3] AA[3, 2] + AA[3, 3]
+
+Out[46]= AA[1, 1] + AA[2, 2] + AA[3, 3]
+
+
+Block[{n = 5},
+      FullSimplify[TheExpr[n]/TheExpr[-1]]]
+
+         
+          24  8
+Out[43]= q   t
+
+         
+          20  6    22       2   8
+         q   t  + q   (1 + q ) t
+Out[42]= ------------------------
+                   2    4  2
+              1 + q  + q  t
+
+         
+           16  4        2
+Out[41]= (q   t  (-2 + q  (-2 + 
+ 
+                        2       2         4      2
+>           t (1 + t + q  (1 + t  (t + 2 q  t + q  (1 + 3 t))))))) / 
+ 
+            4          2    4  2
+>    ((1 + q  t) (1 + q  + q  t ))
+
+         
+          12  4
+Out[40]= q   t
+
+         
+          8  2    10       2   4
+         q  t  + q   (1 + q ) t
+Out[39]= -----------------------
+                  2    4  2
+             1 + q  + q  t
+
+         
+Out[38]= 
+ 
+      4        2                   2       2         4      2
+     q  (-2 + q  (-2 + t (1 + t + q  (1 + t  (t + 2 q  t + q  (1 + 3 t))))))
+>    -----------------------------------------------------------------------
+                                 4          2    4  2
+                           (1 + q  t) (1 + q  + q  t )
+
+         
+Out[37]= 1
+
+
+
+ansPP13 = Block[{extraPoints = 2},
+		With[{aSeries = 4 + 4 k},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+							       FourStrandKhovanov[aSeries /. {k -> k1}]],
+						      Join[{aSeries}, {q^3,
+								       t^(6/4) q^5,
+								       t^(2) q^6}
+							  ]]]];
+
+
+
+ansPP13 = Block[{extraPoints = 2},
+		With[{aSeries = 2 + k},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+							       FirstNonToricKhovanov[aSeries /. {k -> k1}]],
+						      Join[{aSeries}, {t q^2, (t q^2)^(-1),
+								       1,
+								       Exp[2 Pi I/3] t q^2,
+								       Exp[2 Pi I 2/3] t q^2,
+								       (t q^2)^(-1)
+								      }]]]];
+FullSimplify[ansPP13]
+
+ansPP13 = Block[{extraPoints = 2},
+		With[{aSeries = 6 + 3 k},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+							       ThreeStrandKhovanov[aSeries /. {k -> k1}]],
+						      Join[{aSeries}, {q^2, t^(4/3) q^4}]]]]
+
+                                        comb and indets: {Function[{k1}, 
+ 
+        2 6 + 3 k1           4  4/3 6 + 3 k1
+>     (q )         AA[1] + (q  t   )         AA[2]], {AA[1], AA[2]}, 
+ 
+>    Function[{k1$}, ThreeStrandKhovanov[6 + 3 k /. {k -> k1$}]]}
+{{0, 4}}
+
+                         2    4  2    8  3    10  5    12  5
+                    1 + q  + q  t  + q  t  + q   t  + q   t
+Out[104]= {AA[1] -> ----------------------------------------, 
+                                    3    9  4
+                                   q  - q  t
+ 
+>    AA[2] -> 
+ 
+               2    2      4      2  2    6  3    4  4      6  4      8  4
+       -2 - 2 q  + q  t + q  t + q  t  + q  t  + q  t  + 3 q  t  + 2 q  t
+>      -------------------------------------------------------------------}
+                                          6  4
+                                 q (-1 + q  t )
+
+
+(* ### Check evolution for 3-strand knots (for positive region) ### *)
+ansPP13 = Block[{extraPoints = 2},
+		With[{aSeries = 4 + 3 k},
+		     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+							       ThreeStrandKhovanov[aSeries /. {k -> k1}]],
+						      Join[{aSeries}, {q^2, t^(4/3) q^4}]]]]
+
+                                                  comb and indets: {Function[{k1}, 
+ 
+        2 4 + 3 k1           4  4/3 4 + 3 k1
+>     (q )         AA[1] + (q  t   )         AA[2]], {AA[1], AA[2]}, 
+ 
+>    Function[{k1$}, ThreeStrandKhovanov[4 + 3 k /. {k -> k1$}]]}
+{{0, 4}}
+
+                         2    4  2    8  3    10  5    12  5
+                    1 + q  + q  t  + q  t  + q   t  + q   t
+Out[102]= {AA[1] -> ----------------------------------------, 
+                                    3    9  4
+                                   q  - q  t
+ 
+               2/3    4  5/3    2  8/3    4  8/3    6  11/3    8  11/3
+              t    + q  t    + q  t    + q  t    + q  t     + q  t
+>    AA[2] -> --------------------------------------------------------}
+                                            6  4
+                                   q (-1 + q  t )
+
+
+
 
 (* ### Learn the evolution coefficient matrix for the UR region ### *)
 ansPP13 = Block[{extraPoints = 2},
