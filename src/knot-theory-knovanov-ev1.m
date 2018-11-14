@@ -1,5 +1,6 @@
 
 Quiet[<< KnotTheory`];
+Quiet[<< Combinatorica`];
 
 TwoStrandKhovanov[n_] :=
     Kh[BR[2, Join[{1,-1,1,-1},
@@ -837,15 +838,38 @@ SecondNonToricKhovanovPrimeBraid[aa_, bb_] :=
 	   BR[3, Join[{-2, -1, 1, -1, 2, -2},
 		      Table[Sign[bb] 2, {i, 1, Abs[bb]}],
 		      Table[Sign[aa] 1, {i, 1, Abs[aa]}]]]];
-ThirdNonToricKhovanovPrimeBraid[aa_, bb_] :=
+SimplestThreeStrandBraid[aa_] :=
     Module[{i},
-	   BR[3, Join[{-2, -1, -2, -1, 1, -1, 2, -2},
-		      Table[Sign[bb] 2, {i, 1, Abs[bb]}],
+	   BR[3, Join[{1, -1, 2, -2},
 		      Table[Sign[aa] 1, {i, 1, Abs[aa]}]]]];
+SimplestThreeStrandKhovanov[aa_] := SimplestThreeStrandKhovanov[aa] =
+    Kh[PD[SimplestThreeStrandBraid[aa]]][q,t];
+ThirdNonToricKhovanovPrimeBraid[aa_, bb_, cc_] :=
+    Module[{i},
+	   BR[3, Flatten[{Table[Sign[cc] {-2, -1}, {i, 1, Abs[cc]}],
+			  {1, -1, 2, -2},
+			  Table[Sign[bb] 2, {i, 1, Abs[bb]}],
+			  Table[Sign[aa] 1, {i, 1, Abs[aa]}]}]]];
+FourthNonToricKhovanovPrimeBraid[aa_, bb_, cc_] :=
+    Module[{i},
+	   BR[3, Flatten[{Table[Sign[cc] {2, -1}, {i, 1, Abs[cc]}],
+			  {1, -1, 2, -2},
+			  Table[Sign[bb] 2, {i, 1, Abs[bb]}],
+			  Table[Sign[aa] 1, {i, 1, Abs[aa]}]}]]];
+FifthNonToricKhovanovPrimeBraid[aa_, bb_, cc_] :=
+    Module[{i},
+	   BR[3, Flatten[{Table[Sign[cc] {-2, 1}, {i, 1, Abs[cc]}],
+			  If[Abs[cc] < 2, {1, -1, 2, -2}, {}],
+			  Table[Sign[bb] 2, {i, 1, Abs[bb]}],
+			  Table[Sign[aa] 1, {i, 1, Abs[aa]}]}]]];
 SecondNonToricKhovanovPrime[aa_, bb_] :=
     Kh[PD[SecondNonToricKhovanovPrimeBraid[aa, bb]]][q,t];
-ThirdNonToricKhovanovPrime[aa_, bb_] :=
-    Kh[PD[ThirdNonToricKhovanovPrimeBraid[aa, bb]]][q,t];
+ThirdNonToricKhovanovPrime[aa_, bb_, cc_] := ThirdNonToricKhovanovPrime[aa, bb, cc] =
+    Kh[PD[ThirdNonToricKhovanovPrimeBraid[aa, bb, cc]]][q,t];
+FourthNonToricKhovanovPrime[aa_, bb_, cc_] := FourthNonToricKhovanovPrime[aa, bb, cc] =
+    Kh[PD[FourthNonToricKhovanovPrimeBraid[aa, bb, cc]]][q,t];
+FifthNonToricKhovanovPrime[aa_, bb_, cc_] := FifthNonToricKhovanovPrime[aa, bb, cc] =
+    Kh[PD[FifthNonToricKhovanovPrimeBraid[aa, bb, cc]]][q,t];
 FourStrandKhovanov[aa_] :=
     Block[{prePd = PlanarDiagram[BraidSpec[Braid[4, a, {1, 2, 3, 4}, {5,6,7,8}],
 					   Braid[4, b, {5,6,7,8}, {1,2,3,4}]],
@@ -863,14 +887,549 @@ FirstNonToricKhovanov[aa_] :=
 (* ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]], *)
 (* 		 {1,1}] *)
 (* ExternalConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]] *)
+ThreeStrandOne[aa_] :=
+    Module[{i},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				Table[{1, 2}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandTwo[aa_] :=
+    Module[{i},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				Table[{2, 1}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandThree[aa_] :=
+    Module[{i},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				Table[{1, 1, 2}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandThreePrime[aa_] :=
+    Module[{i},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				Table[{2, 1, 1}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandThreePrimePrime[aa_] :=
+    Module[{i},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				Table[{1, 2, 1}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandFour[aa_] :=
+    Module[{i},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				Table[{1, 1, 1, 2}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandPro[n_, aa_] :=
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				Table[{Table[1, {j, 1, n}], 2}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandPro2[n_, insert_, aa_] := ThreeStrandPro2[n, insert, aa] =
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				insert,
+				Table[{Table[Sign[n], {j, 1, Abs[n]}], 2}, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandProCustom[once_, repeat_, aa_] := ThreeStrandProCustom[once, repeat, aa] =
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2}, (* ### << just to make the braid non-trivial ### *)
+				once,
+				Table[repeat, {i, 1, aa}]}]]]][q,t]];
+ThreeStrandPro3[2, {}, 1] :=
+    1 + q^(-2) + 1/(q^6*t^2) + 1/(q^4*t^2);
+ThreeStrandPro3[2, {}, 2] :=
+    (3/q^3 + 3/q + 1/(q^11*t^4) + 1/(q^9*t^4) + 2/(q^9*t^3) + 1/(q^7*t^2) + 
+     2/(q^5*t^2) + 1/(q^3*t) + t/q + q^3*t^2);
+ThreeStrandPro3[2, {}, 3] :=
+    (4/q^4 + 4/q^2 + 1/(q^16*t^6) + 1/(q^14*t^6) + 3/(q^14*t^5) + 3/(q^12*t^4) + 
+     3/(q^10*t^4) + 4/(q^10*t^3) + 3/(q^8*t^3) + 5/(q^8*t^2) + 4/(q^6*t^2) + 
+     3/(q^6*t) + 5/(q^4*t) + 3*t + (2*t)/q^2 + t^2 + 2*q^2*t^2 + q^4*t^3);
+ThreeStrandPro3[2, {}, 4] :=
+    11/q^5 + 15/q^3 + 1/(q^21*t^8) + 1/(q^19*t^8) + 4/(q^19*t^7) + 6/(q^17*t^6) + 
+    4/(q^15*t^6) + 10/(q^15*t^5) + 6/(q^13*t^5) + 13/(q^13*t^4) + 
+    10/(q^11*t^4) + 15/(q^11*t^3) + 13/(q^9*t^3) + 15/(q^9*t^2) + 15/(q^7*t^2) + 
+    12/(q^7*t) + 15/(q^5*t) + (7*t)/q^3 + (8*t)/q + (3*t^2)/q + 7*q*t^2 + 
+    q*t^3 + 3*q^3*t^3 + q^5*t^4;
+ThreeStrandPro3[2, {}, 5] :=
+    31/q^6 + 41/q^4 + 1/(q^26*t^10) + 1/(q^24*t^10) + 5/(q^24*t^9) + 
+    10/(q^22*t^8) + 5/(q^20*t^8) + 20/(q^20*t^7) + 10/(q^18*t^7) + 
+    30/(q^18*t^6) + 20/(q^16*t^6) + 41/(q^16*t^5) + 30/(q^14*t^5) + 
+    49/(q^14*t^4) + 41/(q^12*t^4) + 51/(q^12*t^3) + 49/(q^10*t^3) + 
+    49/(q^10*t^2) + 51/(q^8*t^2) + 40/(q^8*t) + 49/(q^6*t) + (19*t)/q^4 + 
+    (30*t)/q^2 + 19*t^2 + (11*t^2)/q^2 + 4*t^3 + 11*q^2*t^3 + q^2*t^4 + 
+    4*q^4*t^4 + q^6*t^5;
+ThreeStrandPro3[2, {}, 6] :=
+    (96/q^7 + 132/q^5 + 1/(q^31*t^12) + 1/(q^29*t^12) + 6/(q^29*t^11) + 
+     15/(q^27*t^10) + 6/(q^25*t^10) + 35/(q^25*t^9) + 15/(q^23*t^9) + 
+     61/(q^23*t^8) + 35/(q^21*t^8) + 95/(q^21*t^7) + 61/(q^19*t^7) + 
+     130/(q^19*t^6) + 95/(q^17*t^6) + 158/(q^17*t^5) + 130/(q^15*t^5) + 
+     175/(q^15*t^4) + 158/(q^13*t^4) + 175/(q^13*t^3) + 175/(q^11*t^3) + 
+     158/(q^11*t^2) + 175/(q^9*t^2) + 129/(q^9*t) + 158/(q^7*t) + (62*t)/q^5 + 
+     (93*t)/q^3 + (34*t^2)/q^3 + (62*t^2)/q + (16*t^3)/q + 34*q*t^3 + 5*q*t^4 + 
+     16*q^3*t^4 + q^3*t^5 + 5*q^5*t^5 + q^7*t^6);
+ThreeStrandPro3[2, {}, 7] :=
+    (302/q^8 + 414/q^6 + 1/(q^36*t^14) + 1/(q^34*t^14) + 7/(q^34*t^13) + 
+     21/(q^32*t^12) + 7/(q^30*t^12) + 56/(q^30*t^11) + 21/(q^28*t^11) + 
+     112/(q^28*t^10) + 56/(q^26*t^10) + 196/(q^26*t^9) + 112/(q^24*t^9) + 
+     301/(q^24*t^8) + 196/(q^22*t^8) + 414/(q^22*t^7) + 301/(q^20*t^7) + 
+     517/(q^20*t^6) + 414/(q^18*t^6) + 589/(q^18*t^5) + 517/(q^16*t^5) + 
+     615/(q^16*t^4) + 589/(q^14*t^4) + 589/(q^14*t^3) + 615/(q^12*t^3) + 
+     517/(q^12*t^2) + 589/(q^10*t^2) + 413/(q^10*t) + 517/(q^8*t) + (195*t)/q^6 + 
+     (301*t)/q^4 + (113*t^2)/q^4 + (195*t^2)/q^2 + 113*t^3 + (55*t^3)/q^2 + 
+     22*t^4 + 55*q^2*t^4 + 6*q^2*t^5 + 22*q^4*t^5 + q^4*t^6 + 6*q^6*t^6 + q^8*t^7);
+ThreeStrandPro3[2, {}, 8] :=
+    (963/q^9 + 1335/q^7 + 1/(q^41*t^16) + 1/(q^39*t^16) + 8/(q^39*t^15) + 
+     28/(q^37*t^14) + 8/(q^35*t^14) + 84/(q^35*t^13) + 28/(q^33*t^13) + 
+     190/(q^33*t^12) + 84/(q^31*t^12) + 370/(q^31*t^11) + 190/(q^29*t^11) + 
+     630/(q^29*t^10) + 370/(q^27*t^10) + 962/(q^27*t^9) + 630/(q^25*t^9) + 
+     1333/(q^25*t^8) + 962/(q^23*t^8) + 1691/(q^23*t^7) + 1333/(q^21*t^7) + 
+     1977/(q^21*t^6) + 1691/(q^19*t^6) + 2135/(q^19*t^5) + 1977/(q^17*t^5) + 
+     2135/(q^17*t^4) + 2135/(q^15*t^4) + 1977/(q^15*t^3) + 2135/(q^13*t^3) + 
+     1691/(q^13*t^2) + 1977/(q^11*t^2) + 1332/(q^11*t) + 1691/(q^9*t) + 
+     (631*t)/q^7 + (960*t)/q^5 + (369*t^2)/q^5 + (631*t^2)/q^3 + (191*t^3)/q^3 + 
+     (369*t^3)/q + (83*t^4)/q + 191*q*t^4 + 29*q*t^5 + 83*q^3*t^5 + 7*q^3*t^6 + 
+     29*q^5*t^6 + q^5*t^7 + 7*q^7*t^7 + q^9*t^8);
+ThreeStrandPro3[2, {}, 9] :=
+    (3100/q^10 + 4315/q^8 + 1/(q^46*t^18) + 1/(q^44*t^18) + 9/(q^44*t^17) + 
+     36/(q^42*t^16) + 9/(q^40*t^16) + 120/(q^40*t^15) + 36/(q^38*t^15) + 
+     303/(q^38*t^14) + 120/(q^36*t^14) + 651/(q^36*t^13) + 303/(q^34*t^13) + 
+     1218/(q^34*t^12) + 651/(q^32*t^12) + 2040/(q^32*t^11) + 1218/(q^30*t^11) + 
+     3099/(q^30*t^10) + 2040/(q^28*t^10) + 4315/(q^28*t^9) + 3099/(q^26*t^9) + 
+     5549/(q^26*t^8) + 4315/(q^24*t^8) + 6619/(q^24*t^7) + 5549/(q^22*t^7) + 
+     7349/(q^22*t^6) + 6619/(q^20*t^6) + 7609/(q^20*t^5) + 7349/(q^18*t^5) + 
+     7349/(q^18*t^4) + 7609/(q^16*t^4) + 6619/(q^16*t^3) + 7349/(q^14*t^3) + 
+     5549/(q^14*t^2) + 6619/(q^12*t^2) + 4314/(q^12*t) + 5549/(q^10*t) + 
+     (2039*t)/q^8 + (3099*t)/q^6 + (1219*t^2)/q^6 + (2039*t^2)/q^4 + 
+     (650*t^3)/q^4 + (1219*t^3)/q^2 + 650*t^4 + (304*t^4)/q^2 + 119*t^5 + 
+     304*q^2*t^5 + 37*q^2*t^6 + 119*q^4*t^6 + 8*q^4*t^7 + 37*q^6*t^7 + q^6*t^8 + 
+     8*q^8*t^8 + q^10*t^9);
+ThreeStrandPro3[n_, insert_, aa_] := ThreeStrandPro3[n, insert, aa] = 
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				insert,
+				Table[{Table[-1, {j, 1, n}], 2}, {i, 1, aa}]}]]]
+	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
+ThreeStrandPro5[n_, insert_, aa_] := ThreeStrandPro5[n, insert, aa] =
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				insert,
+				Table[{Table[1, {j, 1, n}], 2, 2}, {i, 1, aa}]}]]]
+	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
+ThreeStrandPro6[n1_, n2_, insert_, aa_] := ThreeStrandPro6[n1, n2, insert, aa] =
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				insert,
+				Table[{Table[Sign[n1], {j, 1, Abs[n1]}],
+				       2,
+				       Table[Sign[n2], {j, 1, Abs[n2]}],
+				       2},
+				      {i, 1, aa}]}]]]
+	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
+ThreeStrandPro7[n1_, n2_, n3_, insert_, aa_] := ThreeStrandPro6[n1, n2, n3, insert, aa] =
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				insert,
+				Table[{Table[Sign[n1], {j, 1, Abs[n1]}],
+				       2,
+				       Table[Sign[n2], {j, 1, Abs[n2]}],
+				       2,
+				       Table[Sign[n3], {j, 1, Abs[n3]}],
+				       2},
+				      {i, 1, aa}]}]]]
+	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
+ThreeStrandPro4[n_, insert_, aa_] := ThreeStrandPro4[n, insert, aa] = 
+    Module[{i, j},
+	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
+				insert,
+				Table[{Table[-1, {j, 1, n}], 2, 2}, {i, 1, aa}]}]]]
+	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
+ThreeStrandPro3[2, {}, 10] :=
+    (10043/q^11 + 14043/q^9 + 1/(q^51*t^20) + 1/(q^49*t^20) + 
+     10/(q^49*t^19) + 45/(q^47*t^18) + 10/(q^45*t^18) + 165/(q^45*t^17) + 
+     45/(q^43*t^17) + 460/(q^43*t^16) + 165/(q^41*t^16) + 1082/(q^41*t^15) + 
+     460/(q^39*t^15) + 2208/(q^39*t^14) + 1082/(q^37*t^14) + 4022/(q^37*t^13) + 
+     2208/(q^35*t^13) + 6638/(q^35*t^12) + 4022/(q^33*t^12) + 10042/(q^33*t^11) + 
+     6638/(q^31*t^11) + 14041/(q^31*t^10) + 10042/(q^29*t^10) + 
+     18249/(q^29*t^9) + 14041/(q^27*t^9) + 22141/(q^27*t^8) + 18249/(q^25*t^8) + 
+     25149/(q^25*t^7) + 22141/(q^23*t^7) + 26791/(q^23*t^6) + 25149/(q^21*t^6) + 
+     26791/(q^21*t^5) + 26791/(q^19*t^5) + 25149/(q^19*t^4) + 26791/(q^17*t^4) + 
+     22141/(q^17*t^3) + 25149/(q^15*t^3) + 18249/(q^15*t^2) + 22141/(q^13*t^2) + 
+     14040/(q^13*t) + 18249/(q^11*t) + (6639*t)/q^9 + (10040*t)/q^7 + 
+     (4021*t^2)/q^7 + (6639*t^2)/q^5 + (2209*t^3)/q^5 + (4021*t^3)/q^3 + 
+     (1081*t^4)/q^3 + (2209*t^4)/q + (461*t^5)/q + 1081*q*t^5 + 164*q*t^6 + 
+     461*q^3*t^6 + 46*q^3*t^7 + 164*q^5*t^7 + 9*q^5*t^8 + 46*q^7*t^8 + q^7*t^9 + 
+     9*q^9*t^9 + q^11*t^10);
+ThreeStrandPro5[1, {}, 1] :=
+    1 + q^2 + q^4*t^2 + q^6*t^2;
+ThreeStrandPro5[1, {}, 2] :=
+    q^3 + q^5 + q^7*t^2 + q^11*t^3 + q^9*t^4 + 3*q^11*t^4 + 2*q^13*t^4;
+ThreeStrandPro5[1, {}, 3] :=
+    (q^6 + q^8 + q^10*t^2 + q^14*t^3 + 
+     q^12*t^4 + q^14*t^4 + q^16*t^5 + q^18*t^5 + q^16*t^6 + q^18*t^6);
+ThreeStrandPro5[1, {}, 4] :=
+    (q^9 + q^11 + q^13*t^2 + q^17*t^3 + 
+     q^15*t^4 + q^17*t^4 + q^19*t^5 + q^21*t^5 + q^19*t^6 + q^23*t^7 + q^21*t^8 + 
+     3*q^23*t^8 + 2*q^25*t^8);
+ThreeStrandPro5[1, {}, 5] :=
+    (q^12 + q^14 + q^16*t^2 + q^20*t^3 + 
+     q^18*t^4 + q^20*t^4 + q^22*t^5 + q^24*t^5 + q^22*t^6 + q^26*t^7 + q^24*t^8 + 
+     q^26*t^8 + q^28*t^9 + q^30*t^9 + q^28*t^10 + q^30*t^10);
+ThreeStrandPro5[1, {}, 6] :=
+    (q^15 + q^17 + q^19*t^2 + q^23*t^3 + 
+     q^21*t^4 + q^23*t^4 + q^25*t^5 + q^27*t^5 + q^25*t^6 + q^29*t^7 + q^27*t^8 + 
+     q^29*t^8 + q^31*t^9 + q^33*t^9 + q^31*t^10 + q^35*t^11 + q^33*t^12 + 
+     3*q^35*t^12 + 2*q^37*t^12);
+ThreeStrandPro5[1, {}, 7] :=
+    (q^18 + q^20 + q^22*t^2 + q^26*t^3 + 
+     q^24*t^4 + q^26*t^4 + q^28*t^5 + q^30*t^5 + q^28*t^6 + q^32*t^7 + q^30*t^8 + 
+     q^32*t^8 + q^34*t^9 + q^36*t^9 + q^34*t^10 + q^38*t^11 + q^36*t^12 + 
+     q^38*t^12 + q^40*t^13 + q^42*t^13 + q^40*t^14 + q^42*t^14);
+ThreeStrandPro5[1, {}, 8] :=
+    (q^21 + q^23 + q^25*t^2 + q^29*t^3 + 
+     q^27*t^4 + q^29*t^4 + q^31*t^5 + q^33*t^5 + q^31*t^6 + q^35*t^7 + q^33*t^8 + 
+     q^35*t^8 + q^37*t^9 + q^39*t^9 + q^37*t^10 + q^41*t^11 + q^39*t^12 + 
+     q^41*t^12 + q^43*t^13 + q^45*t^13 + q^43*t^14 + q^47*t^15 + q^45*t^16 + 
+     3*q^47*t^16 + 2*q^49*t^16);
+ThreeStrandPro5[1, {}, 9] :=
+    (q^24 + q^26 + q^28*t^2 + q^32*t^3 + 
+     q^30*t^4 + q^32*t^4 + q^34*t^5 + q^36*t^5 + q^34*t^6 + q^38*t^7 + q^36*t^8 + 
+     q^38*t^8 + q^40*t^9 + q^42*t^9 + q^40*t^10 + q^44*t^11 + q^42*t^12 + 
+     q^44*t^12 + q^46*t^13 + q^48*t^13 + q^46*t^14 + q^50*t^15 + q^48*t^16 + 
+     q^50*t^16 + q^52*t^17 + q^54*t^17 + q^52*t^18 + q^54*t^18);
+ThreeStrandPro5[1, {}, 10] :=
+    (q^27 + q^29 + q^31*t^2 + q^35*t^3 + 
+     q^33*t^4 + q^35*t^4 + q^37*t^5 + q^39*t^5 + q^37*t^6 + q^41*t^7 + q^39*t^8 + 
+     q^41*t^8 + q^43*t^9 + q^45*t^9 + q^43*t^10 + q^47*t^11 + q^45*t^12 + 
+     q^47*t^12 + q^49*t^13 + q^51*t^13 + q^49*t^14 + q^53*t^15 + q^51*t^16 + 
+     q^53*t^16 + q^55*t^17 + q^57*t^17 + q^55*t^18 + q^59*t^19 + q^57*t^20 + 
+     3*q^59*t^20 + 2*q^61*t^20);
+ThreeStrandPro5[1, {}, 11] :=
+    (q^30 + q^32 + q^34*t^2 + q^38*t^3 + 
+     q^36*t^4 + q^38*t^4 + q^40*t^5 + q^42*t^5 + q^40*t^6 + q^44*t^7 + q^42*t^8 + 
+     q^44*t^8 + q^46*t^9 + q^48*t^9 + q^46*t^10 + q^50*t^11 + q^48*t^12 + 
+     q^50*t^12 + q^52*t^13 + q^54*t^13 + q^52*t^14 + q^56*t^15 + q^54*t^16 + 
+     q^56*t^16 + q^58*t^17 + q^60*t^17 + q^58*t^18 + q^62*t^19 + q^60*t^20 + 
+     q^62*t^20 + q^64*t^21 + q^66*t^21 + q^64*t^22 + q^66*t^22);
+ThreeStrandPro5[1, {}, 12] :=
+    (q^33 + q^35 + q^37*t^2 + q^41*t^3 + 
+     q^39*t^4 + q^41*t^4 + q^43*t^5 + q^45*t^5 + q^43*t^6 + q^47*t^7 + q^45*t^8 + 
+     q^47*t^8 + q^49*t^9 + q^51*t^9 + q^49*t^10 + q^53*t^11 + q^51*t^12 + 
+     q^53*t^12 + q^55*t^13 + q^57*t^13 + q^55*t^14 + q^59*t^15 + q^57*t^16 + 
+     q^59*t^16 + q^61*t^17 + q^63*t^17 + q^61*t^18 + q^65*t^19 + q^63*t^20 + 
+     q^65*t^20 + q^67*t^21 + q^69*t^21 + q^67*t^22 + q^71*t^23 + q^69*t^24 + 
+     3*q^71*t^24 + 2*q^73*t^24);
+ThreeStrandPro5[1, {}, 13] :=
+    (q^36 + q^38 + q^40*t^2 + q^44*t^3 + 
+     q^42*t^4 + q^44*t^4 + q^46*t^5 + q^48*t^5 + q^46*t^6 + q^50*t^7 + q^48*t^8 + 
+     q^50*t^8 + q^52*t^9 + q^54*t^9 + q^52*t^10 + q^56*t^11 + q^54*t^12 + 
+     q^56*t^12 + q^58*t^13 + q^60*t^13 + q^58*t^14 + q^62*t^15 + q^60*t^16 + 
+     q^62*t^16 + q^64*t^17 + q^66*t^17 + q^64*t^18 + q^68*t^19 + q^66*t^20 + 
+     q^68*t^20 + q^70*t^21 + q^72*t^21 + q^70*t^22 + q^74*t^23 + q^72*t^24 + 
+     q^74*t^24 + q^76*t^25 + q^78*t^25 + q^76*t^26 + q^78*t^26);
+ThreeStrandPro5[1, {}, 14] :=
+    (q^39 + q^41 + q^43*t^2 + q^47*t^3 + 
+     q^45*t^4 + q^47*t^4 + q^49*t^5 + q^51*t^5 + q^49*t^6 + q^53*t^7 + q^51*t^8 + 
+     q^53*t^8 + q^55*t^9 + q^57*t^9 + q^55*t^10 + q^59*t^11 + q^57*t^12 + 
+     q^59*t^12 + q^61*t^13 + q^63*t^13 + q^61*t^14 + q^65*t^15 + q^63*t^16 + 
+     q^65*t^16 + q^67*t^17 + q^69*t^17 + q^67*t^18 + q^71*t^19 + q^69*t^20 + 
+     q^71*t^20 + q^73*t^21 + q^75*t^21 + q^73*t^22 + q^77*t^23 + q^75*t^24 + 
+     q^77*t^24 + q^79*t^25 + q^81*t^25 + q^79*t^26 + q^83*t^27 + q^81*t^28 + 
+     3*q^83*t^28 + 2*q^85*t^28);
+PrecalculateFname[fnameSuffix_] :=
+    ("/home/popolit/quicklisp/local-projects/cl-vknots/khovanov-precomp-"
+     <> fnameSuffix <> ".m");
+(* ### vv Snippet to precalculate Khovanov polynomial for certain knot families ### *)
+PrecalculateAndDumpKhovanovs[fnameSuffix_, family_, from_, upto_] :=
+    Module[{fd = OpenWrite[PrecalculateFname[fnameSuffix], FormatType -> InputForm]},
+	   Module[{i},
+		  For[i = from, i <= upto, i ++,
+		      Module[{it = family[i]},
+			     (* ### ^^ it is important that we first do time-intensive computation and only then check the time ### *)
+			     If[$Failed[q,t] === it,
+				CompoundExpression[
+				    WriteString[fd, ("(* ### The calculation of Khovanov polynomial for "
+							 <> ToString[i] <> " had failed. ### *)\n")]],
+				CompoundExpression[
+				    WriteString[fd, "(* ### " <> DateString[] <> " ### *)\n"];
+				    WriteString[fd, ("poly[" <> ToString[i, FormatType -> InputForm] <> "] = ("
+						     <> ToString[it, FormatType -> InputForm] <> ");\n")]]]]]];
+	   Close[fd]];
+CustomFnameSuffix[once_, repeat_] :=
+    StringJoin["pro-custom-", StringRiffle[repeat, "-"], "-once-", StringRiffle[once, "-"], "-"];
+PrecalculateAndDumpKhovanovsCustom[once_, repeat_, from_, upto_] :=
+    Module[{fnameSuffix = CustomFnameSuffix[once, repeat]},
+	   PrecalculateAndDumpKhovanovs[fnameSuffix, ThreeStrandProCustom[once, repeat, #] &, from, upto]];
+AutoCheckKhovanovsCustom[once_, repeat_, eigs_] :=
+    Module[{},
+	   PrecalculateAndDumpKhovanovsCustom[once, repeat, 1, 20];
+	   CheckPolyEigenvalues[PrecalculateFname[CustomFnameSuffix[once, repeat]], eigs]];
+CheckPolyEigenvalues[fname_, eigs_] :=
+    Module[{eigsExpr = Sort[Simplify[(TryFindPolyEigenvalues[fname, Length[eigs] + 1, theDelta, theExtra]
+				      /. {q -> Pi, t -> E})]],
+	    eigsTheor = Sort[Simplify[eigs /. {q -> Pi, t -> E}]]},
+	   Module[{it = Simplify[eigsExpr - eigsTheor]},
+		  (* Print["it: ", it]; *)
+		  If[Table[0, {i, 1, Length[eigsTheor]}] === it,
+		     True,
+		     Module[{},
+			    Print[eigsExpr];
+			    Print[eigsTheor];
+			    False]]]];
+TryFindPolyEigenvalues[fname_, order_, delta_, extra_] :=
+    Module[{},
+	   ClearAll[poly];
+	   Get[fname]; (* ### << This import injects a bunch of "poly" definitions into the scope ### *)
+	   Block[{theOrder = order,
+		  theDelta = delta},
+		 (* Print["delta, extra: ", theDelta, extra]; *)
+		 Module[{eqns = (Map[Function[{n},
+					      0 == (Plus @@
+						    Map[poly[n + #] * CC[#] &,
+							Range[0, theOrder-1]])],
+				     Range[theDelta, theDelta + theOrder+extra]]
+				 /. {CC[theOrder-1] -> 1})},
+			Module[{ans = Solve[eqns, Map[CC[#] &, Range[0, theOrder - 2]]]},
+			       If[ans === {},
+				  Module[{}, Print["Failed to find recursion coefficients"]; $Failed],
+				  Module[{ans1 = Simplify[ans[[1]]]},
+					 (* ### ^^ equations are linear, so we have only one solution ### *)
+					 Module[{exprEigs = Sort[Map[#[[1, 2]] &,
+								     Solve[0 == Sum[CC[i] x^i, {i, 0, theOrder-1}]
+									   /. {CC[theOrder-1] -> 1} /. ans1,
+									   x]]]},
+						exprEigs]]]]]]];
+SpecialOrthogonalMatrix[1] :=
+    {{1}};
+SOMauxQSmall[n_] := SOMauxQSmall[n] =
+    Module[{i,j,
+	    prev = SpecialOrthogonalMatrix[n-1]},
+	   Table[If[And[i < n, j < n],
+		    prev[[i,j]],
+		    If[i == j,
+		       1,
+		       0]],
+		 {i, 1, n},
+		 {j, 1, n}]];
+SOMauxASmall[i_, j_, n_] :=
+    Module[{res = IdentityMatrix[n]}, (* ### << Start with the trivial template for the elementary rotation matrix ### *)
+	   (* ### vv Populate non-trivial entries ### *)
+	   res[[i,i]] = c[i,j];
+	   res[[j,j]] = c[i,j];
+	   res[[i,j]] = s[i,j];
+	   res[[j,i]] = -s[i,j];
+	   res];
+SOMauxA[n_] :=
+    Module[{i},
+	   Dot @@ Table[SOMauxASmall[n-i, n, n],
+			{i, 1, n-1}]];
+SpecialOrthogonalMatrix[n_] := SpecialOrthogonalMatrix[n] =
+    (* ### ^^ This function gives a parametrization of generic SO(n) element in terms of generalized Euler angles ### *)
+    (* ### ^^ c[i,j] = \cos(\phi_{i,j}), s[i,j] = \sin(\phi_{i,j}) ### *)
+    (* ### ^^ The recursion is obtained in Raffenetti, Ruedenberg (1970), I'm not quite sure that for the first time ### *)
+    SOMauxA[n] . SOMauxQSmall[n];
+CheckReps[n_] :=
+    Block[{checkRes = {}},
+	  Scan[CheckRepForChoiceOfPowers[#[[1]], #[[2]]] &,
+	       PrepareRepsPowers[n]];
+	  checkRes];
+PrepareRepsPowers[n_] :=
+    Tuples[{Select[Compositions[n, 4], And[#[[1]] > 0,
+					   #[[2]] + #[[3]] > 0] &],
+	    Compositions[n, 5]}];
+SimplifySines[expr_, i_, j_] :=
+    Simplify[Plus @@ Map[#[[2]] * If[EvenQ[#[[1,1]]],
+				     (1 - c[i,j]^2)^(#[[1,1]]/2),
+				     (1 - c[i,j]^2)^((#[[1,1]]-1)/2) s[i,j]] &,
+			 CoefficientRules[expr, s[i,j]]]];
+SimplifyCosines[expr_, i_, j_] :=
+    Simplify[Plus @@ Map[#[[2]] * If[EvenQ[#[[1,1]]],
+				     cc[i,j]^(#[[1,1]]/2),
+				     cc[i,j]^((#[[1,1]]-1)/2) c[i,j]] &,
+			 CoefficientRules[expr, c[i,j]]]];
+SimplifyAllSines[expr_, n_] :=
+    Module[{i,j, myExpr = expr},
+	   For[i = 1, i < n, i ++,
+	       For[j = i + 1, j <= n, j ++,
+		   myExpr = SimplifySines[myExpr, i, j]]];
+	   myExpr];
+SimplifyAllCosines[expr_, n_] :=
+    Module[{i,j, myExpr = expr},
+	   For[i = 1, i < n, i ++,
+	       For[j = i + 1, j <= n, j ++,
+		   myExpr = SimplifyCosines[myExpr, i, j]]];
+	   myExpr];
+CheckRepForChoiceOfPowers[powersR1_, powersR1R2_] :=
+    Module[{i,
+	    r1EigPool = {q, t q^3, -t q^3, 0},
+	    r1r2EigPool = {q^2, t^(4/3) q^4, t^(4/3) q^4 E^(2 Pi I 1/3), t^(4/3) q^4 E^(2 Pi I 2/3), 0}},
+	   Module[{r1Eigs = Join @@ Map[Table[r1EigPool[[#]], {i, 1, powersR1[[#]]}] &,
+					Range[1,4]],
+		   r1r2Eigs = Join @@ Map[Table[r1r2EigPool[[#]], {i, 1, powersR1R2[[#]]}] &,
+					  Range[1,5]],
+		   n = Plus @@ powersR1}, (* ### << I knot it's rather dumb to reverse engineer that instead of pass, but hey ### *)
+		  (* ### Alright, not that we have eigenvalues, we construct a R1 . R2 matrix and check ### *)
+		  (* ### Whether traces of powers are the same ### *)
+		  (* AppendTo[checkRes, {r1Eigs, r1r2Eigs}]; *)
+		  Module[{r1r2 = (DiagonalMatrix[r1Eigs] . Transpose[SpecialOrthogonalMatrix[n]]
+				  . DiagonalMatrix[r1Eigs] . SpecialOrthogonalMatrix[n])},
+			 (* AppendTo[checkRes, {r1r2, n}]; *)
+			 Module[{eqns = Map[(Plus @@ (r1r2Eigs^#))
+					    == SimplifyAllCosines[SimplifyAllSines[Tr[MatrixPower[r1r2, #]], n], n] &,
+					    Range[1, n]],
+				 indets = Module[{i,j}, Flatten[Table[{cc[i,j], c[i,j]}, {i,1,n}, {j, i+1, n}]]]},
+				AppendTo[checkRes, {eqns, indets}];
+				Appended]]]];
+
+		
+				Module[{ans = Solve[eqns, indets]},
+				       (* ### vv Something cool is about to happen here ### *)
+				       If[{} =!= ans,
+					  Module[{},
+						 AppendTo[checkRes, {powersR1, powersR1R2, ans}];
+						 Appended]]]]]]];
+
+
+theMaxBound = 10;
+ans = Module[{res = {}, rootPower = 5},
+	     For[BB = 0, BB <= theMaxBound, BB ++,
+		 For[CC = 0, CC <= theMaxBound, CC ++,
+		     For[DD = 0, DD <= theMaxBound, DD ++,
+			 For[beta = 0, beta <= theMaxBound, beta ++,
+			     For[gamma = 0, gamma <= theMaxBound, gamma ++,
+				 If[IntegerQ[Simplify[4/3/rootPower BB
+						      + (4/3/rootPower + 1/3) CC
+						      + (4/3/rootPower + 2/3) DD
+						      - 2/rootPower beta
+						      - (1/rootPower + 1/2) 2 gamma]],
+				    AppendTo[res, {BB, CC, DD, beta, gamma}]]]]]]];
+	     res];
+ans1 = Module[{res1 = {}},
+	      Module[{BB, CC, DD, AA, alpha, beta, gamma},
+		     Scan[Function[{choice},
+				   {BB, CC, DD, beta, gamma} = choice; (* ### << we first destructure ### *)
+				   (* ### vv We assume that AA is zero, because that corresponds to symmetric representation solution ### *)
+				   (* ### vv which we already know ### *)
+				   alpha = BB + CC + DD - beta - gamma;
+				   Module[{altAlpha = Simplify[2 (BB + CC + DD) - 3 (beta + gamma)]},
+					  (* Print[alpha, " ", altAlpha]; *)
+					  If[And[alpha >= 0,
+						 alpha === altAlpha],
+					     AppendTo[res1, {BB, CC, DD, alpha, beta, gamma}]]]],
+			  ans]];
+	      res1];
+
+
+DeleteDuplicates[Map[#[[4;;]] &, Select[ans1, #[[1]] + #[[2]] + #[[3]] == 10 &]]]
+
+Out[13]= {{5, 0, 5}, {5, 1, 4}, {5, 2, 3}, {5, 3, 2}, {5, 4, 1}, {5, 5, 0}}
+
+Out[11]= {{3, 0, 3}, {3, 1, 2}, {3, 2, 1}, {3, 3, 0}}
+
+
+
+
+Transpose[SpecialOrthogonalMatrix[4]]
+			    
+Timing[Block[{n = 3},
+	     tmp = PrepareRepsPowers[n]]];
+
+Length[tmp]
+
+tmp[[1]]
+
+Out[39]= {{1, 0, 1, 1}, {0, 0, 0, 0, 3}}
+
+eqnsNindets = Block[{checkRes = {}},
+		    {CheckRepForChoiceOfPowers@@tmp[[1]],
+		     checkRes[[1]]}];
+
+eqnsNindets
+
+Solve[eqnsNindets[[2,1,1]], cc[1,2]]
+
+Simplify[eqnsNindets[[2,1]] /. Solve[eqnsNindets[[2,1,1]], cc[1,2]][[1]]]
+
+Out[38]= {True, 2 q t cc[2, 3] == q t, True}
+
+Out[34]= {True, q t == 0}
+
+             4            3   2
+Out[28]= {2 q  t == (q + q  t)  cc[1, 2], 
+ 
+      4     4  2             3   2                  2   4         2
+>    q  (2 q  t  - 4 t (q + q  t)  cc[1, 2] + (1 + q  t)  cc[1, 2] ) == 0}
+
+PrepareRepsPowers[2]
+
+tmp
+
+Out[9]= {{2, 2}, {2, 5}, {4, 2}, {4, 5}}
+
+
+Block[{n = 5},
+      Simplify[SpecialOrthogonalMatrix[n] . Transpose[SpecialOrthogonalMatrix[n]]
+	       /. {s[i_,j_] :> Sqrt[1 - c[i,j]^2]}]]
+
+   
+
+
+Block[{theDelta = 5,
+       theExtra = 5},
+      CheckPolyEigenvalues[PrecalculateFname[CustomFnameSuffix[{1}, {1,2}]],
+			   {q^2, t^(4/3) q^4,
+			    Exp[2 Pi I/3] t^(4/3) q^4,
+			    Exp[4 Pi I/3] t^(4/3) q^4}]]
+
+
+
+
+Block[{n = 8,
+       theDelta = 5,
+       theExtra = 5},
+      Module[{res = {}},
+	     Scan[Function[{once},
+			   If[Not[AutoCheckKhovanovsCustom[once, {1,2},
+							   {q^2, t^(4/3) q^4,
+							    Exp[2 Pi I/3] t^(4/3) q^4,
+							    Exp[4 Pi I/3] t^(4/3) q^4}]],
+			      AppendTo[res, once]]],
+		  Tuples[{1,2}, n]];
+	     res]]
+
+                                                      
+
+CustomFnameSuffix[{}, {2}]
+
+		   
+PrecalculateAndDumpKhovanovs["pro2-0-wind-1-2-1", ThreeStrandPro2[0, {1,2,1}, #] &, 1, 20];
+
+(* ### v Recursion for R1^(-2) R2 ### *)
+rec112 = {CC[5] -> E^11*Pi^3*CC[0],
+	  CC[4] -> -(E^6*Pi*(2 + E^2*Pi + E^4*Pi^2 + E^6*Pi^3)*CC[0]),
+	  CC[3] -> ((E + E^3*Pi + E^5*Pi^2 + 2*E^7*Pi^3 - E^9*Pi^4)*CC[0])/Pi,
+	  CC[2] -> E^2*(-1 + 2*E^2*Pi + E^4*Pi^2 + E^6*Pi^3 + E^8*Pi^4)*CC[0],
+	  CC[1] -> -(((1 + E^2*Pi + E^4*Pi^2 + 2*E^6*Pi^3)*CC[0])/(E*Pi))} /. {E -> q, Pi -> t};
+Solve[0 == Sum[CC[i] x^i, {i, 0, 6-1}] /. rec112,
+      x] // InputForm
+
+         
+eigsm112 = 
+{{x -> -q^(-1)}, {x -> q^(-1)}, {x -> 1/(q^5*t^2)}, 
+ {x -> (1 + q^2*t + q^4*t^2 + q^6*t^3 - 
+     Sqrt[-4*q^6*t^3 + (1 + q^2*t + q^4*t^2 + q^6*t^3)^2])/(2*q^5*t^2)}, 
+ {x -> (1 + q^2*t + q^4*t^2 + q^6*t^3 + 
+     Sqrt[-4*q^6*t^3 + (1 + q^2*t + q^4*t^2 + q^6*t^3)^2])/(2*q^5*t^2)}};
+
+
+
+
+(* ### vv Here we check the derivation of the evolution method ### *)
+JJ = ({1, (-q^2)}^b . {{(q^2 + 1 + q^(-2))/(q + q^(-1)), 1/(q + q^(-1))},
+		       {- (q^2 + 1 + q^(-2))/(q + q^(-1)), (q^2 + 1 + q^(-2))/(q + q^(-1))}} . {q, (-q^3)}^(-a));
+Block[{sign = a - 2},
+      Expand[FullSimplify[(((JJ q^sign - (q + q^(-1)) (1 + 1/2(1 + (-1)^a) (-q^2)^(b-a)))/(q^(-1) - q^3) /. {q -> I Sqrt[t] q})
+			   (q^(-1) + t q^3) + (q + q^(-1)) (1 + 1/2 (1 + (-1)^a) (t q^2)^(b-a)))
+			  / q^sign /. {q -> Pi, t -> E}]]]
 
 theOrder = 6;
 eqns = Map[Function[{n},
 		    0 == (Plus @@ Map[Function[{delta}, FirstNonToricKhovanov[n + delta] CC[delta]], Range[1,theOrder]])],
 	   Range[1, theOrder + 1]];
 
-Solve[eqns (* /. {t -> -1} *),
-      Map[CC[#] &, Range[1,theOrder]]]
+ans = Solve[eqns (* /. {t -> -1} *),
+	    Map[CC[#] &, Range[1,theOrder]]];
+FullSimplify[ans]
+
 
 Block[{k = 4},
       With[{extra = (t q^3 (t q^2 + 1)^(3 k + 1)
@@ -884,27 +1443,7 @@ Block[{k = 4},
 		 ]]]
 
 
-                                                                                          
-                                    3           3  2         5  2
-Out[132]= 2376 q + 2200 q t + 2265 q  t + 1803 q  t  + 1881 q  t  + 
- 
-           5  3         7  3        7  4        9  4        9  5
->    1276 q  t  + 1342 q  t  + 737 q  t  + 814 q  t  + 319 q  t  + 
- 
-          11  5       11  6        13  6       13  7       15  7    19  9
->    407 q   t  + 88 q   t  + 154 q   t  + 11 q   t  + 33 q   t  - q   t
-
-                                                                                          
-                                3         3  2       5  2       5  3
-Out[131]= 128 q + 124 q t + 99 q  t + 87 q  t  + 62 q  t  + 40 q  t  + 
- 
-         7  3      7  4       9  4    13  6
->    32 q  t  + 8 q  t  + 12 q  t  - q   t
-
-
-
-
-
+                                                                                        
 Block[{aa = 2, bb = 3},
       Block[{pd = PlanarDiagram[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
 				OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[b, 0] -> 1, II[b, 1] -> -1],
@@ -939,17 +1478,6 @@ Block[{n = 1},
       Simplify[(AA[1] q^n + AA[2] (t q^3)^n + AA[3] (-t q^3)^n) /. ansPP13]]
 
 FullSimplify[ansPP13]
-
-                       2    6  2    8  3                       2
-                  1 + q  - q  t  + q  t            -1 + t + 2 q  t
-Out[9]= {AA[1] -> ----------------------, AA[2] -> ---------------, 
-                         2    6  2                           2
-                        q  - q  t                    -2 + 2 q  t
- 
-                1 + t
->    AA[3] -> ----------}
-                     2
-              2 + 2 q  t
 
 ansPP13 = Block[{extraPoints = 2},
 		With[{aSeries = 1 + k},
@@ -1084,18 +1612,6 @@ ansPP13 = Block[{extraPoints = 2},
 Block[{aa = -1, bb = 0},
       Expand[Simplify[SecondNonToricKhovanov[aa, bb]]]]
 
-         
-              -2     1       1
-Out[79]= 1 + q   + ----- + -----
-                    6  2    4  2
-                   q  t    q  t
-
-         
-               2        4  2
-         (1 + q ) (1 + q  t )
-Out[77]= --------------------
-                 6  2
-                q  t
 
 
 Block[{k = -5},
@@ -1137,24 +1653,173 @@ ansPP11 = Block[{extraPoints = 2},
 						      Join[{bSeries}, PosFundEigenvalues[]]]]];
 
 (* ### Tool to study two-parametric evolution ### *)
-ansPP11 = Block[{extraPoints = 10},
-		With[{aSeries = - k,
-		      bSeries = k},
+ans = Block[{extraPoints = 10},
+	    With[{aSeries = -2 - k,
+		  bSeries = k},
 		     FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 							       ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 											  bSeries /. {k -> k2}]],
 						      Join[{aSeries}, PosFundEigenvalues[]],
 						      Join[{bSeries}, PosFundEigenvalues[]]]]];
 
-                                                               {{0, 149}, {nz, 20}}
+Module[{cc},
+       For[cc = 10, cc <= 15, cc ++,
+	   (* ### Let's find 4 evolutions in all far quadrants ### *)
+	   ansUL = Block[{extraPoints = 2},
+			 With[{aSeries = -4 - k,
+			       bSeries = 4 + k},
+			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
+												   bSeries /. {k -> k2},
+												   cc]],
+							       Join[{aSeries}, PosFundEigenvalues[]],
+							       Join[{bSeries}, PosFundEigenvalues[]]]]];
+	   ansUR = Block[{extraPoints = 2},
+			 With[{aSeries = 4 + k,
+			       bSeries = 4 + k},
+			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
+												   bSeries /. {k -> k2},
+												   cc]],
+							       Join[{aSeries}, PosFundEigenvalues[]],
+							       Join[{bSeries}, PosFundEigenvalues[]]]]];
+	   ansLL = Block[{extraPoints = 2},
+			 With[{aSeries = - 4 - k,
+			       bSeries = - 4 - k},
+			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
+												   bSeries /. {k -> k2},
+												   cc]],
+							       Join[{aSeries}, PosFundEigenvalues[]],
+							       Join[{bSeries}, PosFundEigenvalues[]]]]];
+	   ansLR = Block[{extraPoints = 2},
+			 With[{aSeries = 4 + k,
+			       bSeries = - 4 - k},
+			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
+												   bSeries /. {k -> k2},
+												   cc]],
+							       Join[{aSeries}, PosFundEigenvalues[]],
+							       Join[{bSeries}, PosFundEigenvalues[]]]]];
+	   TheorKhovanov[aa_, bb_, ans_] :=
+	   If[ans === checkFailed,
+	      checkFailed,
+	      Simplify[PosFundEigenvalues[]^aa
+		       . (Table[AA[i,j], {i, 1, 3}, {j, 1, 3}] /. ans)
+		       . PosFundEigenvalues[]^bb]];
+	   Block[{maxAbs = 10},
+		 picc[cc] = Module[{aa, bb},
+				   Table[Module[{ulQ = (0 === Simplify[TheorKhovanov[aa, bb, ansUL]
+								       - ThirdNonToricKhovanovPrime[aa, bb, cc]]),
+						 urQ = (0 === Simplify[TheorKhovanov[aa, bb, ansUR]
+								       - ThirdNonToricKhovanovPrime[aa, bb, cc]]),
+						 llQ = (0 === Simplify[TheorKhovanov[aa, bb, ansLL]
+								       - ThirdNonToricKhovanovPrime[aa, bb, cc]]),
+						 lrQ = (0 === Simplify[TheorKhovanov[aa, bb, ansLR]
+								       - ThirdNonToricKhovanovPrime[aa, bb, cc]])},
+						(* Print["ul, ur, ll, lr: ", ulQ, " ", urQ, " ", llQ, " ", lrQ]; *)
+						If[And[ulQ, urQ, llQ, lrQ],
+						   "AL",
+						   If[And[ulQ, urQ, llQ],
+						      "GG",
+						      If[And[ulQ, llQ, lrQ],
+							 "LL",
+							 If[And[ulQ, urQ, lrQ],
+							    "TT",
+							    If[And[urQ, llQ, lrQ],
+							       "dd",
+							       If[And[ulQ, llQ],
+								  "LE",
+								  If[And[urQ, ulQ],
+								     "UP",
+								     If[And[urQ, lrQ],
+									"RI",
+									If[And[llQ, lrQ],
+									   "LO",
+									   If[And[ulQ, lrQ],
+									      "YY",
+									      If[And[llQ, urQ],
+										 "NN",
+										 If[ulQ,
+										    "UL",
+										    If[urQ,
+										       "UR",
+										       If[llQ,
+											  "LL",
+											  If[lrQ,
+											     "LR",
+											     "??"]]]]]]]]]]]]]]]],
+					 {bb, maxAbs, -maxAbs, -1},
+					 {aa, -maxAbs, maxAbs}]]]]];
 
-                                                               {{0, 39}, {nz, 130}}
-
-                                                        {{0, 169}}
-
-                                                        {{0, 169}}
+(* ### vv Recursion for R1^3 R2 ### *)
+Solve[x^4 - q^4 x^3 - t^8 q^24 x + t^8 q^28 == 0, x] // InputForm
 
 
+(* ### vv 6th order recursion for R1^4 R2 ### *)
+Solve[1 + -(1 + q^6 t^4)/q^11/t^4 x + (-1+q^2 t^2)/t^6/q^18 x^2 + (1 + t^4 q^6)/t^10/q^29 x^3 - 1/t^10/q^34 x^4 == 0,
+      x]
+
+
+theOrder = 6;
+theDelta = 4;
+Block[{k = 1,
+       insert = {-1,-1,-1,-1, -1,-2,-2,-2}},
+      eqns = Map[Function[{n},
+			  0 == (Plus @@
+				Map[Function[{delta},
+					     Simplify[ThreeStrandPro2[k, insert, n + delta]]
+					     * CC[delta]],
+				    Range[0, theOrder-1]])],
+		 Range[theDelta, theDelta + theOrder+1]]];
+ans = Solve[eqns (* /. {t -> -1} *),
+	    Map[CC[#] &, Range[1,theOrder]]];
+ans1 = FullSimplify[ans];
+Solve[0 == Sum[CC[i] x^i, {i, 0, theOrder-1}] /. ans1[[1]],
+      x]
+
+theOrder = 6;
+theDelta = 1;
+Block[{k = 1, nwind = 0},
+      eqns = Map[Function[{n},
+			  0 == (Plus @@
+				Map[Function[{delta},
+					     Module[{i},
+						    Simplify[ThreeStrandPro5[k,
+									     Join @@ Table[{2}, {i, 1, nwind}],
+									     n + delta]
+							    ]]
+					     * CC[delta]],
+				    Range[0, theOrder-1]])],
+		 Range[theDelta, theDelta + theOrder+1]]];
+
+(* ### vv Answer for recursion for R_1^(-1) R_2 ### *)
+ansRecR1m1R2 = {CC[1] -> -(((1 + q^2*t + q^4*t^2)*CC[0])/(q^2*t)), CC[2] -> CC[0], 
+		CC[3] -> -CC[0], CC[4] -> (1 + 1/(q^2*t) + q^2*t)*CC[0], CC[5] -> -CC[0]};
+Solve[0 == Sum[CC[i] x^i, {i, 0, 5}] /. FullSimplify[ansRecR1m1R2],
+      x] // InputForm
+
+{{x -> 1}, {x -> -(-1)^(1/3)}, {x -> (-1)^(2/3)}, 
+ {x -> (1 + q^2*t + q^4*t^2 - Sqrt[1 + 2*q^2*t - q^4*t^2 + 2*q^6*t^3 + 
+       q^8*t^4])/(2*q^2*t)}, 
+ {x -> (1 + q^2*t + q^4*t^2 + Sqrt[1 + 2*q^2*t - q^4*t^2 + 2*q^6*t^3 + 
+       q^8*t^4])/(2*q^2*t)}}
+
+
+TheorKhovanov[0,0,ansUR]
+
+picc[9] // TeXForm
+
+picc[3] = pic;
+
+
+Block[{aa = -1, bb = -1},
+      If[0 === Simplify[TheorKhovanov[aa, bb, ans] - ThirdNonToricKhovanovPrime[aa, bb]],
+	 0,
+	 nz]]
+
+                           
+Out[51]= nz
 
 
 
