@@ -595,10 +595,13 @@ OrientationMasks[spec_BraidSpec, connectedComponents_, residues_] :=
 			 res]],
 	 connectedComponents];
 (* ### vv Braidosome is that smart program that does all the work I want to get done for me ### *)
-(* ###    Example of input : BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]] ### *)
-(* ###    This example describes the figure-eight-like knots ### *)
-Braidosome[spec_BraidSpec] :=
-    pass;
+(* ###    Example of input :                                                                ### *)
+(* ###      Braidosome[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]], ### *)
+(* ###                           OriChoice[II[a, 0] -> 1, II[a, 1] ->, II[b, 1] -> 1 ...],  ### *)
+(* ###                           {10, 20}]                                                  ### *)
+(* ###    This example describes the figure-eight-like knots                                ### *)
+Braidosome[spec_BraidSpec, orientationChoice_, braidWindings_] :=
+    ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[PlanarDiagram[spec, orientationChoice, braidWindings]]];
 (* ### vv For a given braid specification, generate a list of possible orientations of the arcs between the braids, ### *)
 (* ###    together with compatible possible choices of residues of the number of crossings in the braids by number of strands ### *)
 (* ###    In short, split possible orientation choices into "orientation clusters" ### *)
@@ -826,6 +829,34 @@ ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossin
 YPMsToXs[expr_] :=
     (expr /. {Ym[a_, b_, c_, d_] :> X[a, b, d, c],
 	      Yp[a_, b_, c_, d_] :> X[b, d, c, a]});
+(* ### vv A symbol named after the corresponding latin letter 0 for `a`, 1 for `b` and so on. ### *)
+LatinLetterSymbol[index_] :=
+    If[index > 25,
+       Message["Oh crap"],
+       Symbol[FromCharacterCode[97 + index]]];
+(* ### vv The braid specification of the pretzel knot          ### *)
+(* ###    number of 2-strand braids is equal to genus plus one ### *)
+PretzelBraidSpec[genus_] :=
+    BraidSpec @@ Map[Braid[2, LatinLetterSymbol[#],
+                           If[0 === #,
+                              {genus + 1, 1},
+                              {#, # + 1}],
+                           If[0 === #,
+                              {2 (genus + 1), (genus + 1) + 1},
+                              {genus + 1 + #, genus + 1 + # + 1}]] &,
+                     Range[0, genus]];
+(* ### vv The simplest choice of braid orientations for the pretzel knot ### *)
+PretzelBSWithParallelOrients[genus_] :=
+    {PretzelBraidSpec[genus],
+     OriChoice @@ Join @@ Map[{II[LatinLetterSymbol[#], 0] -> (-1)^#,
+                               II[LatinLetterSymbol[#], 1] -> (-1)^# If[genus === #,
+                                                                        (-1)^(genus + 1),
+                                                                        1]} &,
+                              Range[0, genus]]};
+(* ### vv Khovanov polynomial for simple pretzel knot ### *)
+PretzelKhovanov[windings_] :=
+    Kh[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
+                            windings]][q,t];
 TwoStrandKhovanov[aa_] :=
     Block[{prePd = PlanarDiagram[BraidSpec[Braid[2, a, {1, 2}, {3, 4}],
 					   Braid[2, b, {3, 4}, {1, 2}]],
@@ -1777,6 +1808,46 @@ ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 
                  {0, 0}]
 
 OrientationClusters[BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]]]
+
+Braidosome[BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]],
+           OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[a, 2] -> 1],
+           {4}]
+
+
+
+PretzelKhovanov[{-3,0}]
+
+
+Block[{extraPoints = 2},
+      With[{aSeries = k,
+            bSeries = k,
+            cSeries = 2 k
+           },
+           FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2, k3},
+                                                     PretzelKhovanov[{aSeries /. {k -> k1},
+                                                                      bSeries /. {k -> k2},
+                                                                      cSeries /. {k -> k3}}]],
+                                            {aSeries} ~Join~ PosFundEigenvalues[],
+                                            {bSeries} ~Join~ PosFundEigenvalues[],
+                                            {cSeries} ~Join~ PosAdjEigenvalues[]]]]
+
+OrientationClusters[PretzelBraidSpec[2]]
+
+PretzelBSWithParallelOrients[2]
+
+Out[22]= {BraidSpec[Braid[2, a, {3, 1}, {6, 4}], Braid[2, b, {1, 2}, {4, 5}], 
+ 
+>     Braid[2, c, {2, 3}, {5, 6}]], 
+ 
+>    OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[b, 0] -> -1, II[b, 1] -> -1, 
+ 
+>     II[c, 0] -> 1, II[c, 1] -> -1]}
+
+Out[21]= {BraidSpec[Braid[2, a, {2, 1}, {4, 3}], 
+ 
+>     Braid[2, b, {1, 2}, {3, 4}]], 
+ 
+>    OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[b, 0] -> -1, II[b, 1] -> -1]}
 
 
 
