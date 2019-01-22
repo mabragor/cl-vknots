@@ -466,6 +466,12 @@ FindLabelInBraidSpec[spec_BraidSpec, label_] :=
 	       Module[{itOut = Position[specLst[[i, 4]], label]},
 		      res = res ~Join~ Map[OO[specLst[[i, 2]], #[[1]] - 1] &, itOut]]];
 	   res];
+(* ### vv Calculate, which endpoints of the arcs outside of the braids are connected ### *)
+(* ###    (both through the braids and out of the braids) to one another             ### *)
+(* ###    Each endpoint turns out to be connected to *exactly* two other endpoints,  ### *)
+(* ###    which we write as a list of two elements.                                  ### *)
+(* ###    The first list element is connection inside the braid,                     ### *)
+(* ###    and the second elementis connection outside the braid.                     ### *)
 ConnectionScheme[spec_BraidSpec, choiceOfResidues_] :=
     Module[{connections = <||>, i,
 	    lstSpec = List @@ spec},
@@ -527,7 +533,7 @@ NormalizeConnectedComponent[connComp_] :=
 		  myConnComp = Join[myConnComp[[pos ;; ]],
 				    myConnComp[[ ;; pos - 1]]]];
 	   myConnComp];
-(* ### Another version of routine that finds connected components and works on connection schemes ### *)
+(* ### vv Another version of routine that finds connected components and works on connection schemes ### *)
 ConnectedComponentsConnectionScheme[connScheme_] :=
     Module[{freeNodes = Map[True &, connScheme],
 	    connectedComponents = {}},
@@ -538,34 +544,46 @@ ConnectedComponentsConnectionScheme[connScheme_] :=
 					    it]},
 			Module[{curComponent = {firstNode},
 				curNode = firstNode,
-				prevNode = Null},
+				prevNode = Null, i},
 			       While[True,
-				     Module[{nextNode = Select[connScheme[curNode], # =!= prevNode &][[1]]},
-					    (* Print["nextNode: ", nextNode]; *)
-					    If[nextNode === firstNode,
-					       Break[],
-					       CompoundExpression[prevNode = curNode,
-								  curNode = nextNode,
-								  KeyDropFrom[freeNodes, nextNode],
-								  AppendTo[curComponent, nextNode]]]]];
+				     Module[{nextNodes = Select[connScheme[curNode], # =!= prevNode &]},
+                                            (* ### ^^ Generically this list would contain exactly one element -- the next node ### *)
+                                            If[And[{} === nextNodes,
+                                                   prevNode === firstNode],
+                                               Break[],
+                                               Module[{nextNode = nextNodes[[1]]},
+                                                      If[nextNode === firstNode,
+                                                         Break[],
+                                                         CompoundExpression[prevNode = curNode,
+                                                                            curNode = nextNode,
+                                                                            KeyDropFrom[freeNodes, nextNode],
+                                                                            AppendTo[curComponent, nextNode]]]]]]];
 			       AppendTo[connectedComponents, NormalizeConnectedComponent[curComponent]]]]];
 	   (* ### vv Sort the connected component so that their starting elements are in order ### *)
 	   Sort[connectedComponents,
 		DepthTwoLexiSort]];
+(* ### vv Lexicographic sorting for lists of length two ### *)
 DepthTwoLexiSort[eltOne_, eltTwo_] :=
     Module[{it = Order[eltOne[[1]], eltTwo[[1]]]},
 	   If[0 =!= it,
 	      it,
 	      Order[eltOne[[2]], eltTwo[[2]]]]];
+(* ### vv The helper function for defining the sign of the orientation of the connected component      ### *)
+(* ###    Returns True if the next element in the connected component is connected 'through' the braid ### *)
 NextNodeIsInOrderQ[spec_BraidSpec, component_, i_, residues_] :=
     Module[{item = component[[i]],
 	    nextItem = component[[1 + Mod[i, Length[component]]]],
 	    lstSpec = List @@ spec},
-	   And[OO === Head[nextItem],
-	       item[[1]] === nextItem[[1]],
+	   And[OO === Head[nextItem], (* ### << the next item is an `output` ### *)
+	       item[[1]] === nextItem[[1]], (* ### << it is in the same braid ### *)
+               (* ### vv its index is consistent with the residue of the number of crossings ### *)
 	       Module[{pos = Position[lstSpec, Condition[elt_, elt[[2]] === item[[1]]], {1}, Heads->False][[1,1]]},
 		      item[[2]] == Mod[nextItem[[2]] + residues[[pos]] (* ### << relevant residue ### *),
 				       (lstSpec)[[pos, 1]] (* ### << relevant braid thickness ### *)]]]];
+(* ### vv Calculates, orientations of which incoming edges should be set consistently together, and in what way ### *)
+(* ###    ... and which are independent                                                                         ### *)
+(* ###    Outputs list of associations, one for each connected components, where keys in each association are   ### *)
+(* ###    the braids' incoming arc-ends and values are the orientation signs                                    ### *)
 OrientationMasks[spec_BraidSpec, connectedComponents_, residues_] :=
     Map[Function[{component},
 		  Module[{i, res = <||>},
@@ -576,46 +594,59 @@ OrientationMasks[spec_BraidSpec, connectedComponents_, residues_] :=
 							 -1]]];
 			 res]],
 	 connectedComponents];
-(* ### Braidosome is that smart program that does all the work I want to get done for me ### *)
-(* ### Example of input : BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]] ### *)
-(* ### This example describes the figure-eight-like knots ### *)
+(* ### vv Braidosome is that smart program that does all the work I want to get done for me ### *)
+(* ###    Example of input : BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]] ### *)
+(* ###    This example describes the figure-eight-like knots ### *)
 Braidosome[spec_BraidSpec] :=
     pass;
+(* ### vv For a given braid specification, generate a list of possible orientations of the arcs between the braids, ### *)
+(* ###    together with compatible possible choices of residues of the number of crossings in the braids by number of strands ### *)
+(* ###    In short, split possible orientation choices into "orientation clusters" ### *)
 OrientationClusters[spec_BraidSpec] :=
-    Module[{lst = List @@ spec,
-	    theClusters = <||>},
-	   Module[
-	       {allResidues = Tuples[Map[Range[0, #[[1]] - 1] &, lst]]},
-	       Scan[Function[{residues},
-			     (* Print["residues: ", residues]; *)
-			     (* ### vv This formatting is crap, but we don't have the Module* (analog of LET* ) macro ### *)
-			     (* ### vv which would be appropriate to use here ### *)
-			     Module[
-				 {connScheme = ConnectionScheme[spec, residues]},
-				 Module[
-				     {connComps = ConnectedComponentsConnectionScheme[connScheme]},
-				     Module[
-					 {oriMasks = OrientationMasks[spec, connComps, residues]},
-					 Scan[Function[{oriChoice}, (* ### << short for 'orientation choice' ### *)
-						       Module[{i, totalOrientation = {}},
-							      For[i = 1, i <= Length[oriChoice], i ++,
-								  AppendTo[totalOrientation,
-									   Map[Rule[#[[1]],
-										    oriChoice[[i]] * #[[2]]] &,
-									       Normal[oriMasks[[i]]]]]];
-							      (* Print["total ori: ", totalOrientation]; *)
-							      Module[{key = (OriChoice @@ Sort[Join @@ totalOrientation,
-											       (* ### vv We sort by keys ### *)
-											       DepthTwoLexiSort[#1[[1]], #2[[1]]] &])},
-								     Module[{val = Lookup[theClusters, key, {}]},
-									    (* Print["val: ", val]; *)
-									    theClusters[key] = Append[val, residues]]]]],
-					      (* ### vv First component always contains II[a,0], so we fix sign freedom this way ### *)
-					      Map[{1} ~Join~ # &, Tuples[{1,-1}, Length[connComps] - 1]]]]]]],
-		    allResidues]];
-	   theClusters];
+    Module[{theClusters = <||>},
+	   Module[{allResidues = Tuples[Map[Range[0, #[[1]] - 1] &, List @@ spec]]},
+                  Scan[Function[{residueChoice},
+                                Module[{res = OrientationClustersForAResidueChoice[spec, residueChoice]},
+                                       Scan[Module[{val = Lookup[theClusters, #[[1]], {}]},
+                                                   theClusters[#[[1]]] = Append[val, #[[2]]]] &,
+                                            res]]],
+                       allResidues]];
+           theClusters];
+(* ### vv Given the choice of residues of the numbers of crossings in braids, construct compatible orientations ### *)
+OrientationClustersForAResidueChoice[spec_BraidSpec, residueChoice_List] :=
+    Module[{res = {}}, (* ### << In this function we assemble the result as a list, and put it into proper hash ### *)
+           (*                    in the wrapping function                                                       ### *)
+           (* Print["residues: ", residueChoice]; *)
+           (* ### vv This formatting is crap, but we don't have the Module* (analog of LET* ) macro ### *)
+           (* ###    which would be appropriate to use here ### *)
+           Module[{connScheme, connComps, oriMasks},
+                  connScheme = ConnectionScheme[spec, residueChoice];
+                  connComps = ConnectedComponentsConnectionScheme[connScheme];
+                  oriMasks = OrientationMasks[spec, connComps, residueChoice];
+                  (* Print["scheme, comps, masks: ", connScheme, " ", connComps, " ", oriMasks]; *)
+                  Scan[Function[{oriChoice},
+                                AppendTo[res, OrientationClustersProcessOrientationChoice[oriChoice,
+                                                                                          oriMasks,
+                                                                                          residueChoice]]],
+                       (* ### vv All possible orientation choices, but the first component always contains II[a,0], ### *)
+                       (* ###    hence we fix sign freedom this way                                                 ### *)
+                       Map[{1} ~Join~ # &, Tuples[{1,-1}, Length[connComps] - 1]]]];
+           res];
+OrientationClustersProcessOrientationChoice[oriChoice_, oriMasks_, residueChoice_] :=
+    (* ### ^^ short for 'orientation choice' ### *)
+    Module[{i, totalOrientation = {}},
+           For[i = 1, i <= Length[oriChoice], i ++,
+               AppendTo[totalOrientation,
+                        Map[Rule[#[[1]],
+                                 oriChoice[[i]] * #[[2]]] &,
+                            Normal[oriMasks[[i]]]]]];
+           (* Print["total ori: ", totalOrientation]; *)
+           {(OriChoice @@ Sort[Join @@ totalOrientation,
+                               (* ### vv We sort by keys ### *)
+                               DepthTwoLexiSort[#1[[1]], #2[[1]]] &]),
+            residueChoice}];
+(* ### vv the crossing that looks "positive" in the absolute frame: had both strands been oriented from down to up ### *)
 YpAbs[ll_, lr_, ul_, ur_, ori1_, ori2_] :=
-    (* ### ^^ the crossing that looks "positive" in the absolute frame: had both strands been oriented from down to up ### *)
     If[And[ori1 == 1, ori2 == 1],
        Yp[ll, lr, ul, ur],
        If[And[ori1 == -1, ori2 == 1],
@@ -625,8 +656,8 @@ YpAbs[ll_, lr_, ul_, ur_, ori1_, ori2_] :=
 	     If[And[ori1 == -1, ori2 == -1],
 		Yp[ur, ul, lr, ll],
 		Print["Caboom!"]]]]];
+(* ### vv the crossing that looks "negative" in the absolute frame: had both strands been oriented from down to up ### *)
 YmAbs[ll_, lr_, ul_, ur_, ori1_, ori2_] :=
-    (* ### ^^ the crossing that looks "negative" in the absolute frame: had both strands been oriented from down to up ### *)
     If[And[ori1 == 1, ori2 == 1],
        Ym[ll, lr, ul, ur],
        If[And[ori1 == -1, ori2 == 1],
@@ -791,8 +822,8 @@ ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossin
 			   /. MapIndexed[Rule[#1, #2[[1]]] &,
 					 Flatten[myCC]])},
 		  YPMsToXs[(PD @@ diag)]]];
+(* ### vv Convert notation for crossings back to the counter-intuitive notation, but which is understood by KnotTheory ### *)
 YPMsToXs[expr_] :=
-    (* ### Convert notation for crossings back to the counter-intuitive notation, but which is understood by KnotTheory ### *)
     (expr /. {Ym[a_, b_, c_, d_] :> X[a, b, d, c],
 	      Yp[a_, b_, c_, d_] :> X[b, d, c, a]});
 TwoStrandKhovanov[aa_] :=
@@ -1380,12 +1411,12 @@ ans = Block[{extraPoints = 10},
 						      Join[{aSeries}, PosFundEigenvalues[]],
 						      Join[{bSeries}, PosFundEigenvalues[]]]]];
 
-Module[{cc},
-       For[cc = 10, cc <= 15, cc ++,
-	   (* ### Let's find 4 evolutions in all far quadrants ### *)
+Module[{cc, deltaK = 4},
+       For[cc = 1, cc <= 9, cc ++,
+	   (* ### vv Let's find 4 evolutions in all far quadrants ### *)
 	   ansUL = Block[{extraPoints = 2},
-			 With[{aSeries = -4 - k,
-			       bSeries = 4 + k},
+			 With[{aSeries = -deltaK - k,
+			       bSeries = deltaK + k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1393,8 +1424,8 @@ Module[{cc},
 							       Join[{aSeries}, PosFundEigenvalues[]],
 							       Join[{bSeries}, PosFundEigenvalues[]]]]];
 	   ansUR = Block[{extraPoints = 2},
-			 With[{aSeries = 4 + k,
-			       bSeries = 4 + k},
+			 With[{aSeries = deltaK + k,
+			       bSeries = deltaK + k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1402,8 +1433,8 @@ Module[{cc},
 							       Join[{aSeries}, PosFundEigenvalues[]],
 							       Join[{bSeries}, PosFundEigenvalues[]]]]];
 	   ansLL = Block[{extraPoints = 2},
-			 With[{aSeries = - 4 - k,
-			       bSeries = - 4 - k},
+			 With[{aSeries = - deltaK - k,
+			       bSeries = - deltaK - k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1411,8 +1442,8 @@ Module[{cc},
 							       Join[{aSeries}, PosFundEigenvalues[]],
 							       Join[{bSeries}, PosFundEigenvalues[]]]]];
 	   ansLR = Block[{extraPoints = 2},
-			 With[{aSeries = 4 + k,
-			       bSeries = - 4 - k},
+			 With[{aSeries = deltaK + k,
+			       bSeries = - deltaK - k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1425,7 +1456,19 @@ Module[{cc},
 	      Simplify[PosFundEigenvalues[]^aa
 		       . (Table[AA[i,j], {i, 1, 3}, {j, 1, 3}] /. ans)
 		       . PosFundEigenvalues[]^bb]];
-	   Block[{maxAbs = 10},
+	   Block[{maxAbs = 5},
+                 (* signsRev[cc] = Module[{aa, bb}, *)
+                 (*                    Table[KnotSignature[ThirdNonToricKhovanovPrimeBraid[-aa, -bb, -cc]], *)
+                 (*                          {bb, maxAbs, -maxAbs, -1}, *)
+                 (*                          {aa, -maxAbs, maxAbs}]]; *)
+                 (* dets[cc] = Module[{aa, bb}, *)
+                 (*                   Table[KnotDet[ThirdNonToricKhovanovPrimeBraid[-aa, -bb, -cc]], *)
+                 (*                         {bb, maxAbs, -maxAbs, -1}, *)
+                 (*                         {aa, -maxAbs, maxAbs}]]; *)
+                 alexanders[cc] = Module[{aa, bb},
+                                         Table[Alexander[ThirdNonToricKhovanovPrimeBraid[aa, bb, cc]][t],
+                                               {bb, maxAbs, -maxAbs, -1},
+                                               {aa, -maxAbs, maxAbs}]];
 		 picc[cc] = Module[{aa, bb},
 				   Table[Module[{ulQ = (0 === Simplify[TheorKhovanov[aa, bb, ansUL]
 								       - ThirdNonToricKhovanovPrime[aa, bb, cc]]),
@@ -1436,39 +1479,72 @@ Module[{cc},
 						 lrQ = (0 === Simplify[TheorKhovanov[aa, bb, ansLR]
 								       - ThirdNonToricKhovanovPrime[aa, bb, cc]])},
 						(* Print["ul, ur, ll, lr: ", ulQ, " ", urQ, " ", llQ, " ", lrQ]; *)
+                                                (* ### vv The legend for the graph: ### *)
+                                                (* ### vv A4 -- point is described by evolution in all four regions ### *)
+                                                (* ### vv {T,Y,G,H}3 -- point is described by evolution in three regions ### *)
+                                                (* ### vv               placement of the key on the keyboard tells, which ones ### *)
+                                                (* ### vv {W,S,A,D}2 -- point is described by evolution in two regions, ### *)
+                                                (* ### vv               again, which ones is intuitive from key positions ### *)
+                                                (* ### vv {U,J,I,K}1 -- point is described by evolution in just one region ### *)
+                                                (* ### vv ??         -- point is isolated, not described by any ### *)
+                                                (* ### vv               of the asymptotic evolutions ### *)
 						If[And[ulQ, urQ, llQ, lrQ],
-						   "AL",
+						   "A4",
 						   If[And[ulQ, urQ, llQ],
-						      "GG",
+						      "H3",
 						      If[And[ulQ, llQ, lrQ],
-							 "LL",
+							 "T3",
 							 If[And[ulQ, urQ, lrQ],
-							    "TT",
+							    "Y3",
 							    If[And[urQ, llQ, lrQ],
-							       "dd",
+							       "G3",
 							       If[And[ulQ, llQ],
-								  "LE",
+								  "W2",
 								  If[And[urQ, ulQ],
-								     "UP",
+                                                                     "S2",
 								     If[And[urQ, lrQ],
-									"RI",
+									"D2",
 									If[And[llQ, lrQ],
-									   "LO",
+									   "A2",
 									   If[And[ulQ, lrQ],
-									      "YY",
+									      "Q2",
 									      If[And[llQ, urQ],
-										 "NN",
+										 "E2",
 										 If[ulQ,
-										    "UL",
+										    "U1",
 										    If[urQ,
-										       "UR",
+										       "I1",
 										       If[llQ,
-											  "LL",
+											  "J1",
 											  If[lrQ,
-											     "LR",
+											     "K1",
 											     "??"]]]]]]]]]]]]]]]],
 					 {bb, maxAbs, -maxAbs, -1},
 					 {aa, -maxAbs, maxAbs}]]]]];
+
+Block[{cc = 9},
+      Module[{aa, bb},
+             Table[Subscript[picc[cc][[aa, bb]],
+                             signs[cc][[aa, bb]]],
+                   {bb, 1, Length[picc[cc]]},
+                   {aa, 1, Length[picc[cc]]}] // TeXForm
+            ]]
+
+Block[{cc = 1},
+      Module[{aa, bb},
+             Table[Subscript[picc[cc][[aa, bb]],
+                             signsRev[cc][[aa, bb]]],
+                   {bb, 1, Length[picc[cc]]},
+                   {aa, 1, Length[picc[cc]]}] // TeXForm
+            ]]
+
+Block[{cc = 1},
+      Module[{aa, bb},
+             Table[Subscript[picc[cc][[aa, bb]],
+                             dets[cc][[aa, bb]]],
+                   {bb, 1, Length[picc[cc]]},
+                   {aa, 1, Length[picc[cc]]}] // TeXForm
+            ]]
 
 (* ### vv Recursion for R1^3 R2 ### *)
 Solve[x^4 - q^4 x^3 - t^8 q^24 x + t^8 q^28 == 0, x] // InputForm
@@ -1693,7 +1769,30 @@ ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[pd]]
 
 
 (* DepthTwoLexiSort[II[a,0], II[b,0]] *)
-(* OrientationClusters[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]] *)
+
+OrientationClusters[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]]
+
+
+ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
+                 {0, 0}]
+
+OrientationClusters[BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]]]
+
+
+
+spec = BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]];
+residues = {0};
+connScheme = ConnectionScheme[spec, residues];
+connComps = ConnectedComponentsConnectionScheme[connScheme];
+oriMasks = OrientationMasks[spec, connComps, residues];
+
+oriMasks
+
+OrientationClustersForAResidueChoice[BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]],
+                                     {0}]
+
+
+
 
 Block[{n = 12},
       Module[{knots = AllKnots[n]},
