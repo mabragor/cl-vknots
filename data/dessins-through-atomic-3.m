@@ -1,0 +1,15 @@
+PermDessin[3, 0] = ((-q^(-2) + q^2)^2*PermDessin[1, 0])/(-q^(-1) + q)^2;
+PermDessin[3, 1] = ((-q^(-2) + q^2)^2*(-q^(1 - N) + q^(-1 + N))*(-q^(-N) + q^N))/(-q^(-1) + q)^4;
+PermDessin[3, 4] = ((-q^(1 - N) + q^(-1 + N))*(-q^(-N) + q^N))/(-q^(-1) + q)^2 + ((-q^(2 - N) + q^(-2 + N))*PermDessin[1, 0])/(-q^(-1) + q);
+PermDessin[3, 5] = ((-q^(2 - N) + q^(-2 + N))*(-q^(1 - N) + q^(-1 + N))*(-q^(-N) + q^N))/(-q^(-1) + q)^3 + PermDessin[1, 0];
+PermDessin[3, 7] = ((-q^(1 - N) + q^(-1 + N))*PermDessin[2, 2])/(-q^(-1) + q);
+PermDessin[3, 8] = ((-q^(1 - N) + q^(-1 + N))^2*PermDessin[1, 0])/(-q^(-1) + q)^2;
+PermDessin[3, 10] = ((-q^(1 - N) + q^(-1 + N))^3*(-q^(-N) + q^N))/(-q^(-1) + q)^4;
+PermDessin[3, 11] = ((-q^(1 - N) + q^(-1 + N))^2*PermDessin[1, 0])/(-q^(-1) + q)^2;
+PermDessin[3, 12] = ((-q^(-2) + q^2)*PermDessin[2, 2])/(-q^(-1) + q);
+PermDessin[3, 13] = ((-q^(-2) + q^2)*(-q^(1 - N) + q^(-1 + N))*PermDessin[1, 0])/(-q^(-1) + q)^2;
+PermDessin[3, 14] = ((-q^(-2) + q^2)*(-q^(1 - N) + q^(-1 + N))^2*(-q^(-N) + q^N))/(-q^(-1) + q)^4;
+PermDessin[3, 15] = ((-q^(-2) + q^2)*(-q^(1 - N) + q^(-1 + N))*PermDessin[1, 0])/(-q^(-1) + q)^2;
+PermDessin[3, 17] = ((-q^(1 - N) + q^(-1 + N))*PermDessin[2, 2])/(-q^(-1) + q);
+PermDessin[3, 18] = ((-q^(1 - N) + q^(-1 + N))^2*PermDessin[1, 0])/(-q^(-1) + q)^2;
+PermDessin[3, 19] = ((-q^(1 - N) + q^(-1 + N))^3*(-q^(-N) + q^N))/(-q^(-1) + q)^4;
