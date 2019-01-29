@@ -3,6 +3,8 @@
 
 << "../pretzel-khovanovs-3-1-1-1.m";
 
+1 + 2
+
 PrecompKh[-1,-1]
 
 (* ### vv M^{++}_{i,j} ### *)
