@@ -1,4 +1,4 @@
-PrecompKh[-1, 1] := 1/(q^5*t) + 2/(q^3*t) + 1/(q*t);
+PrecompKh[-1, 1] := q*t + 2*q^3*t + q^5*t;
 PrecompKh[-1, 2] := q^(-1) + q;
 PrecompKh[-1, 3] := 1 + q^2 + q^4*t^2 + q^6*t^2;
 PrecompKh[-1, 4] := q + q^3 + q^5*t^2 + q^9*t^3;

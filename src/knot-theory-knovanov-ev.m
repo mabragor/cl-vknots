@@ -1,10 +1,77 @@
 
 << "knot-theory-knovanov-ev-utils.m";
+<< "tuple-iterator.m";
 
-<< "../data/pretzel-khovanovs-2-1-1.m";
-<< "../data/pretzel-khovanovs-2--1--1.m";
+(* << "../data/pretzel-khovanovs-2-1-1.m"; *)
+(* << "../data/pretzel-khovanovs-2--1--1.m"; *)
+(* << "../pretzel-khovanovs-3-1-1-1.m"; *)
 
-PrecompKh[-1,-1]
+CCCMaxParallelWindings = 6;
+CCCMaxAntiparallelWindings = 4;
+
+PrecomputePretzels[genus_] :=
+    Module[{signIter = MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, genus + 1}]]]},
+           Module[{signs, validQ},
+                  While[True,
+                        {signs, validQ} = signIter[];
+                        If[Not[validQ],
+                           Break[]];
+                        Module[{fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                               <> ToString[genus + 1] <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"],
+                                fdlog = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                                  <> ToString[genus + 1] <> ".log"],
+                                windsIter = MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings}, {i, 1, genus}]],
+                                                                If[EvenQ[genus + 1],
+                                                                   {{1, CCCMaxParallelWindings}},
+                                                                   {{0, CCCMaxAntiparallelWindings, 2}}]]},
+                               Module[{windings, validQ},
+                                      While[True,
+                                            {windings, validQ} = windsIter[];
+                                            If[Not[validQ],
+                                               Break[]];
+                                            Module[{signedWindings = signs * windings},
+                                                   (* ### ^^ Elementwise vector multiplication (cool, right?)         ### *)
+                                                   Module[{theAns = PretzelKhovanov[signedWindings]},
+                                                          WriteString[fdlog, "Calculating ("
+                                                                      <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                      <> ")" (* ### << This way it also works in screen ### *)
+                                                                     ];
+                                                          WriteString[fd, "PrecompKh["
+                                                                      <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                      <> "] := " <> ToString[theAns, InputForm] <> ";"];
+                                                         ]];
+                                           ]];
+                               Close[fd];
+                               Close[fdlog]]]]];
+
+CCCExtraPoints = 2;
+CCCSeriesShift = 1;
+
+FindPretzelEvolutionParameters[genus_] :=
+    Module[{signIter = MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, genus + 1}]]]},
+           Module[{signs, validQ},
+                  While[True,
+                        {signs, validQ} = signIter[];
+                        If[Not[validQ],
+                           Break[]];
+                        (* ### ^^ we iterate over all the 2^n-tants ### *)
+                        
+    
+
+(* ### vv M^{+++}_{i,j,k} ### *)
+ans1 =  Block[{extraPoints = 2},
+              With[{aSeries = k+1, bSeries = k+1, cSeries = 2 k+2},
+                   FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2, k3},
+                                                             PrecompKh[aSeries /. {k -> k1},
+                                                                       bSeries /. {k -> k2},
+                                                                       cSeries /. {k -> k3}]],
+                                                    Join[{aSeries}, PosFundEigenvalues[]],
+                                                    Join[{bSeries}, PosFundEigenvalues[]],
+                                                    Join[{cSeries}, NegAdjEigenvalues[]]]]];
+
+
+
+PrecomputePretzels[1]
 
 (* ### vv M^{++}_{i,j} ### *)
 ans1 =  Block[{extraPoints = 2},
@@ -83,29 +150,6 @@ ans2 = Block[{extraPoints = 2},
 
 
 
-Scan[Function[{dirs},
-              Module[{ii, jj, fd, fdlog,
-                      dir1 = dirs[[1]],
-                      dir2 = dirs[[2]]},
-                     fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/pretzel-khovanovs-2-"
-                                    <> ToString[dir1] <> "-" <> ToString[dir2]
-                                    <> ".m"];
-                     fdlog = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/pretzel-khovanovs-2.log"];
-                     For[ii = 1, ii <= 6, ii ++,
-                         For[jj = 1, jj <= 6, jj ++,
-                             Module[{theAns = PretzelKhovanov[{dir1 * ii, dir2 * jj}]},
-                                    WriteString[fdlog, "Calculating ["
-                                                <> ToString[dir1 * ii]
-                                                <> ", " <> ToString[dir2 * jj]
-                                                <> "]\n"];
-                                    WriteString[fd,
-                                                "PrecompKh[" <> ToString[dir1 * ii]
-                                                <> ", " <> ToString[dir2 * jj]
-                                                <> "] := " <> ToString[theAns, InputForm] <> ";\n"]
-                                   ]]];
-                     Close[fd];
-                     Close[fdlog]]],
-     Tuples[{1,-1}, 2]];
 
 Scan[Function[{dirs},
               Module[{ii, jj, kk, fd,

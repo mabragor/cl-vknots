@@ -1,801 +1,218 @@
 
-Quiet[<< KnotTheory`];
-Quiet[<< Combinatorica`];
+<< "knot-theory-knovanov-ev-utils.m";
+<< "tuple-iterator.m";
 
-TwoStrandKhovanov[n_] :=
-    Kh[BR[2, Join[{1,-1,1,-1},
-		  Map[If[n > 0, 1, -1] &, Range[1, Abs[n]]]]]][q,t];
-FundEvoTheor[n_] :=
-    (AA * q^n + BB * t^n q^(3 n) + CC * (-t)^n q^(3 n));
-ApplyFundEvolutionMethod[family_, positiveQ_] :=
-    Module[{eqns = Map[family[#] - FundEvoTheor[#] == 0 &,
-		       Map[If[positiveQ,
-			      #,
-			      -#] &,
-			   Range[1, 3]]]},
-	   Module[{ans = Solve[eqns, {AA, BB, CC}]},
-		  If[1 =!= Length[ans],
-		     Message["More than one solution to a linear system"],
-		     CompoundExpression[Print[Map[FullSimplify[family[#] - FundEvoTheor[#] /. ans[[1]]] &,
-						  Map[If[positiveQ,
-							 #,
-							 -#] &,
-						      Range[4, 10]]]];
-					ans[[1]]]]]];
-EigenvalueUnknownComb[eigenvalues_] :=
-    Module[{i},
-	   Function[{n},
-		    Plus @@ Table[AA[i] eigenvalues[[i]]^n,
-				  {i, 1, Length[eigenvalues]}]]];
-EigenvalueIndets[eigenvalues_] :=
-    Module[{i}, Table[AA[i], {i, 1, Length[eigenvalues]}]];
-FitFamilyWithEigenvalues[family_, eigenvalues_] :=
-    Module[{comb = EigenvalueUnknownComb[eigenvalues],
-	    indets = EigenvalueIndets[eigenvalues]},
-	   Module[{eqns = Map[family[#] - comb[#] == 0 &,
-			      Range[1, Length[eigenvalues]]]},
-		  Module[{ans = Solve[eqns, indets]},
-			 If[1 =!= Length[ans],
-			    Message["More than one solution to a linear system"],
-			    CompoundExpression[Print[Map[FullSimplify[family[#] - comb[#] /. ans[[1]]] &,
-							 Range[1 + Length[eigenvalues], 5 + Length[eigenvalues]]]],
-					       ans[[1]]]]]]];
-EigenvalueUnknownCombAdvanced[eigenvaluesSpecs_] :=
-    Module[{body =
-	    (Plus
-	     @@ Map[Function[{indices},
-			     (AA @@ indices)
-			     (Times @@ MapIndexed[Function[{index, number},
-							   eigenvaluesSpecs[[number[[1]],
-									     index + 1]]^(eigenvaluesSpecs[[number[[1]], 1]]
-											  /. {k -> Symbol["k"
-													  <> ToString[number[[1]]]]})
-							  ],
-						  indices])
-			    ],
-		    Tuples[Map[Range[1, Length[#] - 1] &, eigenvaluesSpecs]]]),
-	    args = Map[Symbol["k" <> ToString[#]] &, Range[1, Length[eigenvaluesSpecs]]]},
-	   Function[Evaluate[args], Evaluate[body]]];
-EigenvalueIndetsAdvanced[eigenvaluesSpecs_] :=
-    Map[Function[{indices},
-		 AA @@ indices],
-	Tuples[Map[Range[1, Length[#] - 1] &, eigenvaluesSpecs]]];
-extraPoints = 1;
-(* FigeightLikePDOdd[a_, b_] := *)
-(*     Module[{i, *)
-(* 	    B = Abs[b], *)
-(* 	    A = Abs[a]}, *)
-(* 	   PD @@ Join[Table[If[a > 0, *)
-(* 			       If[OddQ[i], *)
-(* 				  X[2 B + A + i, B + i + 1, 2 B + A + i + 1, B + i], *)
-(* 				  X[B + i, 2 B + A + i + 1, B + i + 1, 2 B + A + i]], *)
-(* 			       If[OddQ[i], *)
-(* 				  X[B + i, 2 B + A + i, B + i + 1, 2 B + A + i + 1], *)
-(* 				  X[2 B + A + i, B + i, 2 B + A + i + 1, B + i + 1]]], *)
-(* 			    {i, 1, A}], *)
-(* 		      Table[If[b > 0, *)
-(* 			       If[OddQ[i], *)
-(* 				  X[i, 2 B + A + 2 - i, i + 1, 2 B + A + 1 - i], *)
-(* 				  X[2 B + A + 1 - i, i + 1, 2 B + A + 2 - i, i]], *)
-(* 			       If[OddQ[i], *)
-(* 				  X[2 B + A + 1 - i, i, 2 B + A + 2 - i, i + 1], *)
-(* 				  X[i, 2 B + A + 1 - i, i + 1, 2 B + A + 2 - i]]], *)
-(* 			    {i, 1, B}]] /. {2 B + 2 A + 1 :> 1}]; *)
-ParallelTwoStrandBraid[bottomLeft_, bottomRight_, n_] :=
-    (* ### List of crossings for the parallel two-strand braid with 'n' crossings ### *)
-    (* ### Bottom legs of the braid are assumed to be incoming ### *)
-    (* ### 'bottomLeft' and 'bottomRight' are the starting indices ### *)
-    Module[{i, NN = Abs[n]},
-	   Table[If[OddQ[i],
-		    If[n > 0,
-		       X[bottomLeft + i - 1, bottomRight + i - 1, bottomLeft + i, bottomRight + i],
-		       X[bottomRight + i - 1, bottomLeft + i, bottomRight + i, bottomLeft + i - 1]],
-		    If[n > 0,
-		       X[bottomRight + i - 1, bottomLeft + i - 1, bottomRight + i, bottomLeft + i],
-		       X[bottomLeft + i - 1, bottomRight + i, bottomLeft + i, bottomRight + i - 1]]],
-		 {i, 1, NN}]];
-AntiParallelTwoStrandBraidBottomInc[bottomLeft_, topLeft_, n_] :=
-    (* ### List of crossings for the anti-parallel two-strand braid with 'n' crossings ### *)
-    (* ### The braid is assumed to grow from left to right, rather than from bottom to top ### *)
-    (* ### Bottom left leg is incoming, top left leg is outgoing. ### *)
-    (* ### There is another version of this function, in which the bottom left is outgoing and top left is incoming ### *)
-    (* ### 'bottomLeft' and 'topLeft' are the corresponding indices of the arcs ### *)
-    Module[{i, NN = Abs[n]},
-	   Table[If[n > 0,
-		    If[OddQ[i],
-		       X[topLeft - i, bottomLeft + i, topLeft - i + 1, bottomLeft + i - 1],
-		       X[bottomLeft + i - 1, topLeft - i + 1, bottomLeft + i, topLeft - i]],
-		    If[OddQ[i],
-		       X[bottomLeft + i - 1, topLeft - i, bottomLeft + i, topLeft - i + 1],
-		       X[topLeft - i, bottomLeft + i - 1, topLeft - i + 1, bottomLeft + i]]],
-		 {i, 1, NN}]];
-AntiParallelTwoStrandBraidTopInc[bottomLeft_, topLeft_, n_] :=
-    (* ### List of crossings for the anti-parallel two-strand braid with 'n' crossings ### *)
-    (* ### The braid is assumed to grow from left to right, rather than from bottom to top ### *)
-    (* ### Bottom left leg is outgoing, top left leg is incoming. ### *)
-    (* ### There is another version of this function, in which the bottom left is incoming and top left is outgoing ### *)
-    (* ### 'bottomLeft' and 'topLeft' are the corresponding indices of the arcs ### *)
-    Module[{i, NN = Abs[n]},
-	   Table[If[n > 0,
-		    If[OddQ[i],
-		       X[topLeft + i - 1, bottomLeft - i + 1, topLeft + i, bottomLeft - i],
-		       X[bottomLeft - i, topLeft + i, bottomLeft - i + 1, topLeft + i - 1]],
-		    If[OddQ[i],
-		       X[bottomLeft - i, topLeft + i - 1, bottomLeft - i + 1, topLeft + i],
-		       X[topLeft + i - 1, bottomLeft - i, topLeft + i, bottomLeft - i + 1]]],
-		 {i, 1, NN}]];
-ParallelDummyTwoStrandBraid[bottomLeft_, bottomRight_, n_] :=
-    (* ### A dummy  version of the two-strand braid, consisting of alternating positive and negative crossings ### *)
-    (* ### so that it actually unknots. ### *)
-    If[Not[EvenQ[n]],
-       Message["Number of crossings in the dummy braid should be even"],
-       Module[{i, NN = Abs[n]},
-	      Table[If[OddQ[i],
-		       X[bottomLeft + i - 1, bottomRight + i - 1, bottomLeft + i, bottomRight + i],
-		       X[bottomLeft + i - 1, bottomRight + i, bottomLeft + i, bottomRight + i - 1]],
-		    {i, 1, NN}]]];
-AntiParallelDummyTwoStrandBraidBottomInc[bottomLeft_, topLeft_, n_] :=
-    (* ### Dummy version of the antiparallel two-strand braid, bottom incoming version ### *)
-    If[Not[EvenQ[n]],
-       Message["Number of crossings in the dummy braid should be even"],
-       Module[{i, NN = Abs[n]},
-	      Table[If[OddQ[i],
-		       X[topLeft - i, bottomLeft + i, topLeft - i + 1, bottomLeft + i - 1],
-		       X[topLeft - i, bottomLeft + i - 1, topLeft - i + 1, bottomLeft + i]],
-		    {i, 1, NN}]]];
-AntiParallelDummyTwoStrandBraidTopInc[bottomLeft_, topLeft_, n_] :=
-    (* ### Dummy version of the antiparallel two-strand braid, top incoming version ### *)
-    If[Not[EvenQ[n]],
-       Message["Number of crossings in the dummy braid should be even"],
-       Module[{i, NN = Abs[n]},
-	      Table[If[OddQ[i],
-		       X[topLeft + i - 1, bottomLeft - i + 1, topLeft + i, bottomLeft - i],
-		       X[topLeft + i - 1, bottomLeft - i, topLeft + i, bottomLeft - i + 1]],
-		    {i, 1, NN}]]];
-FigeightLikePD[a_, b_] :=
-    If[And[EvenQ[a], EvenQ[b]],
-       FigeightLikePDEE[a, b],
-       If[And[EvenQ[a], OddQ[b]],
-	  FigeightLikePDEO[a, b],
-	  If[And[OddQ[a], EvenQ[b]],
-	     FigeightLikePDOE[a, b],
-	     If[And[OddQ[a], OddQ[b]],
-		FigeightLikePDOOSameOrient[a, b],
-		Message["Error"]]]]];
-FigeightLikePDAlt[a_, b_] :=
-    If[And[EvenQ[a], EvenQ[b]],
-       FigeightLikePDEE[a, b],
-       If[And[EvenQ[a], OddQ[b]],
-	  FigeightLikePDEO[a, b],
-	  If[And[OddQ[a], EvenQ[b]],
-	     FigeightLikePDOE[a, b],
-	     If[And[OddQ[a], OddQ[b]],
-		FigeightLikePDOODifferentOrient[a, b],
-		Message["Error"]]]]];
-FigeightLikePDEE[a_, b_] :=
-    Module[{A = Abs[a],
-	    B = Abs[b]},
-	   (PD @@ Join[AntiParallelTwoStrandBraidTopInc[B + DD + 1, A + B + C + DD + 1, b],
-		       AntiParallelDummyTwoStrandBraidTopInc[DD + 1, A + 2 B + C + DD + 1, DD],
-		       AntiParallelTwoStrandBraidBottomInc[B + DD + 1, 2 A + 2 B + 2 C + 2 DD + 1, a],
-		       AntiParallelDummyTwoStrandBraidBottomInc[A + B + DD + 1, A + 2 B + 2 C + 2 DD + 1, C]]
-	    /. {2 A + 2 B + 2 C + 2 DD + 1-> 1})];
-FigeightLikePDEO[a_, b_] :=
-    Module[{A = Abs[a],
-	    B = Abs[b]},
-	   (PD @@ Join[AntiParallelTwoStrandBraidBottomInc[A + B + C + DD + 1, B + DD + 1, b],
-		       AntiParallelDummyTwoStrandBraidTopInc[DD + 1, A + 2 B + C + DD + 1, DD],
-		       ParallelTwoStrandBraid[B + C + DD + 1, A + 2 B + 2 C + 2 DD + 1, a],
-		       ParallelDummyTwoStrandBraid[B + DD + 1, A + 2 B + C + 2 DD + 1, C]]
-	    /. {2 A + 2 B + 2 C + 2 DD + 1 -> 1})];
-FigeightLikePDOE[a_, b_] :=
-    Module[{A = Abs[a],
-	    B = Abs[b]},
-	   (PD @@ Join[ParallelDummyTwoStrandBraid[1, A + B + C + DD + 1, DD],
-		       ParallelTwoStrandBraid[DD + 1, A + B + C + 2 DD + 1, b],
-		       AntiParallelTwoStrandBraidBottomInc[B + DD + 1, 2 A + 2 B + 2 C + 2 DD + 1, a],
-		       AntiParallelDummyTwoStrandBraidTopInc[A + 2 B + 2 C + 2 DD + 1, A + B + DD + 1, C]]
-	    /. {2 A + 2 B + 2 C + 2 DD + 1 -> 1})];
-FigeightLikePDOOSameOrient[a_, b_] :=
-    Module[{A = Abs[a],
-	    B = Abs[b]},
-	   (PD @@ Join[ParallelDummyTwoStrandBraid[1, A + B + C + DD + 2, DD],
-		       ParallelTwoStrandBraid[DD + 1, A + B + C + 2 DD + 2, b],
-		       AntiParallelTwoStrandBraidBottomInc[A + 2 B + C + 2 DD + 2, A + B + C + DD + 1, a],
-		       AntiParallelDummyTwoStrandBraidTopInc[B + C + DD + 1, 2 A + 2 B + C + 2 DD + 2, C]]
-	    /. {2 A + 2 B + 2 C + 2 DD + 2 -> A + B + C + DD + 2,
-		A + B + C + DD + 1 -> 1})];
-FigeightLikePDOODifferentOrient[a_, b_] :=
-    Module[{A = Abs[a],
-	    B = Abs[b]},
-	   Module[{C = If[A + B < 2,
-			  4,
-			  If[A + B < 4,
-			     2,
-			     0]]},
-		  (PD @@ Join[ParallelDummyTwoStrandBraid[B + DD + 1, A + B + C + DD + 2, C],
-			      ParallelTwoStrandBraid[B + C + DD + 1, A + B + 2 C + DD + 2, a],
-			      AntiParallelTwoStrandBraidBottomInc[2 A + B + 2 C + DD + 2, B + DD + 1, b],
-			      AntiParallelDummyTwoStrandBraidTopInc[DD + 1, 2 A + 2 B + 2 C + DD + 2, DD]]
-		   /. {2 A + 2 B + 2 C + 2 DD + 2 -> A + B + C + DD + 2,
-		       A + B + C + DD + 1 -> 1})]];
-(* Block[{n = 12}, *)
-(*       Expand[Simplify[(Kh[FigeightLikePD[1,n]][q,t] *)
-(* 		       - (q^(3 - n) + q^(1 - n)) *)
-(* 		       - (1/(1 - t^(-2) q^(-4)) (1 - (t^(-2) q^(-4))^((n-2)/2)) *)
-(* 			  t^(-2) q^(-n - 1) (1 + q^(-4) t^(-1)))) *)
-(* 		     ]]] *)
-PosFundEigenvalues[] :=
-    {q, t q^3, (-t) q^3};
-NegFundEigenvalues[] :=
-    {q^(-1), t^(-1) q^(-3), (-t^(-1)) q^(-3)};
-PosAdjEigenvalues[] :=
-    {1, t q^2};
-NegAdjEigenvalues[] :=
-    {1, (t q^2)^(-1)};
-FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
-    Module[{specs = List[eigenvaluesSpecs]},
-	   Module[{comb = EigenvalueUnknownCombAdvanced[specs],
-		   indets = EigenvalueIndetsAdvanced[specs]},
-		   (* correctionFactors = Map[Module[{power = #[[1]] /. {k -> 0}}, *)
-		   (* 				  Map[#^power &, Rest[#]]] &, *)
-		   (* 			   specs] *)
-		  (* Print["comb and indets: ", List[comb, indets, family]]; *)
-		  Module[{eqns = Map[(family @@ #) - (comb @@ #) == 0 &,
-				     Tuples[Map[Range[0, Length[#] - 1 - 1] &,
-						specs]]]},
-			 Module[{ans = Solve[eqns, indets]},
-				(* Print["solved the system: ", ans]; *)
-				If[1 =!= Length[ans],
-				   Message["More than one solution to a linear system"],
-				   Module[{indices = Tuples[Map[Range[0, Length[#] - 1 - 1 + extraPoints]&,
-								specs]]},
-					  Module[{check = Tally[Map[If[0 === FullSimplify[(family @@ #) - (comb @@ #) /. ans[[1]]],
-								       0,
-								       nz] &,
-								    indices]]},
-						 If[1 === Length[check],
-						    Module[{},
-							   Print[check];
-							   Map[Rule[#[[1]],
-								    ExpandNumerator[
-									FullSimplify[(* 1/(Times
-											@@ MapIndexed[correctionFactors[[#2[[1]], #1]] &,
-												      (List @@ #[[1]])]) *)
-										     #[[2]]]]] &,
-							       ans[[1]]]],
-						    Module[{}, Print[check]; checkFailed]]]]]]]]];
-PlanarDiagramToAdvancedStructures[pd_] :=
-    (* ### Massage the terse format of the planar diagram ### *)
-    (* ### into more convenient collection of maps, which is more suitable to for asking actual questions about PD ### *)
-    Module[{nextEdge = <||>,
-	    prevEdge = <||>,
-	    edgeCrossingsIn = <||>,
-	    edgeCrossingsOut = <||>},
-	   Scan[Function[{crossing},
-			 (* Print[crossing]; *)
-			 Module[{a,b,c,d},
-				(* ### vv It is hard to pass by reference in Mathematica, that's why we don't split here ### *)
-				If[X === Head[crossing],
-				   CompoundExpression[{a,b,c,d} = List @@ crossing;
-						      (* Print["I'm here"]; *)
-						      nextEdge[a] = c;
-						      prevEdge[c] = a;
-						      edgeCrossingsIn[a] = crossing;
-						      edgeCrossingsOut[c] = crossing;
-						      If[1 == Abs[b - d],
-							 (* ### ^^ If we are not at the "gluing" of the loop ### *)
-							 If[d > b,
-							    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
-									       edgeCrossingsIn[b] = crossing,
-									       edgeCrossingsOut[d] = crossing],
-							    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
-									       edgeCrossingsIn[d] = crossing,
-									       edgeCrossingsOut[b] = crossing]],
-							 If[d > b,
-							    CompoundExpression[nextEdge[d] = b, prevEdge[b] = d,
-									       edgeCrossingsIn[d] = crossing,
-									       edgeCrossingsOut[b] = crossing],
-							    CompoundExpression[nextEdge[b] = d, prevEdge[d] = b,
-									       edgeCrossingsIn[b] = crossing,
-									       edgeCrossingsOut[d] = crossing]]]],
-				   If[Or[Yp === Head[crossing], Ym == Head[crossing]],
-				      CompoundExpression[{a,b,c,d} = List @@ crossing;
-							 nextEdge[a] = d;
-							 prevEdge[d] = a;
-							 edgeCrossingsIn[a] = crossing;
-							 edgeCrossingsOut[d] = crossing;
-							 nextEdge[b] = c;
-							 prevEdge[c] = b;
-							 edgeCrossingsIn[b] = crossing;
-							 edgeCrossingsOut[c] = crossing;]]]]],
-		List @@ pd];
-	   Module[{connectedComponents = FindConnectedComponents[nextEdge]},
-		  PDExtended[nextEdge, prevEdge, edgeCrossingsIn, edgeCrossingsOut, connectedComponents]]];
-FindConnectedComponents[nextEdge_] :=
-    Module[{freeEdges = nextEdge,
-	    connectedComponents = {}},
-	   While[0 =!= Length[freeEdges],
-		 Module[{curMin = RandomChoice[Keys[freeEdges]]},
-			KeyDropFrom[freeEdges, curMin];
-			Module[{cur = curMin},
-			       Module[{curComponent = {cur}},
-				      While[nextEdge[cur] =!= curMin,
-					    cur = nextEdge[cur];
-					    KeyDropFrom[freeEdges, cur];
-					    AppendTo[curComponent, cur]];
-				      AppendTo[connectedComponents, curComponent]]]]];
-	   connectedComponents];
-XToYPM[X[a_, b_, c_, d_]] :=
-    If[1 == Abs[b - d],
-       If[b < d,
-	  Ym[a, b, d, c],
-	  Yp[d, a, c, b]],
-       If[b < d,
-	  Yp[d, a, c, b],
-	  Ym[a, b, d, c]]];
-CheeksResolution[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_],
-		 x_X] :=
-    (* ### The )(-resolution of the Jones (Khovanov) skein relation ### *)
-    Module[{theY = XToYPM[x],
-	    nnextEdge = nextEdge,
-	    pprevEdge = prevEdge},
-	   nnextEdge[theY[[1]]] = "f";
-	   nnextEdge["f"] = theY[[3]];
-	   pprevEdge[theY[[3]]] = "f";
-	   pprevEdge["f"] = theY[[1]];
-	   nnextEdge[theY[[2]]] = "e";
-	   nnextEdge["e"] = theY[[4]];
-	   pprevEdge[theY[[4]]] = "e";
-	   pprevEdge["e"] = theY[[2]];
-	   Module[{newConnectedComponents = FindConnectedComponents[nnextEdge]},
-		  Module[{diag = (Join[Select[DeleteDuplicates[Values[edgeCrossingsIn]],
-					       # =!= x &],
-					{X[theY[[2]], "f", "e", theY[[1]]], X["e", "f", theY[[4]], theY[[3]]]}]
-				  /. MapIndexed[Rule[#1, #2[[1]]] &,
-						Flatten[newConnectedComponents]])},
-			 (* Print["Cheek diag: ", diag]; *)
-			 (PD @@ diag)]]];
-CupCapResolution[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_],
-		 x_X] :=
-    (* The v/^-resolution of the skein relation ### *)
-    Module[{theY = XToYPM[x],
-	    nnextEdge = nextEdge,
-	    pprevEdge = prevEdge},
-	   (* Print["theY: ", theY]; *)
-	   Module[{firstToArrive = Null,
-		   cur = theY[[4]]},
-		  While[True,
-			cur = nnextEdge[cur];
-			(* Print[cur]; *)
-			If[cur === theY[[1]],
-			   CompoundExpression[firstToArrive = "a"; Break[]]];
-			If[cur === theY[[2]],
-			   CompoundExpression[firstToArrive = "b"; Break[]]]];
-		  (* Print[firstToArrive]; *)
-		  (* ### vv Reglue the arcs in appropriate way ### *)
-		  Module[{pairsToReverse = {}},
-			 Module[{curCur = If["a" === firstToArrive, theY[[2]], theY[[1]]]},
-				Module[{curNext = pprevEdge[curCur], (* ii = 0, *) tmp = Null},
-				       While[And[theY[[3]] =!= curCur, True (* ii < 10 *)],
-					     (* ii += 1; *)
-					     AppendTo[pairsToReverse, {curNext, curCur}];
-					     nnextEdge[curCur] = curNext;
-					     tmp = curNext;
-					     curNext = pprevEdge[curNext];
-					     pprevEdge[tmp] = curCur;
-					     curCur = tmp]]];
-			 (* Print[nnextEdge, pprevEdge, pairsToReverse]; *)
-			 Module[{ppLeft = theY[[3]],
-				 nnLeft = theY[[4]],
-				 ppRight = If["a" === firstToArrive, theY[[1]], theY[[2]]],
-				 nnRight = If["a" === firstToArrive, theY[[2]], theY[[1]]]},
-				nnextEdge[ppLeft] = "f";
-				nnextEdge["f"] = nnLeft;
-				pprevEdge[nnLeft] = "f";
-				pprevEdge["f"] = ppLeft;
-				nnextEdge[ppRight] = "e";
-				nnextEdge["e"] = nnRight;
-				pprevEdge[nnRight] = "e";
-				pprevEdge["e"] = ppRight;
-				Module[{newConnectedComponents = FindConnectedComponents[nnextEdge]},
-				       Module[{preDiag = (Join[Select[DeleteDuplicates[Values[edgeCrossingsIn]],
-								      # =!= x &],
-							       If["a" == firstToArrive,
-								  {X[ppRight,"f", "e", ppLeft], X["e", "f", nnRight, nnLeft]},
-								  {X["e", ppLeft, nnRight, "f"], X[ppRight, nnLeft, "e", "f"]}]]
-							  (* /. {X[a_, b_, c_, d_] :> *)
-							  (*     Module[{newAC = If[MemberQ[pairsToReverse, {a, c}], *)
-							  (* 			 {c, a}, *)
-							  (* 			 {a, c}], *)
-							  (* 	      newBD = If[Or[MemberQ[pairsToReverse, {b, d}], *)
-							  (* 			    MemberQ[pairsToReverse, {d, b}]], *)
-							  (* 			 {d, b}, *)
-							  (* 			 {b, d}]}, *)
-							  (* 	     X[newAC[[1]], newBD[[1]], newAC[[2]], newBD[[2]]]]} *)
-							 )},
-					      (* Print["preDiag: ", preDiag]; *)
-					      Module[{prePreDiag = (preDiag
-								    /. MapIndexed[Rule[#1, #2[[1]]] &,
-										  Flatten[newConnectedComponents]])
-						      /. {whole:X[a_, b_, c_, d_] :>
-							  If[Or[And[1 == Abs[c - a], c < a],
-								And[1 =!= Abs[c - a], c > a]],
-							     X[c, d, a, b],
-							     whole]}},
-						     (* Print["diag: ", prePreDiag]; *)
-						     (PD @@ prePreDiag)]]]]]]];
-(* PD[TorusKnot[3,2]] *)
-(* CheeksResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
-(* 		 X[1,5,2,4]] *)
-(* Jones[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
-	 (* 		       X[1,5,2,4]]] *)
-PosNegIndex[pd_PD] :=
-    Plus @@ Map[If[Yp === Head[XToYPM[#]],
-		   +1,
-		   -1] &,
-		List @@ pd];
-CheckKhovanovSkein[knot_, crossingNum_] :=
-    Module[{pd = PD[knot]},
-	   Module[{crossing = pd[[crossingNum]]},
-		  Module[{cheekRes = CheeksResolution[PlanarDiagramToAdvancedStructures[pd], crossing],
-			  cupcapRes = CupCapResolution[PlanarDiagramToAdvancedStructures[pd], crossing]},
-			 (* Print["Indices: ", PosNegIndex[pd], " ", PosNegIndex[cheekRes], " ", PosNegIndex[cupcapRes]]; *)
-			 If[Yp === Head[XToYPM[crossing]],
-			    Expand[Simplify[(Kh[pd][q,t]
-			    		     - q Kh[cheekRes][q,t]
-			    		     - t q^2 (t q^3)^((PosNegIndex[pd] - 1 - PosNegIndex[cupcapRes])/2) Kh[cupcapRes][q,t]
-			    		    )/(1+t)]],
-			    (* {Expand[Simplify[Kh[pd, Program->"FastKh"][q,t] *)
-			    (* 		     - (t^(-2) q^(-2) (t q^3)^((PosNegIndex[pd] - 1 - PosNegIndex[cupcapRes])/2) *)
-			    (* 			Kh[cupcapRes, Program->"FastKh"][q,t])]] *)
-			    (*  Expand[Simplify[Kh[cheekRes, Program->"FastKh"][q,t]]]}, *)
-			    Expand[Simplify[(Kh[pd][q,t]
-					     - 1/q Kh[cheekRes][q,t]
-					     - (t^(-1) q^(-2) (t q^3)^((PosNegIndex[pd] + 1 - PosNegIndex[cupcapRes])/2)
-						Kh[cupcapRes][q,t]))/(1+t)]]]]]];
-(* Kh[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
-(* 		    X[1,5,2,4]], *)
-(*    Program->"JavaKh"][q,t] *)
-FindLabelInBraidSpec[spec_BraidSpec, label_] :=
-    Module[{i,
-	    specLst = List @@ spec,
-	    res = {}},
-	   For[i = 1, i <= Length[spec], i ++,
-	       Module[{itIn = Position[specLst[[i, 3]], label]},
-		      res = res ~Join~ Map[II[specLst[[i, 2]], #[[1]] - 1] &, itIn]];
-	       Module[{itOut = Position[specLst[[i, 4]], label]},
-		      res = res ~Join~ Map[OO[specLst[[i, 2]], #[[1]] - 1] &, itOut]]];
-	   res];
-ConnectionScheme[spec_BraidSpec, choiceOfResidues_] :=
-    Module[{connections = <||>, i,
-	    lstSpec = List @@ spec},
-	   (* ### vv Create the hash, ready to be populated, and populate with connections inside the braids ### *)
-	   For[i = 1, i <= Length[lstSpec], i ++,
-	       Module[{braid = lstSpec[[i]]},
-		      Scan[Function[{index},
-				    connections[II[braid[[2]], index]] = {OO[braid[[2]],
-									     Mod[index - choiceOfResidues[[i]], braid[[1]]]],
-									  Null};
-				    connections[OO[braid[[2]], index]] = {II[braid[[2]],
-									     Mod[index + choiceOfResidues[[i]], braid[[1]]]],
-									  Null}],
-			   (* ### vv The 0-based numbering convention is for convenience of taking the Mod in shifts ### *)
-			   Range[0, braid[[1]] - 1]]]];
-	   (* ### vv Populate with connections that are outside the braids ### *)
-	   Module[{externalConnectionLabels = DeleteDuplicates[Join @@ Map[#[[3]] ~Join~ #[[4]] &, lstSpec]]},
-		  Scan[Function[{label},
-				Module[{it = FindLabelInBraidSpec[spec, label]},
-				       (* Print["label: ", label, " pos: ", it]; *)
-				       connections[[Key[it[[1]]], 2]] = it[[2]];
-				       connections[[Key[it[[2]]], 2]] = it[[1]]]],
-		       externalConnectionLabels]];
-	   connections];
-ExternalConnectionScheme[spec_BraidSpec] :=
-    Module[{connections = <||>, i,
-	    lstSpec = List @@ spec},
-	   Module[{externalConnectionLabels = DeleteDuplicates[Join @@ Map[#[[3]] ~Join~ #[[4]] &, lstSpec]]},
-		  Scan[Function[{label},
-				Module[{it = FindLabelInBraidSpec[spec, label]},
-				       (* Print["label: ", label, " pos: ", it]; *)
-				       connections[[Key[it[[1]]]]] = it[[2]];
-				       connections[[Key[it[[2]]]]] = it[[1]]]],
-		       externalConnectionLabels]];
-	   connections];
-NormalizeConnectedComponent[connComp_] :=
-    Module[{minInput = Null,
-	    myConnComp = connComp}, (* ### << copy the list for our manipulations ### *)
-	   (* Print["my conn comp: ", myConnComp]; *)
-	   (* ### vv Find the minimal input leg of the braid with the minimal name of the evolution parameter ### *)
-	   Scan[Function[{node},
-			 If[And[II === Head[node],
-				Or[Null === minInput,
-				   1 === Order[node[[1]], minInput[[1]]],
-				   And[0 === Order[node[[1]], minInput[[1]]],
-				       1 === Order[node[[2]], minInput[[2]]]]]],
-			    minInput = node]],
-		connComp];
-	   (* Print["min input: ", minInput]; *)
-	   (* ### vv First connection in the component should be internal within the minimal braid ### *)
-	   Module[{pos = Position[myConnComp, minInput][[1,1]]},
-		  Module[{nextElt = myConnComp[[1 + Mod[pos + 1 - 1, Length[myConnComp]]]]},
-			 (* Print["next elt: ", nextElt]; *)
-			 If[Not[And[OO === Head[nextElt],
-				    nextElt[[1]] === minInput[[1]]]],
-			    myConnComp = Reverse[myConnComp]]]];
-	   (* ### vv Make the minimal element appear as first in list ### *)
-	   Module[{pos = Position[myConnComp, minInput][[1,1]]},
-		  myConnComp = Join[myConnComp[[pos ;; ]],
-				    myConnComp[[ ;; pos - 1]]]];
-	   myConnComp];
-(* ### Another version of routine that finds connected components and works on connection schemes ### *)
-ConnectedComponentsConnectionScheme[connScheme_] :=
-    Module[{freeNodes = Map[True &, connScheme],
-	    connectedComponents = {}},
-	   While[0 =!= Length[freeNodes],
-		 (* Print["freeNodes: ", freeNodes]; *)
-		 Module[{firstNode = Module[{it = Keys[freeNodes][[1]]},
-					    KeyDropFrom[freeNodes, it];
-					    it]},
-			Module[{curComponent = {firstNode},
-				curNode = firstNode,
-				prevNode = Null},
-			       While[True,
-				     Module[{nextNode = Select[connScheme[curNode], # =!= prevNode &][[1]]},
-					    (* Print["nextNode: ", nextNode]; *)
-					    If[nextNode === firstNode,
-					       Break[],
-					       CompoundExpression[prevNode = curNode,
-								  curNode = nextNode,
-								  KeyDropFrom[freeNodes, nextNode],
-								  AppendTo[curComponent, nextNode]]]]];
-			       AppendTo[connectedComponents, NormalizeConnectedComponent[curComponent]]]]];
-	   (* ### vv Sort the connected component so that their starting elements are in order ### *)
-	   Sort[connectedComponents,
-		DepthTwoLexiSort]];
-DepthTwoLexiSort[eltOne_, eltTwo_] :=
-    Module[{it = Order[eltOne[[1]], eltTwo[[1]]]},
-	   If[0 =!= it,
-	      it,
-	      Order[eltOne[[2]], eltTwo[[2]]]]];
-NextNodeIsInOrderQ[spec_BraidSpec, component_, i_, residues_] :=
-    Module[{item = component[[i]],
-	    nextItem = component[[1 + Mod[i, Length[component]]]],
-	    lstSpec = List @@ spec},
-	   And[OO === Head[nextItem],
-	       item[[1]] === nextItem[[1]],
-	       Module[{pos = Position[lstSpec, Condition[elt_, elt[[2]] === item[[1]]], {1}, Heads->False][[1,1]]},
-		      item[[2]] == Mod[nextItem[[2]] + residues[[pos]] (* ### << relevant residue ### *),
-				       (lstSpec)[[pos, 1]] (* ### << relevant braid thickness ### *)]]]];
-OrientationMasks[spec_BraidSpec, connectedComponents_, residues_] :=
-    Map[Function[{component},
-		  Module[{i, res = <||>},
-			 For[i = 1, i <= Length[component], i ++,
-			     If[II === Head[component[[i]]],
-				res[component[[i]]] = If[NextNodeIsInOrderQ[spec, component, i, residues],
-							 1,
-							 -1]]];
-			 res]],
-	 connectedComponents];
-(* ### Braidosome is that smart program that does all the work I want to get done for me ### *)
-(* ### Example of input : BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]] ### *)
-(* ### This example describes the figure-eight-like knots ### *)
-Braidosome[spec_BraidSpec] :=
-    pass;
-OrientationClusters[spec_BraidSpec] :=
-    Module[{lst = List @@ spec,
-	    theClusters = <||>},
-	   Module[
-	       {allResidues = Tuples[Map[Range[0, #[[1]] - 1] &, lst]]},
-	       Scan[Function[{residues},
-			     (* Print["residues: ", residues]; *)
-			     (* ### vv This formatting is crap, but we don't have the Module* (analog of LET* ) macro ### *)
-			     (* ### vv which would be appropriate to use here ### *)
-			     Module[
-				 {connScheme = ConnectionScheme[spec, residues]},
-				 Module[
-				     {connComps = ConnectedComponentsConnectionScheme[connScheme]},
-				     Module[
-					 {oriMasks = OrientationMasks[spec, connComps, residues]},
-					 Scan[Function[{oriChoice}, (* ### << short for 'orientation choice' ### *)
-						       Module[{i, totalOrientation = {}},
-							      For[i = 1, i <= Length[oriChoice], i ++,
-								  AppendTo[totalOrientation,
-									   Map[Rule[#[[1]],
-										    oriChoice[[i]] * #[[2]]] &,
-									       Normal[oriMasks[[i]]]]]];
-							      (* Print["total ori: ", totalOrientation]; *)
-							      Module[{key = (OriChoice @@ Sort[Join @@ totalOrientation,
-											       (* ### vv We sort by keys ### *)
-											       DepthTwoLexiSort[#1[[1]], #2[[1]]] &])},
-								     Module[{val = Lookup[theClusters, key, {}]},
-									    (* Print["val: ", val]; *)
-									    theClusters[key] = Append[val, residues]]]]],
-					      (* ### vv First component always contains II[a,0], so we fix sign freedom this way ### *)
-					      Map[{1} ~Join~ # &, Tuples[{1,-1}, Length[connComps] - 1]]]]]]],
-		    allResidues]];
-	   theClusters];
-YpAbs[ll_, lr_, ul_, ur_, ori1_, ori2_] :=
-    (* ### ^^ the crossing that looks "positive" in the absolute frame: had both strands been oriented from down to up ### *)
-    If[And[ori1 == 1, ori2 == 1],
-       Yp[ll, lr, ul, ur],
-       If[And[ori1 == -1, ori2 == 1],
-	  Ym[lr, ur, ll, ul],
-	  If[And[ori1 == 1, ori2 == -1],
-	     Ym[ul, ll, ur, lr],
-	     If[And[ori1 == -1, ori2 == -1],
-		Yp[ur, ul, lr, ll],
-		Print["Caboom!"]]]]];
-YmAbs[ll_, lr_, ul_, ur_, ori1_, ori2_] :=
-    (* ### ^^ the crossing that looks "negative" in the absolute frame: had both strands been oriented from down to up ### *)
-    If[And[ori1 == 1, ori2 == 1],
-       Ym[ll, lr, ul, ur],
-       If[And[ori1 == -1, ori2 == 1],
-	  Yp[lr, ur, ll, ul],
-	  If[And[ori1 == 1, ori2 == -1],
-	     Yp[ul, ll, ur, lr],
-	     If[And[ori1 == -1, ori2 == -1],
-		Ym[ur, ul, lr, ll],
-		Print["Caboom!"]]]]];
-ExpandBraidIntoPositiveCrossings[braid_Braid, orientations_, winding_] :=
-    Module[{nWind,
-	    curOris = orientations,
-	    res = {},
-	    numStrands = braid[[1]],
-	    braidLabel = braid[[2]]},
-	   For[nWind = 1, nWind <= winding, nWind ++,
-	       AppendTo[res, Map[Function[{crossingIndex},
-					  YpAbs[IntHor[braidLabel, nWind, crossingIndex - 1],
-						IntVert[braidLabel, nWind - 1, crossingIndex],
-						IntVert[braidLabel, nWind, crossingIndex - 1],
-						IntHor[braidLabel, nWind, crossingIndex],
-						curOris[[crossingIndex]],
-						curOris[[crossingIndex + 1]]]],
-				 Range[1, numStrands - 1]]];
-	       curOris = Append[curOris[[2 ;; ]], curOris[[1]]]];
-	   (((Join @@ res) /. {IntHor[braidLabel, wind_, 0] :> IntVert[braidLabel, wind - 1, 0],
-			       IntHor[braidLabel, wind_, numStrands - 1] :> IntVert[braidLabel, wind, numStrands - 1]})
-	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
-		IntVert[braidLabel, winding, k_] :> OO[braidLabel, k]})];
-ExpandBraidIntoNegativeCrossings[braid_Braid, orientations_, winding_] :=
-    Module[{nWind,
-	    curOris = orientations,
-	    res = {},
-	    numStrands = braid[[1]],
-	    braidLabel = braid[[2]]},
-	   For[nWind = 1, nWind <= winding, nWind ++,
-	       AppendTo[res, Map[Function[{crossingIndex},
-					  YmAbs[IntVert[braidLabel, nWind - 1, crossingIndex - 1],
-						IntHor[braidLabel, nWind, crossingIndex],
-						IntHor[braidLabel, nWind, crossingIndex - 1],
-						IntVert[braidLabel, nWind, crossingIndex],
-						curOris[[crossingIndex]],
-						curOris[[crossingIndex + 1]]]],
-				 Range[1, numStrands - 1]]];
-	       curOris = Prepend[curOris[[ ;; -2]], curOris[[-1]]]];
-	   (((Join @@ res) /. {IntHor[braidLabel, wind_, 0] :> IntVert[braidLabel, wind, 0],
-			       IntHor[braidLabel, wind_, numStrands - 1] :> IntVert[braidLabel, wind - 1, numStrands - 1]})
-	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
-		IntVert[braidLabel, winding, k_] :> OO[braidLabel, k]})];
-ExpandBraidIntoZeroCrossings[braid_Braid, orientations_] :=
-    Module[{nWind,
-	    curOris = orientations,
-	    res = {},
-	    numStrands = braid[[1]],
-	    braidLabel = braid[[2]]},
-	   With[{nWind = 1},
-		AppendTo[res, Map[Function[{crossingIndex},
-					   YpAbs[IntHor[braidLabel, nWind, crossingIndex - 1],
-						 IntVert[braidLabel, nWind - 1, crossingIndex],
-						 IntVert[braidLabel, nWind, crossingIndex - 1],
-						 IntHor[braidLabel, nWind, crossingIndex],
-						 curOris[[crossingIndex]],
-						 curOris[[crossingIndex + 1]]]],
-				  Range[1, numStrands - 1]]];
-		curOris = Append[curOris[[2 ;; ]], curOris[[1]]]];
-	   With[{nWind = 2},
-		AppendTo[res, Map[Function[{crossingIndex},
-					   YmAbs[IntVert[braidLabel, nWind - 1, crossingIndex - 1],
-						 IntHor[braidLabel, nWind, crossingIndex],
-						 IntHor[braidLabel, nWind, crossingIndex - 1],
-						 IntVert[braidLabel, nWind, crossingIndex],
-						 curOris[[crossingIndex]],
-						 curOris[[crossingIndex + 1]]]],
-				  Range[1, numStrands - 1]]];
-		curOris = Prepend[curOris[[ ;; -2]], curOris[[-1]]]];
-	   (((Join @@ res) /. {IntHor[braidLabel, 1, 0] :> IntVert[braidLabel, 0, 0],
-			       IntHor[braidLabel, 1, numStrands - 1] :> IntVert[braidLabel, 1, numStrands - 1],
-			       IntHor[braidLabel, 2, 0] :> IntVert[braidLabel, 2, 0],
-			       IntHor[braidLabel, 2, numStrands - 1] :> IntVert[braidLabel, 1, numStrands - 1]})
-	    /. {IntVert[braidLabel, 0, k_] :> II[braidLabel, k],
-		IntVert[braidLabel, 2, k_] :> OO[braidLabel, k]})];
-ExpandBraidIntoCrossings[braid_Braid, orientations_, winding_] :=
-    If[winding > 0,
-       ExpandBraidIntoPositiveCrossings[braid, orientations, winding],
-       If[winding == 0,
-	  ExpandBraidIntoZeroCrossings[braid, orientations],
-	  ExpandBraidIntoNegativeCrossings[braid, orientations, Abs[winding]]]];
-PlanarDiagram[spec_BraidSpec, oriChoice_, windings_] :=
-    Module[{i, specLst = List @@ spec, acc = {}},
-	   For[i = 1, i <= Length[specLst], i ++,
-	       Module[{planeOris = Map[#[[2]] &, Select[List @@ oriChoice,
-							Function[{x},
-								 (* Print["x: ", x[[1,1]], " ", specLst[[i, 2]]]; *)
-								 Module[{it = (x[[1, 1]] === specLst[[i, 2]])},
-									(* Print["it: ", it]; *)
-									it]]]]},
-		      (* Print["planeOris: ", planeOris]; *)
-		      AppendTo[acc,
-			       ExpandBraidIntoCrossings[specLst[[i]], planeOris, windings[[i]]]]]];
-	   ((Join @@ acc)
-	    /. (* {} *) DeleteDuplicates[Map[Rule @@ Sort[List @@ #,
-							  If[And[II === Head[#1],
-								 OO === Head[#2]],
-							     1,
-							     If[And[OO === Head[#1],
-								    II === Head[#2]],
-								-1,
-								DepthTwoLexiSort[#1, #2]]] &] &,
-					     Normal[ExternalConnectionScheme[spec]]]])];
-UnderIncomingCrossingQ[crossing_, edge_] :=
-    Or[And[Ym === Head[crossing],
-	   crossing[[1]] === edge],
-       And[Yp === Head[crossing],
-	   crossing[[2]] === edge]];
-ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_]] :=
-    Module[{i, j,
-	    myCC = connectedComponents,
-	    myNextEdge = nextEdge,
-	    myPrevEdge = prevEdge,
-	    myEdgeCrossingsIn = edgeCrossingsIn,
-	    myEdgeCrossingsOut = edgeCrosssingsOut},
-	   (* Print["myCC: ", myCC]; *)
-	   For[i = 1, i <= Length[myCC], i ++,
-	       Module[{foundCut = False},
-		      For[j = 1, j <= Length[myCC[[i]]], j ++,
-			  (* ### vv First we try to find good edge to cut the numbering at ### *)
-			  If[UnderIncomingCrossingQ[myEdgeCrossingsIn[myCC[[i, j]]],
-						    myCC[[i, j]]],
-			     CompoundExpression[myCC[[i]] = Join[myCC[[i, j + 1 ;; ]], myCC[[i, ;; j]]],
-						foundCut = True;
-						Break[]]]];
-		      If[Not[foundCut],
-			 CompoundExpression[
-			     (* ### vv If we hadn't found such an edge, we create a small loop ### *)
-			     Print["I'm in creating new crossing"];
-			     myCC[[i]] = myCC[[i]] ~Join~ {SmallLoopEdge[i, 1], SmallLoopEdge[i, 2]};
-			     Module[{it = myPrevEdge[myCC[[i, 1]]]},
-				    myNextEdge[it] = SmallLoopEdge[i, 1];
-				    myNextEdge[SmallLoopEdge[i, 1]] = SmallLoopEdge[i, 2];
-				    myNextEdge[SmallLoopEdge[i, 2]] = myCC[[i, 1]];
-				    myPrevEdge[myCC[[i, 1]]] = SmallLoopEdge[i, 2];
-				    myPrevEdge[SmallLoopEdge[i, 2]] = SmallLoopEdge[i, 1];
-				    myPrevEdge[SmallLoopEdge[i, 1]] = it;
-				    Module[{oldCrossing = myEdgeCrossingOut[myCC[[i, 1]]],
-					    modifiedCrossing = (myEdgeCrossingOut[myCC[[i, 1]]]
-								/. {myCC[[i, 1]] -> SmallLoopEdge[i, 1]}),
-					    newCrossing = Yp[SmallLoopEdge[i, 2], SmallLoopEdge[i, 1],
-							     SmallLoopEdge[i, 2], myCC[i, 1]]},
-					   Scan[Function[{edge},
-							 If[myEdgeCrossingIn[edge] === oldCrossing,
-							    myEdgeCrossingIn[edge] = modifiedCrossing];
-							 If[myEdgeCrossingOut[edge] === oldCrossing,
-							    myEdgeCrossingOut[edge] = modifiedCrossing]],
-						List @@ modifiedCrossing];
-					   myEdgeCrossingOut[SmallLoopEdge[i, 1]] = modifiedCrossing;
-					   myEdgeCrossingIn[SmallLoopEdge[i, 1]] = newCrossing;
-					   myEdgeCrossingOut[SmallLoopEdge[i, 2]] = newCrossing;
-					   myEdgeCrossingIn[SmallLoopEdge[i, 2]] = newCrossing;
-					   myEdgeCrossingOut[myCC[[i, 1]]] = newCrossing;]]]]]];
-	   (* Print["myCC: ", myCC]; *)
-	   Module[{diag = (DeleteDuplicates[Values[myEdgeCrossingsIn]]
-			   /. MapIndexed[Rule[#1, #2[[1]]] &,
-					 Flatten[myCC]])},
-		  YPMsToXs[(PD @@ diag)]]];
-YPMsToXs[expr_] :=
-    (* ### Convert notation for crossings back to the counter-intuitive notation, but which is understood by KnotTheory ### *)
-    (expr /. {Ym[a_, b_, c_, d_] :> X[a, b, d, c],
-	      Yp[a_, b_, c_, d_] :> X[b, d, c, a]});
+CCCMaxParallelWindings = 6;
+CCCMaxAntiparallelWindings = 4;
+
+PrecomputePretzels[genus_] :=
+    Module[{signIter = MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, genus + 1}]]]},
+           Module[{signs, validQ},
+                  While[True,
+                        {signs, validQ} = signIter[];
+                        If[Not[validQ],
+                           Break[]];
+                        Module[{fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                               <> ToString[genus + 1] <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"],
+                                fdlog = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                                  <> ToString[genus + 1] <> ".log"],
+                                windsIter = MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings}, {i, 1, genus}]],
+                                                                If[EvenQ[genus + 1],
+                                                                   {{1, CCCMaxParallelWindings}},
+                                                                   {{0, CCCMaxAntiparallelWindings, 2}}]]},
+                               Module[{windings, validQ},
+                                      While[True,
+                                            {windings, validQ} = windsIter[];
+                                            If[Not[validQ],
+                                               Break[]];
+                                            Module[{signedWindings = signs * windings},
+                                                   (* ### ^^ Elementwise vector multiplication (cool, right?)         ### *)
+                                                   Module[{theAns = PretzelKhovanov[signedWindings]},
+                                                          WriteString[fdlog, "Calculating ("
+                                                                      <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                      <> ")" (* ### << This way it also works in screen ### *)
+                                                                     ];
+                                                          WriteString[fd, "PrecompKh["
+                                                                      <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                      <> "] := " <> ToString[theAns, InputForm] <> ";"];
+                                                         ]];
+                                           ]];
+                               Close[fd];
+                               Close[fdlog]]]]];
+
+
+PrecomputePretzels[4]
+
+(* << "../pretzel-khovanovs-3-1-1-1.m"; *)
+
+(* ### vv M^{++}_{i,j} ### *)
+ans1 =  Block[{extraPoints = 2},
+              With[{aSeries = k+1, bSeries = k+1},
+                   FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+                                                             PrecompKh[aSeries /. {k -> k1},
+                                                                       bSeries /. {k -> k2}]],
+                                                    Join[{aSeries}, PosFundEigenvalues[]],
+                                                    Join[{bSeries}, PosFundEigenvalues[]]]]];
+
+Factor[ans1] // TeXForm
+
+(* ### vv M^{--}_{i,j} ### *)
+ans1 =  Block[{extraPoints = 2},
+              With[{aSeries = -k-1, bSeries = -k-1},
+                   FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+                                                             PrecompKh[aSeries /. {k -> k1},
+                                                                       bSeries /. {k -> k2}]],
+                                                    Join[{aSeries}, PosFundEigenvalues[]],
+                                                    Join[{bSeries}, PosFundEigenvalues[]]]]];
+
+Factor[ans1]
+
+Out[5]//TeXForm= 
+   \left\{\text{AA}(1,1)\to \frac{q^8 t^3+q^6 t^3-q^2 t+1}{q^2 t \left(q^2
+    t-1\right) \left(q^2 t+1\right)},\text{AA}(1,2)\to 0,\text{AA}(1,3)\to
+    0,\text{AA}(2,1)\to 0,\text{AA}(2,2)\to \frac{q^2 t-q^2-2}{2 \left(q^2
+    t-1\right)},\text{AA}(2,3)\to 0,\text{AA}(3,1)\to 0,\text{AA}(3,2)\to
+    0,\text{AA}(3,3)\to \frac{q^2 (t+1)}{2 \left(q^2 t+1\right)}\right\}
+
+(* ### vv M^{+++}_{i,j,k} ### *)
+ans1 =  Block[{extraPoints = 2},
+              With[{aSeries = k+1, bSeries = k+1, cSeries = 2 k+2},
+                   FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2, k3},
+                                                             PrecompKh[aSeries /. {k -> k1},
+                                                                       bSeries /. {k -> k2},
+                                                                       cSeries /. {k -> k3}]],
+                                                    Join[{aSeries}, PosFundEigenvalues[]],
+                                                    Join[{bSeries}, PosFundEigenvalues[]],
+                                                    Join[{cSeries}, NegAdjEigenvalues[]]]]];
+
+MyPrintPretty[ans_, ppm_] :=
+    Select[ans,
+           0 =!= #[[2]]&];
+
+MyPrintPretty[Factor[ans1], "+++"]
+
+
+
+
+ans2 = Block[{extraPoints = 2},
+             With[{aSeries = k+2, bSeries = k+2},
+                   FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
+                                                             PrecompKh[aSeries /. {k -> k1},
+                                                                       bSeries /. {k -> k2},
+                                                                       0]],
+                                                    Join[{aSeries}, PosFundEigenvalues[]],
+                                                    Join[{aSeries}, PosFundEigenvalues[]]]]];
+
+
+
+
+Scan[Function[{dirs},
+              Module[{ii, jj, kk, fd,
+                      dir1 = dirs[[1]],
+                      dir2 = dirs[[2]],
+                      dir3 = dirs[[3]]},
+                     fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/pretzel-khovanovs-3-"
+                                    <> ToString[dir1] <> "-" <> ToString[dir2] <> "-" <> ToString[dir3]
+                                    <> ".m"];
+                     For[ii = 1, ii <= 6, ii ++,
+                         For[jj = 1, jj <= 6, jj ++,
+                             For[kk = 0, kk <= 4, kk ++,
+                                 Module[{theAns = PretzelKhovanov[{dir1 * ii, dir2 * jj, dir3 * 2 * kk}]},
+                                        WriteString[fd,
+                                                    "PrecompKh[" <> ToString[dir1 * ii]
+                                                    <> ", " <> ToString[dir2 * jj]
+                                                    <> ", " <> ToString[dir3 * 2 * kk]
+                                                    <> "] := " <> ToString[theAns, InputForm] <> ";\n"]
+                                       ]]]];
+                     Close[fd]]],
+     Tuples[{1,-1}, 3]];
+
+Scan[Function[{dirs},
+              Module[{ii, jj, kk, ll, fd, fdlog,
+                      dir1 = dirs[[1]],
+                      dir2 = dirs[[2]],
+                      dir3 = dirs[[3]],
+                      dir4 = dirs[[4]]},
+                     fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/pretzel-khovanovs-4-"
+                                    <> ToString[dir1] <> "-" <> ToString[dir2] <> "-" <> ToString[dir3]
+                                    <> "-" <> ToString[dir4]
+                                    <> ".m"];
+                     fdlog = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/pretzel-khovanovs-4.log"];
+                     For[ii = 1, ii <= 6, ii ++,
+                         For[jj = 1, jj <= 6, jj ++,
+                             For[kk = 1, kk <= 6, kk ++,
+                                 For[ll = 1, ll <= 6, ll ++,
+                                     Module[{theAns = PretzelKhovanov[{dir1 * ii, dir2 * jj, dir3 * kk,
+                                                                       dir4 * ll}]},
+                                            WriteString[fdlog, "Calculating ["
+                                                        <> ToString[dir1 * ii]
+                                                        <> ", " <> ToString[dir2 * jj]
+                                                        <> ", " <> ToString[dir3 * kk]
+                                                        <> ", " <> ToString[dir4 * ll]
+                                                        <> "]\n"];
+                                            WriteString[fd,
+                                                        "PrecompKh[" <> ToString[dir1 * ii]
+                                                        <> ", " <> ToString[dir2 * jj]
+                                                        <> ", " <> ToString[dir3 * kk]
+                                                        <> ", " <> ToString[dir4 * ll]
+                                                        <> "] := " <> ToString[theAns, InputForm] <> ";\n"]
+                                           ]]]]];
+                     Close[fd];
+                     Close[fdlog]]],
+     Tuples[{1,-1}, 4]];
+
+
+Scan[Function[{dirs},
+              Module[{ii, jj, kk, ll, mm, fd,
+                      dir1 = dirs[[1]],
+                      dir2 = dirs[[2]],
+                      dir3 = dirs[[3]],
+                      dir4 = dirs[[4]],
+                      dir5 = dirs[[5]]},
+                     fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/pretzel-khovanovs-5-"
+                                    <> ToString[dir1] <> "-" <> ToString[dir2] <> "-" <> ToString[dir3]
+                                    <> "-" <> ToString[dir4] <> "-" <> ToString[dir5]
+                                    <> ".m"];
+                     For[ii = 1, ii <= 6, ii ++,
+                         For[jj = 1, jj <= 6, jj ++,
+                             For[kk = 1, kk <= 6, kk ++,
+                                 For[ll = 1, ll <= 6, ll ++,
+                                     For[mm = 0, mm <= 4, mm ++,
+                                         Module[{theAns = PretzelKhovanov[{dir1 * ii, dir2 * jj, dir3 * 2 * kk,
+                                                                           dir4 * ll}]},
+                                                WriteString[fd,
+                                                            "PrecompKh[" <> ToString[dir1 * ii]
+                                                            <> ", " <> ToString[dir2 * jj]
+                                                            <> ", " <> ToString[dir3 * kk]
+                                                            <> ", " <> ToString[dir4 * ll]
+                                                            <> "] := " <> ToString[theAns, InputForm] <> ";\n"]
+                                               ]]]]];
+                      Close[fd]]],
+     Tuples[{1,-1}, 4]];
+
+
+Tuples[{1,-1}, 3]     
+
+
+Module[{ii, jj, kk, ll, fd,
+        maxPar = 6,
+        maxAntiPar = 4},
+       fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/pretzel-khovanovs-3.m"];
+       For[ii = 1, ii <= maxPar, ii ++,
+           For[jj = 1, jj <= maxPar, jj ++,
+               For[kk = 1, kk <= maxPar, kk ++,
+                   For[ll = 1, ll <= maxPar, ll ++,
+                       Module[{theAns = PretzelKhovanov[{ii, jj, kk, ll}]},
+                              WriteString[fd,
+                                          "PrecompKh[" <> ToString[ii]
+                                          <> ", " <> ToString[jj]
+                                          <> ", " <> ToString[kk]
+                                          <> ", " <> ToString[ll]
+                                          <> "] := " <> ToString[theAns, InputForm] <> ";\n"]
+                          ]]]];
+       Close[fd]];
+
+
 TwoStrandKhovanov[aa_] :=
     Block[{prePd = PlanarDiagram[BraidSpec[Braid[2, a, {1, 2}, {3, 4}],
 					   Braid[2, b, {3, 4}, {1, 2}]],
@@ -919,12 +336,7 @@ ThreeStrandPro2[n_, insert_, aa_] := ThreeStrandPro2[n, insert, aa] =
     Module[{i, j},
 	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
 				insert,
-				Table[{Table[Sign[n], {j, 1, Abs[n]}], 2}, {i, 1, aa}]}]]]][q,t]];
-ThreeStrandProCustom[once_, repeat_, aa_] := ThreeStrandProCustom[once, repeat, aa] =
-    Module[{i, j},
-	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2}, (* ### << just to make the braid non-trivial ### *)
-				once,
-				Table[repeat, {i, 1, aa}]}]]]][q,t]];
+				Table[{Table[1, {j, 1, n}], 2}, {i, 1, aa}]}]]]][q,t]];
 ThreeStrandPro3[2, {}, 1] :=
     1 + q^(-2) + 1/(q^6*t^2) + 1/(q^4*t^2);
 ThreeStrandPro3[2, {}, 2] :=
@@ -999,33 +411,11 @@ ThreeStrandPro3[n_, insert_, aa_] := ThreeStrandPro3[n, insert, aa] =
 				insert,
 				Table[{Table[-1, {j, 1, n}], 2}, {i, 1, aa}]}]]]
 	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
-ThreeStrandPro5[n_, insert_, aa_] := ThreeStrandPro5[n, insert, aa] =
+ThreeStrandPro5[n_, insert_, aa_] := ThreeStrandPro3[n, insert, aa] =
     Module[{i, j},
 	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
 				insert,
 				Table[{Table[1, {j, 1, n}], 2, 2}, {i, 1, aa}]}]]]
-	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
-ThreeStrandPro6[n1_, n2_, insert_, aa_] := ThreeStrandPro6[n1, n2, insert, aa] =
-    Module[{i, j},
-	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
-				insert,
-				Table[{Table[Sign[n1], {j, 1, Abs[n1]}],
-				       2,
-				       Table[Sign[n2], {j, 1, Abs[n2]}],
-				       2},
-				      {i, 1, aa}]}]]]
-	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
-ThreeStrandPro7[n1_, n2_, n3_, insert_, aa_] := ThreeStrandPro6[n1, n2, n3, insert, aa] =
-    Module[{i, j},
-	   Kh[PD[BR[3, Flatten[{{1,-1},{2,-2},
-				insert,
-				Table[{Table[Sign[n1], {j, 1, Abs[n1]}],
-				       2,
-				       Table[Sign[n2], {j, 1, Abs[n2]}],
-				       2,
-				       Table[Sign[n3], {j, 1, Abs[n3]}],
-				       2},
-				      {i, 1, aa}]}]]]
 	      ,Program -> "JavaKh-v2",JavaOptions -> "-Xmx6g"][q,t]];
 ThreeStrandPro4[n_, insert_, aa_] := ThreeStrandPro4[n, insert, aa] = 
     Module[{i, j},
@@ -1125,273 +515,19 @@ ThreeStrandPro5[1, {}, 14] :=
      q^71*t^20 + q^73*t^21 + q^75*t^21 + q^73*t^22 + q^77*t^23 + q^75*t^24 + 
      q^77*t^24 + q^79*t^25 + q^81*t^25 + q^79*t^26 + q^83*t^27 + q^81*t^28 + 
      3*q^83*t^28 + 2*q^85*t^28);
-PrecalculateFname[fnameSuffix_] :=
-    ("/home/popolit/quicklisp/local-projects/cl-vknots/khovanov-precomp-"
-     <> fnameSuffix <> ".m");
+
 (* ### vv Snippet to precalculate Khovanov polynomial for certain knot families ### *)
-PrecalculateAndDumpKhovanovs[fnameSuffix_, family_, from_, upto_] :=
-    Module[{fd = OpenWrite[PrecalculateFname[fnameSuffix], FormatType -> InputForm]},
-	   Module[{i},
-		  For[i = from, i <= upto, i ++,
-		      Module[{it = family[i]},
-			     (* ### ^^ it is important that we first do time-intensive computation and only then check the time ### *)
-			     If[$Failed[q,t] === it,
-				CompoundExpression[
-				    WriteString[fd, ("(* ### The calculation of Khovanov polynomial for "
-							 <> ToString[i] <> " had failed. ### *)\n")]],
-				CompoundExpression[
-				    WriteString[fd, "(* ### " <> DateString[] <> " ### *)\n"];
-				    WriteString[fd, ("poly[" <> ToString[i, FormatType -> InputForm] <> "] = ("
-						     <> ToString[it, FormatType -> InputForm] <> ");\n")]]]]]];
-	   Close[fd]];
-CustomFnameSuffix[once_, repeat_] :=
-    StringJoin["pro-custom-", StringRiffle[repeat, "-"], "-once-", StringRiffle[once, "-"], "-"];
-PrecalculateAndDumpKhovanovsCustom[once_, repeat_, from_, upto_] :=
-    Module[{fnameSuffix = CustomFnameSuffix[once, repeat]},
-	   PrecalculateAndDumpKhovanovs[fnameSuffix, ThreeStrandProCustom[once, repeat, #] &, from, upto]];
-AutoCheckKhovanovsCustom[once_, repeat_, eigs_] :=
-    Module[{},
-	   PrecalculateAndDumpKhovanovsCustom[once, repeat, 1, 20];
-	   CheckPolyEigenvalues[PrecalculateFname[CustomFnameSuffix[once, repeat]], eigs]];
-CheckPolyEigenvalues[fname_, eigs_] :=
-    Module[{eigsExpr = Sort[Simplify[(TryFindPolyEigenvalues[fname, Length[eigs] + 1, theDelta, theExtra]
-				      /. {q -> Pi, t -> E})]],
-	    eigsTheor = Sort[Simplify[eigs /. {q -> Pi, t -> E}]]},
-	   Module[{it = Simplify[eigsExpr - eigsTheor]},
-		  (* Print["it: ", it]; *)
-		  If[Table[0, {i, 1, Length[eigsTheor]}] === it,
-		     True,
-		     Module[{},
-			    Print[eigsExpr];
-			    Print[eigsTheor];
-			    False]]]];
-TryFindPolyEigenvalues[fname_, order_, delta_, extra_] :=
-    Module[{},
-	   ClearAll[poly];
-	   Get[fname]; (* ### << This import injects a bunch of "poly" definitions into the scope ### *)
-	   Block[{theOrder = order,
-		  theDelta = delta},
-		 (* Print["delta, extra: ", theDelta, extra]; *)
-		 Module[{eqns = (Map[Function[{n},
-					      0 == (Plus @@
-						    Map[poly[n + #] * CC[#] &,
-							Range[0, theOrder-1]])],
-				     Range[theDelta, theDelta + theOrder+extra]]
-				 /. {CC[theOrder-1] -> 1})},
-			Module[{ans = Solve[eqns, Map[CC[#] &, Range[0, theOrder - 2]]]},
-			       If[ans === {},
-				  Module[{}, Print["Failed to find recursion coefficients"]; $Failed],
-				  Module[{ans1 = Simplify[ans[[1]]]},
-					 (* ### ^^ equations are linear, so we have only one solution ### *)
-					 Module[{exprEigs = Sort[Map[#[[1, 2]] &,
-								     Solve[0 == Sum[CC[i] x^i, {i, 0, theOrder-1}]
-									   /. {CC[theOrder-1] -> 1} /. ans1,
-									   x]]]},
-						exprEigs]]]]]]];
-SpecialOrthogonalMatrix[1] :=
-    {{1}};
-SOMauxQSmall[n_] := SOMauxQSmall[n] =
-    Module[{i,j,
-	    prev = SpecialOrthogonalMatrix[n-1]},
-	   Table[If[And[i < n, j < n],
-		    prev[[i,j]],
-		    If[i == j,
-		       1,
-		       0]],
-		 {i, 1, n},
-		 {j, 1, n}]];
-SOMauxASmall[i_, j_, n_] :=
-    Module[{res = IdentityMatrix[n]}, (* ### << Start with the trivial template for the elementary rotation matrix ### *)
-	   (* ### vv Populate non-trivial entries ### *)
-	   res[[i,i]] = c[i,j];
-	   res[[j,j]] = c[i,j];
-	   res[[i,j]] = s[i,j];
-	   res[[j,i]] = -s[i,j];
-	   res];
-SOMauxA[n_] :=
-    Module[{i},
-	   Dot @@ Table[SOMauxASmall[n-i, n, n],
-			{i, 1, n-1}]];
-SpecialOrthogonalMatrix[n_] := SpecialOrthogonalMatrix[n] =
-    (* ### ^^ This function gives a parametrization of generic SO(n) element in terms of generalized Euler angles ### *)
-    (* ### ^^ c[i,j] = \cos(\phi_{i,j}), s[i,j] = \sin(\phi_{i,j}) ### *)
-    (* ### ^^ The recursion is obtained in Raffenetti, Ruedenberg (1970), I'm not quite sure that for the first time ### *)
-    SOMauxA[n] . SOMauxQSmall[n];
-CheckReps[n_] :=
-    Block[{checkRes = {}},
-	  Scan[CheckRepForChoiceOfPowers[#[[1]], #[[2]]] &,
-	       PrepareRepsPowers[n]];
-	  checkRes];
-PrepareRepsPowers[n_] :=
-    Tuples[{Select[Compositions[n, 4], And[#[[1]] > 0,
-					   #[[2]] + #[[3]] > 0] &],
-	    Compositions[n, 5]}];
-SimplifySines[expr_, i_, j_] :=
-    Simplify[Plus @@ Map[#[[2]] * If[EvenQ[#[[1,1]]],
-				     (1 - c[i,j]^2)^(#[[1,1]]/2),
-				     (1 - c[i,j]^2)^((#[[1,1]]-1)/2) s[i,j]] &,
-			 CoefficientRules[expr, s[i,j]]]];
-SimplifyCosines[expr_, i_, j_] :=
-    Simplify[Plus @@ Map[#[[2]] * If[EvenQ[#[[1,1]]],
-				     cc[i,j]^(#[[1,1]]/2),
-				     cc[i,j]^((#[[1,1]]-1)/2) c[i,j]] &,
-			 CoefficientRules[expr, c[i,j]]]];
-SimplifyAllSines[expr_, n_] :=
-    Module[{i,j, myExpr = expr},
-	   For[i = 1, i < n, i ++,
-	       For[j = i + 1, j <= n, j ++,
-		   myExpr = SimplifySines[myExpr, i, j]]];
-	   myExpr];
-SimplifyAllCosines[expr_, n_] :=
-    Module[{i,j, myExpr = expr},
-	   For[i = 1, i < n, i ++,
-	       For[j = i + 1, j <= n, j ++,
-		   myExpr = SimplifyCosines[myExpr, i, j]]];
-	   myExpr];
-CheckRepForChoiceOfPowers[powersR1_, powersR1R2_] :=
-    Module[{i,
-	    r1EigPool = {q, t q^3, -t q^3, 0},
-	    r1r2EigPool = {q^2, t^(4/3) q^4, t^(4/3) q^4 E^(2 Pi I 1/3), t^(4/3) q^4 E^(2 Pi I 2/3), 0}},
-	   Module[{r1Eigs = Join @@ Map[Table[r1EigPool[[#]], {i, 1, powersR1[[#]]}] &,
-					Range[1,4]],
-		   r1r2Eigs = Join @@ Map[Table[r1r2EigPool[[#]], {i, 1, powersR1R2[[#]]}] &,
-					  Range[1,5]],
-		   n = Plus @@ powersR1}, (* ### << I knot it's rather dumb to reverse engineer that instead of pass, but hey ### *)
-		  (* ### Alright, not that we have eigenvalues, we construct a R1 . R2 matrix and check ### *)
-		  (* ### Whether traces of powers are the same ### *)
-		  (* AppendTo[checkRes, {r1Eigs, r1r2Eigs}]; *)
-		  Module[{r1r2 = (DiagonalMatrix[r1Eigs] . Transpose[SpecialOrthogonalMatrix[n]]
-				  . DiagonalMatrix[r1Eigs] . SpecialOrthogonalMatrix[n])},
-			 (* AppendTo[checkRes, {r1r2, n}]; *)
-			 Module[{eqns = Map[(Plus @@ (r1r2Eigs^#))
-					    == SimplifyAllCosines[SimplifyAllSines[Tr[MatrixPower[r1r2, #]], n], n] &,
-					    Range[1, n]],
-				 indets = Module[{i,j}, Flatten[Table[{cc[i,j], c[i,j]}, {i,1,n}, {j, i+1, n}]]]},
-				AppendTo[checkRes, {eqns, indets}];
-				Appended]]]];
-
-		
-				Module[{ans = Solve[eqns, indets]},
-				       (* ### vv Something cool is about to happen here ### *)
-				       If[{} =!= ans,
-					  Module[{},
-						 AppendTo[checkRes, {powersR1, powersR1R2, ans}];
-						 Appended]]]]]]];
+fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/khovanov-pro2-1.txt",
+	       FormatType -> InputForm
+	      ];
+Module[{i},
+       For[i = 1, i < 15, i ++,
+	   Module[{it = ThreeStrandPro2[5, {}, i]},
+		  (* ### ^^ it is important that we first do time-intensive computation and only then check the time ### *)
+		  Write[fd, i, " : ", DateString[], " : ", it]]]];
+Close[fd];
 
 
-theMaxBound = 10;
-ans = Module[{res = {}, rootPower = 5},
-	     For[BB = 0, BB <= theMaxBound, BB ++,
-		 For[CC = 0, CC <= theMaxBound, CC ++,
-		     For[DD = 0, DD <= theMaxBound, DD ++,
-			 For[beta = 0, beta <= theMaxBound, beta ++,
-			     For[gamma = 0, gamma <= theMaxBound, gamma ++,
-				 If[IntegerQ[Simplify[4/3/rootPower BB
-						      + (4/3/rootPower + 1/3) CC
-						      + (4/3/rootPower + 2/3) DD
-						      - 2/rootPower beta
-						      - (1/rootPower + 1/2) 2 gamma]],
-				    AppendTo[res, {BB, CC, DD, beta, gamma}]]]]]]];
-	     res];
-ans1 = Module[{res1 = {}},
-	      Module[{BB, CC, DD, AA, alpha, beta, gamma},
-		     Scan[Function[{choice},
-				   {BB, CC, DD, beta, gamma} = choice; (* ### << we first destructure ### *)
-				   (* ### vv We assume that AA is zero, because that corresponds to symmetric representation solution ### *)
-				   (* ### vv which we already know ### *)
-				   alpha = BB + CC + DD - beta - gamma;
-				   Module[{altAlpha = Simplify[2 (BB + CC + DD) - 3 (beta + gamma)]},
-					  (* Print[alpha, " ", altAlpha]; *)
-					  If[And[alpha >= 0,
-						 alpha === altAlpha],
-					     AppendTo[res1, {BB, CC, DD, alpha, beta, gamma}]]]],
-			  ans]];
-	      res1];
-
-
-DeleteDuplicates[Map[#[[4;;]] &, Select[ans1, #[[1]] + #[[2]] + #[[3]] == 10 &]]]
-
-Out[13]= {{5, 0, 5}, {5, 1, 4}, {5, 2, 3}, {5, 3, 2}, {5, 4, 1}, {5, 5, 0}}
-
-Out[11]= {{3, 0, 3}, {3, 1, 2}, {3, 2, 1}, {3, 3, 0}}
-
-
-
-
-Transpose[SpecialOrthogonalMatrix[4]]
-			    
-Timing[Block[{n = 3},
-	     tmp = PrepareRepsPowers[n]]];
-
-Length[tmp]
-
-tmp[[1]]
-
-Out[39]= {{1, 0, 1, 1}, {0, 0, 0, 0, 3}}
-
-eqnsNindets = Block[{checkRes = {}},
-		    {CheckRepForChoiceOfPowers@@tmp[[1]],
-		     checkRes[[1]]}];
-
-eqnsNindets
-
-Solve[eqnsNindets[[2,1,1]], cc[1,2]]
-
-Simplify[eqnsNindets[[2,1]] /. Solve[eqnsNindets[[2,1,1]], cc[1,2]][[1]]]
-
-Out[38]= {True, 2 q t cc[2, 3] == q t, True}
-
-Out[34]= {True, q t == 0}
-
-             4            3   2
-Out[28]= {2 q  t == (q + q  t)  cc[1, 2], 
- 
-      4     4  2             3   2                  2   4         2
->    q  (2 q  t  - 4 t (q + q  t)  cc[1, 2] + (1 + q  t)  cc[1, 2] ) == 0}
-
-PrepareRepsPowers[2]
-
-tmp
-
-Out[9]= {{2, 2}, {2, 5}, {4, 2}, {4, 5}}
-
-
-Block[{n = 5},
-      Simplify[SpecialOrthogonalMatrix[n] . Transpose[SpecialOrthogonalMatrix[n]]
-	       /. {s[i_,j_] :> Sqrt[1 - c[i,j]^2]}]]
-
-   
-
-
-Block[{theDelta = 5,
-       theExtra = 5},
-      CheckPolyEigenvalues[PrecalculateFname[CustomFnameSuffix[{1}, {1,2}]],
-			   {q^2, t^(4/3) q^4,
-			    Exp[2 Pi I/3] t^(4/3) q^4,
-			    Exp[4 Pi I/3] t^(4/3) q^4}]]
-
-
-
-
-Block[{n = 8,
-       theDelta = 5,
-       theExtra = 5},
-      Module[{res = {}},
-	     Scan[Function[{once},
-			   If[Not[AutoCheckKhovanovsCustom[once, {1,2},
-							   {q^2, t^(4/3) q^4,
-							    Exp[2 Pi I/3] t^(4/3) q^4,
-							    Exp[4 Pi I/3] t^(4/3) q^4}]],
-			      AppendTo[res, once]]],
-		  Tuples[{1,2}, n]];
-	     res]]
-
-                                                      
-
-CustomFnameSuffix[{}, {2}]
-
-		   
-PrecalculateAndDumpKhovanovs["pro2-0-wind-1-2-1", ThreeStrandPro2[0, {1,2,1}, #] &, 1, 20];
 
 (* ### v Recursion for R1^(-2) R2 ### *)
 rec112 = {CC[5] -> E^11*Pi^3*CC[0],
@@ -1662,12 +798,12 @@ ans = Block[{extraPoints = 10},
 						      Join[{aSeries}, PosFundEigenvalues[]],
 						      Join[{bSeries}, PosFundEigenvalues[]]]]];
 
-Module[{cc},
-       For[cc = 10, cc <= 15, cc ++,
-	   (* ### Let's find 4 evolutions in all far quadrants ### *)
+Module[{cc, deltaK = 4},
+       For[cc = 1, cc <= 9, cc ++,
+	   (* ### vv Let's find 4 evolutions in all far quadrants ### *)
 	   ansUL = Block[{extraPoints = 2},
-			 With[{aSeries = -4 - k,
-			       bSeries = 4 + k},
+			 With[{aSeries = -deltaK - k,
+			       bSeries = deltaK + k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1675,8 +811,8 @@ Module[{cc},
 							       Join[{aSeries}, PosFundEigenvalues[]],
 							       Join[{bSeries}, PosFundEigenvalues[]]]]];
 	   ansUR = Block[{extraPoints = 2},
-			 With[{aSeries = 4 + k,
-			       bSeries = 4 + k},
+			 With[{aSeries = deltaK + k,
+			       bSeries = deltaK + k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1684,8 +820,8 @@ Module[{cc},
 							       Join[{aSeries}, PosFundEigenvalues[]],
 							       Join[{bSeries}, PosFundEigenvalues[]]]]];
 	   ansLL = Block[{extraPoints = 2},
-			 With[{aSeries = - 4 - k,
-			       bSeries = - 4 - k},
+			 With[{aSeries = - deltaK - k,
+			       bSeries = - deltaK - k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1693,8 +829,8 @@ Module[{cc},
 							       Join[{aSeries}, PosFundEigenvalues[]],
 							       Join[{bSeries}, PosFundEigenvalues[]]]]];
 	   ansLR = Block[{extraPoints = 2},
-			 With[{aSeries = 4 + k,
-			       bSeries = - 4 - k},
+			 With[{aSeries = deltaK + k,
+			       bSeries = - deltaK - k},
 			      FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2},
 									ThirdNonToricKhovanovPrime[aSeries /. {k -> k1},
 												   bSeries /. {k -> k2},
@@ -1707,7 +843,19 @@ Module[{cc},
 	      Simplify[PosFundEigenvalues[]^aa
 		       . (Table[AA[i,j], {i, 1, 3}, {j, 1, 3}] /. ans)
 		       . PosFundEigenvalues[]^bb]];
-	   Block[{maxAbs = 10},
+	   Block[{maxAbs = 5},
+                 (* signsRev[cc] = Module[{aa, bb}, *)
+                 (*                    Table[KnotSignature[ThirdNonToricKhovanovPrimeBraid[-aa, -bb, -cc]], *)
+                 (*                          {bb, maxAbs, -maxAbs, -1}, *)
+                 (*                          {aa, -maxAbs, maxAbs}]]; *)
+                 (* dets[cc] = Module[{aa, bb}, *)
+                 (*                   Table[KnotDet[ThirdNonToricKhovanovPrimeBraid[-aa, -bb, -cc]], *)
+                 (*                         {bb, maxAbs, -maxAbs, -1}, *)
+                 (*                         {aa, -maxAbs, maxAbs}]]; *)
+                 alexanders[cc] = Module[{aa, bb},
+                                         Table[Alexander[ThirdNonToricKhovanovPrimeBraid[aa, bb, cc]][t],
+                                               {bb, maxAbs, -maxAbs, -1},
+                                               {aa, -maxAbs, maxAbs}]];
 		 picc[cc] = Module[{aa, bb},
 				   Table[Module[{ulQ = (0 === Simplify[TheorKhovanov[aa, bb, ansUL]
 								       - ThirdNonToricKhovanovPrime[aa, bb, cc]]),
@@ -1718,39 +866,72 @@ Module[{cc},
 						 lrQ = (0 === Simplify[TheorKhovanov[aa, bb, ansLR]
 								       - ThirdNonToricKhovanovPrime[aa, bb, cc]])},
 						(* Print["ul, ur, ll, lr: ", ulQ, " ", urQ, " ", llQ, " ", lrQ]; *)
+                                                (* ### vv The legend for the graph: ### *)
+                                                (* ### vv A4 -- point is described by evolution in all four regions ### *)
+                                                (* ### vv {T,Y,G,H}3 -- point is described by evolution in three regions ### *)
+                                                (* ### vv               placement of the key on the keyboard tells, which ones ### *)
+                                                (* ### vv {W,S,A,D}2 -- point is described by evolution in two regions, ### *)
+                                                (* ### vv               again, which ones is intuitive from key positions ### *)
+                                                (* ### vv {U,J,I,K}1 -- point is described by evolution in just one region ### *)
+                                                (* ### vv ??         -- point is isolated, not described by any ### *)
+                                                (* ### vv               of the asymptotic evolutions ### *)
 						If[And[ulQ, urQ, llQ, lrQ],
-						   "AL",
+						   "A4",
 						   If[And[ulQ, urQ, llQ],
-						      "GG",
+						      "H3",
 						      If[And[ulQ, llQ, lrQ],
-							 "LL",
+							 "T3",
 							 If[And[ulQ, urQ, lrQ],
-							    "TT",
+							    "Y3",
 							    If[And[urQ, llQ, lrQ],
-							       "dd",
+							       "G3",
 							       If[And[ulQ, llQ],
-								  "LE",
+								  "W2",
 								  If[And[urQ, ulQ],
-								     "UP",
+                                                                     "S2",
 								     If[And[urQ, lrQ],
-									"RI",
+									"D2",
 									If[And[llQ, lrQ],
-									   "LO",
+									   "A2",
 									   If[And[ulQ, lrQ],
-									      "YY",
+									      "Q2",
 									      If[And[llQ, urQ],
-										 "NN",
+										 "E2",
 										 If[ulQ,
-										    "UL",
+										    "U1",
 										    If[urQ,
-										       "UR",
+										       "I1",
 										       If[llQ,
-											  "LL",
+											  "J1",
 											  If[lrQ,
-											     "LR",
+											     "K1",
 											     "??"]]]]]]]]]]]]]]]],
 					 {bb, maxAbs, -maxAbs, -1},
 					 {aa, -maxAbs, maxAbs}]]]]];
+
+Block[{cc = 9},
+      Module[{aa, bb},
+             Table[Subscript[picc[cc][[aa, bb]],
+                             signs[cc][[aa, bb]]],
+                   {bb, 1, Length[picc[cc]]},
+                   {aa, 1, Length[picc[cc]]}] // TeXForm
+            ]]
+
+Block[{cc = 1},
+      Module[{aa, bb},
+             Table[Subscript[picc[cc][[aa, bb]],
+                             signsRev[cc][[aa, bb]]],
+                   {bb, 1, Length[picc[cc]]},
+                   {aa, 1, Length[picc[cc]]}] // TeXForm
+            ]]
+
+Block[{cc = 1},
+      Module[{aa, bb},
+             Table[Subscript[picc[cc][[aa, bb]],
+                             dets[cc][[aa, bb]]],
+                   {bb, 1, Length[picc[cc]]},
+                   {aa, 1, Length[picc[cc]]}] // TeXForm
+            ]]
 
 (* ### vv Recursion for R1^3 R2 ### *)
 Solve[x^4 - q^4 x^3 - t^8 q^24 x + t^8 q^28 == 0, x] // InputForm
@@ -1975,7 +1156,70 @@ ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[pd]]
 
 
 (* DepthTwoLexiSort[II[a,0], II[b,0]] *)
-(* OrientationClusters[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]] *)
+
+OrientationClusters[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]]]
+
+
+ConnectionScheme[BraidSpec[Braid[2, a, {2, 1}, {4, 3}], Braid[2, b, {3, 1}, {4, 2}]],
+                 {0, 0}]
+
+OrientationClusters[BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]]]
+
+Braidosome[BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]],
+           OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[a, 2] -> 1],
+           {4}]
+
+
+
+PretzelKhovanov[{-3,0}]
+
+
+Block[{extraPoints = 2},
+      With[{aSeries = k,
+            bSeries = k,
+            cSeries = 2 k
+           },
+           FitFamilyWithEigenvaluesAdvanced[Function[{k1, k2, k3},
+                                                     PretzelKhovanov[{aSeries /. {k -> k1},
+                                                                      bSeries /. {k -> k2},
+                                                                      cSeries /. {k -> k3}}]],
+                                            {aSeries} ~Join~ PosFundEigenvalues[],
+                                            {bSeries} ~Join~ PosFundEigenvalues[],
+                                            {cSeries} ~Join~ PosAdjEigenvalues[]]]]
+
+OrientationClusters[PretzelBraidSpec[2]]
+
+PretzelBSWithParallelOrients[2]
+
+Out[22]= {BraidSpec[Braid[2, a, {3, 1}, {6, 4}], Braid[2, b, {1, 2}, {4, 5}], 
+ 
+>     Braid[2, c, {2, 3}, {5, 6}]], 
+ 
+>    OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[b, 0] -> -1, II[b, 1] -> -1, 
+ 
+>     II[c, 0] -> 1, II[c, 1] -> -1]}
+
+Out[21]= {BraidSpec[Braid[2, a, {2, 1}, {4, 3}], 
+ 
+>     Braid[2, b, {1, 2}, {3, 4}]], 
+ 
+>    OriChoice[II[a, 0] -> 1, II[a, 1] -> 1, II[b, 0] -> -1, II[b, 1] -> -1]}
+
+
+
+spec = BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]];
+residues = {0};
+connScheme = ConnectionScheme[spec, residues];
+connComps = ConnectedComponentsConnectionScheme[connScheme];
+oriMasks = OrientationMasks[spec, connComps, residues];
+
+oriMasks
+
+OrientationClustersForAResidueChoice[BraidSpec[Braid[3, a, {1, 2, 3}, {1, 2, 3}]],
+                                     {0}]
+
+
+
 
 Block[{n = 12},
       Module[{knots = AllKnots[n]},
