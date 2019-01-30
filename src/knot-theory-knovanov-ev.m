@@ -1,7 +1,8 @@
 
 << "knot-theory-knovanov-ev-utils.m";
 
-<< "../pretzel-khovanovs-3-1-1-1.m";
+<< "../data/pretzel-khovanovs-2-1-1.m";
+<< "../data/pretzel-khovanovs-2--1--1.m";
 
 PrecompKh[-1,-1]
 
@@ -14,7 +15,23 @@ ans1 =  Block[{extraPoints = 2},
                                                     Join[{aSeries}, PosFundEigenvalues[]],
                                                     Join[{bSeries}, PosFundEigenvalues[]]]]];
 
-Factor[ans1] // TeXForm
+TheorGenusOne[ans_, n1_, n2_] :=
+    Module[{i,j},
+           Sum[AA[i,j] (PosFundEigenvalues[]^n1)[[i]] (PosFundEigenvalues[]^n2)[[j]],
+               {i, 1, 3},
+               {j, 1, 3}] /. ans];
+
+
+Expand[Simplify[TheorGenusOne[ans1, 1, 0]]] // TeXForm
+
+Out[37]//TeXForm= q+\frac{1}{q}
+
+Out[35]//TeXForm= q-\frac{1}{q t}
+
+Out[34]//TeXForm= q+\frac{1}{q}
+
+Out[33]//TeXForm= 
+   \frac{1}{q^9 t^3}+\frac{1}{q^5 t^2}+\frac{1}{q^3}+\frac{1}{q}
 
 (* ### vv M^{--}_{i,j} ### *)
 ans1 =  Block[{extraPoints = 2},
@@ -24,6 +41,7 @@ ans1 =  Block[{extraPoints = 2},
                                                                        bSeries /. {k -> k2}]],
                                                     Join[{aSeries}, PosFundEigenvalues[]],
                                                     Join[{bSeries}, PosFundEigenvalues[]]]]];
+
 
 Factor[ans1]
 
