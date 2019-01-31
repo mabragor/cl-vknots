@@ -44,19 +44,6 @@ PrecomputePretzels[genus_] :=
                                Close[fd];
                                Close[fdlog]]]]];
 
-CCCExtraPoints = 2;
-CCCSeriesShift = 1;
-
-FindPretzelEvolutionParameters[genus_] :=
-    Module[{signIter = MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, genus + 1}]]]},
-           Module[{signs, validQ},
-                  While[True,
-                        {signs, validQ} = signIter[];
-                        If[Not[validQ],
-                           Break[]];
-                        (* ### ^^ we iterate over all the 2^n-tants ### *)
-                        
-    
 
 (* ### vv M^{+++}_{i,j,k} ### *)
 ans1 =  Block[{extraPoints = 2},

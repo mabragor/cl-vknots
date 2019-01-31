@@ -34,6 +34,9 @@ FindPretzelEvos[genus_] :=
                                                      If[EvenQ[genus + 1],
                                                         signs[[-1]] (k + CCCSeriesShiftParr),
                                                         signs[[-1]] 2 (k + CCCSeriesShiftAntiParr)]]},
+                               (* Print[seriesExprs]; *)
+                               (* Print[MkPrecompFunction[seriesExprs]]; *)
+                               (* Print[MkPrecompEigSpecs[seriesExprs]]; *)
                                Module[{theAns = Block[{extraPoints = CCCExtraPoints},
                                                       (FitFamilyWithEigenvaluesAdvanced
                                                        @@ Prepend[MkPrecompEigSpecs[seriesExprs],
@@ -41,10 +44,10 @@ FindPretzelEvos[genus_] :=
                                       Module[{fd = OpenWrite[CCCDataDir <> "/pretzel-kh-evo-" <> ToString[genus+1]
                                                              <> "-" <> StringRiffle[Map[ToString, signs], "-"]
                                                              <> ".m"]},
-                                             WriteString[fd, ToString[theAns, InputForm] <> ""];
+                                             WriteString[fd, ToString[Factor[Simplify[theAns]], InputForm] <> ""];
                                              Close[fd]]]];
                         WriteString[fdlog, " done!"]]];
-           Close[fdlog]];
+Close[fdlog]];
 MkPrecompFunction[seriesExprs_] :=                
     (Function @@ {Map[Symbol["k" <> ToString[#]] &, Range[1, Length[seriesExprs]]],
                   PrecompKh @@ MapIndexed[#1 /. {k ->
@@ -64,8 +67,5 @@ MkPrecompEigSpecs[seriesExprs_] :=
                                       
 FindPretzelEvos[2]
 
+[Calculating...]
 
-                                   
-
-
-                        
