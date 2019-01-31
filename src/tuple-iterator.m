@@ -137,10 +137,38 @@ CollectIter[iter_] :=
                     Break[],
                     AppendTo[res, value]]];
            res];
+SkipUntilIter[item_, subiter_] :=
+    (* ### ^^ Skips all the items in the `subiter` until the one specified is found. ### *)
+    (* ###    From then on is just transparent.                                      ### *)
+    Module[{depletedQ = False,
+            foundAnItem = False},
+           Function[{},
+                    If[depletedQ,
+                       {Null, False},
+                       If[Not[foundAnItem],
+                          Module[{subitem, valid},
+                                 While[True,
+                                       {subitem, valid} = subiter[];
+                                       If[Not[valid],
+                                          Block[{}, depletedQ = True; Break[]]];
+                                       If[item == subitem,
+                                          Block[{}, foundAnItem = True; Break[]]]];
+                                 If[depletedQ,
+                                    {Null, False},
+                                    {subitem, True}]],
+                          Module[{subitem, valid},
+                                 {subitem, valid} = subiter[];
+                                 If[Not[valid],
+                                    Block[{}, depletedQ = True; {Null, False}],
+                                    {subitem, True}]]]]]];
+
 
 (* ### vv Example of use:                                         ### *)
 (* ###    a = MkTupleIter[{4,8}, {5,0,-1}, AList["a", "b", "c"]]; ### *)
 (* ###    CollectIter[a]                                          ### *)
+
+(* ### vv An example of using a `skip until` iterator                         ### *)
+(* ###    a = SkipUntilIter["r", MkListIter[{"a", "b", "c", "r", "t", "y"}]]; ### *)
 
 
 

@@ -6,42 +6,110 @@ CCCMaxParallelWindings = 6;
 CCCMaxAntiparallelWindings = 4;
 
 PrecomputePretzels[genus_] :=
+    PrecomputePretzels[genus, False];
+PrecomputePretzels[genus_, force_] :=
     Module[{signIter = MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, genus + 1}]]]},
            Module[{signs, validQ},
                   While[True,
                         {signs, validQ} = signIter[];
                         If[Not[validQ],
                            Break[]];
-                        Module[{fd = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
-                                               <> ToString[genus + 1] <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"],
-                                fdlog = OpenWrite["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
-                                                  <> ToString[genus + 1] <> ".log"],
-                                windsIter = MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings}, {i, 1, genus}]],
-                                                                If[EvenQ[genus + 1],
-                                                                   {{1, CCCMaxParallelWindings}},
-                                                                   {{0, CCCMaxAntiparallelWindings, 2}}]]},
-                               Module[{windings, validQ},
-                                      While[True,
-                                            {windings, validQ} = windsIter[];
-                                            If[Not[validQ],
-                                               Break[]];
-                                            Module[{signedWindings = signs * windings},
-                                                   (* ### ^^ Elementwise vector multiplication (cool, right?)         ### *)
-                                                   Module[{theAns = PretzelKhovanov[signedWindings]},
-                                                          WriteString[fdlog, "Calculating ("
-                                                                      <> StringRiffle[Map[ToString, signedWindings], ", "]
-                                                                      <> ")" (* ### << This way it also works in screen ### *)
-                                                                     ];
-                                                          WriteString[fd, "PrecompKh["
-                                                                      <> StringRiffle[Map[ToString, signedWindings], ", "]
-                                                                      <> "] := " <> ToString[theAns, InputForm] <> ";"];
-                                                         ]];
-                                           ]];
-                               Close[fd];
-                               Close[fdlog]]]]];
+                        Module[{fname = ("/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                         <> ToString[genus + 1] <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"),
+                                flogname = ("/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                            <> ToString[genus + 1] <> ".log")},
+                               If[And[FileExistsQ[fname],
+                                      Not[force]],
+                                  Block[{}, Message[pp::fileExists, "File " <> fname <> " already exists, use `force` to overwrite"];
+                                        Return[]]];
+                               Module[{fd = OpenWrite[fname],
+                                       fdlog = OpenWrite[flogname],
+                                       windsIter = MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings}, {i, 1, genus}]],
+                                                                       If[EvenQ[genus + 1],
+                                                                          {{1, CCCMaxParallelWindings}},
+                                                                          {{0, CCCMaxAntiparallelWindings, 2}}]]},
+                                      Module[{windings, validQ},
+                                             While[True,
+                                                   {windings, validQ} = windsIter[];
+                                                   If[Not[validQ],
+                                                      Break[]];
+                                                   Module[{signedWindings = signs * windings},
+                                                          (* ### ^^ Elementwise vector multiplication (cool, right?)         ### *)
+                                                          Module[{theAns = PretzelKhovanov[signedWindings]},
+                                                                 WriteString[fdlog, "Calculating ("
+                                                                             <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                             <> ")" (* ### << This way it also works in screen ### *)
+                                                                            ];
+                                                                 WriteString[fd, "PrecompKh["
+                                                                             <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                             <> "] := " <> ToString[theAns, InputForm] <> ";"];
+                                                                ]];
+                                                  ]];
+                                      Close[fd];
+                                      Close[fdlog]]]]]];
+PrecomputePretzelsResume[resumeWindings_] :=
+    If[MemberQ[resumeWindings, 0],
+       Block[{},
+             Message["winding contains zeroes -- please, specify signs explicitly"];
+             Return[]],
+       PrecomputePretzelsResume[resumeWindings,
+                                Map[Sign, resumeWindings]]];
+PrecomputePretzelsResume[resumeWindings_, resumeSigns_] :=
+    Module[{genus = Length[resumeWindings] - 1},
+           Module[{signIter = SkipUntilIter[resumeSigns,
+                                            MkTupleIter @@ Map[AList @@ # &,
+                                                               Module[{i}, Table[{1,-1}, {i, 1, genus + 1}]]]]},
+                  Module[{signs, validQ},
+                         While[True,
+                               {signs, validQ} = signIter[];
+                               If[Not[validQ],
+                                  Break[]];
+                               Print["signs:", signs];
+                               Module[{fd = OpenAppend["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                                       <> ToString[genus + 1] <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"],
+                                       fdlog = OpenAppend["/home/popolit/quicklisp/local-projects/cl-vknots/data/pretzel-khovanovs-"
+                                                          <> ToString[genus + 1] <> ".log"],
+                                       windsIter = SkipUntilIter[Map[Abs, resumeWindings],
+                                                                 MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings},
+                                                                                                       {i, 1, genus}]],
+                                                                                     If[EvenQ[genus + 1],
+                                                                                        {{1, CCCMaxParallelWindings}},
+                                                                                        {{0, CCCMaxAntiparallelWindings, 2}}]]]},
+                                      WriteString[fdlog, "====== Resuming after some interruption ======"];
+                                      WriteString[fd, "(* ====== Resuming after some interruption ====== *)"];
+                                      Module[{windings, validQ},
+                                             While[True,
+                                                   {windings, validQ} = windsIter[];
+                                                   If[Not[validQ],
+                                                      Break[]];
+                                                   Print["windings:", windings];
+                                                   Module[{signedWindings = signs * windings},
+                                                          (* ### ^^ Elementwise vector multiplication (cool, right?)         ### *)
+                                                          Module[{theAns = PretzelKhovanov[signedWindings]},
+                                                                 WriteString[fdlog, "Calculating ("
+                                                                             <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                             <> ")" (* ### << This way it also works in screen ### *)
+                                                                            ];
+                                                                 WriteString[fd, "PrecompKh["
+                                                                             <> StringRiffle[Map[ToString, signedWindings], ", "]
+                                                                             <> "] := " <> ToString[theAns, InputForm] <> ";"];
+                                                                ]];
+                                                  ]];
+                                      Close[fd];
+                                      Close[fdlog]]]]]];
 
+(* PrecomputePretzels[1, True] *)
 
-PrecomputePretzels[1]
+PrecomputePretzelsResume[{-6,-4}]
+
+(* a = SkipUntilIter[{-1,1}, *)
+(*                   MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, 1 + 1}]]]]; *)
+(* a = MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings}, *)
+(*                                           {i, 1, 1}]], *)
+(*                         If[EvenQ[1 + 1], *)
+(*                            {{1, CCCMaxParallelWindings}}, *)
+(*                            {{0, CCCMaxAntiparallelWindings, 2}}]]; *)
+
 
 (* << "../pretzel-khovanovs-3-1-1-1.m"; *)
 
