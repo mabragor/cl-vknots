@@ -104,7 +104,9 @@ PrecomputePretzelsResume[resumeWindings_, resumeSigns_] :=
 
 (* PrecomputePretzels[1, True] *)
 
-PrecomputePretzelsResume[{-6,-4}]
+PrecomputePretzelsResume[{3,-4,2,4,2}]
+
+[Mathematica exited abnormally with code 1.]
 
 (* a = SkipUntilIter[{-1,1}, *)
 (*                   MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, 1 + 1}]]]]; *)

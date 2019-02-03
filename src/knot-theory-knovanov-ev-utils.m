@@ -857,3 +857,79 @@ PretzelBSWithParallelOrients[genus_] :=
 PretzelKhovanov[windings_] :=
     Kh[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
                             windings]][q,t];
+AllPrecomputedQ[family_, allowedVars_, eigenvaluesSpecs_] :=
+    Module[{res = True},
+           Iterate[{indices, MkTupleIter @@ Map[{0, extraPoints + Length[#] - 1 - 1} &, eigenvaluesSpecs]},
+                   If[{} =!= Complement[Variables[family @@ indices], allowedVars],
+                      Block[{},
+                            res = False;
+                            Message[fitFamily::nonPrecomp, indices];
+                            Break[]]]];
+           res];
+ShiftIndices[indices_, shifts_] :=
+    Module[{i, res = {}},
+           Print["shifts ", shifts];
+           For[i = 1, i <= Length[shifts], i ++,
+               AppendTo[res, shifts[[i]] /. {k -> indices[[i]]}]];
+           res];
+FitFamilyWithEigenvaluesGradualInternal[family_, allowedVars_, eigenvaluesSpecs_] :=
+    Module[{},
+           (* ### vv First we check that all polynomials are precomputed ### *)
+           If[Not[AllPrecomputedQ[family, allowedVars, eigenvaluesSpecs]],
+              Return[$Failed]];
+           ClearAll[FFWETmp]; (* ### << The temporary symbol where we will store all the evolution intermediate results ### *)
+           Block[{FFWERes = <||>},
+                 FitFamilyWithEigenvaluesGradualII[family, {}, eigenvaluesSpecs];
+                 (* ### vv Don't forget to uncomment this (commented-out for debugging purposes) ### *)
+                 (* ClearAll[FFWETmp]; *)
+                 FFWERes]];
+FitFamilyWithEigenvaluesGradualII[family_, alreadyTransformedEigenvalues_, eigenvaluesYetToTransform_] :=
+    Module[{curEigSpec = eigenvaluesYetToTransform[[1]],
+            restEigSpecs = eigenvaluesYetToTransform[[2 ;; ]]},
+           If[{} =!= restEigSpecs,
+              (* ### vv The regular iteration branch ### *)
+              Iterate[{restIndices, MkTupleIter @@ Map[{0, extraPoints + Length[#] - 1 -1} &, restEigSpecs]},
+                      Print["restIndices ", restIndices];
+                      Module[{shiftIndices = ShiftIndices[restIndices, Map[#[[1]] &, restEigSpecs]]},
+                             Print["shiftIndices ", shiftIndices];
+                             Module[{anAns = FitFamilyWithEigenvaluesAdvanced[Function[{k},
+                                                                                       (* ### vv Here we use unshifted indices   ### *)
+                                                                                       (* ###    because shift is already inside ### *)
+                                                                                       (* ###    definitio of `family` function  ### *)
+                                                                                       family @@ Join[{k}, restIndices]],
+                                                                              curEigSpec]},
+                                    (* ### ^^ At these point we have the evolution coefficients ### *)
+                                    (* ###    Now we need to recurse                            ### *)
+                                    Module[{i},
+                                           For[i = 1, i <= Length[curEigSpec] - 1, i ++,
+                                               (* ### vv 1 + i is because the 1st element is the description of a series ### *)
+                                               Set[Evaluate[FFWETmp[Append[alreadyTransformedEigenvalues, curEigSpec[[1 + i]]],
+                                                                    shiftIndices]],
+                                                   (AA[i] /. anAns) (* ### << That's because we know what                ### *)
+                                                   (*                         `FitFamilyWithEigenvaluesAdvanced` returns ### *)
+                                                  ]]]]]];
+              (* ### ^^ We've performed Fourier transform in the first eigenvalue set                                    ### *)
+              (* ### vv Now we are ready to recurse, or finish and collect the results                                   ### *)
+              Module[{i},  For[i = 1, i <= Length[curEigSpec] - 1, i ++,
+                               Module[{newEigs = Append[alreadyTransformedEigenvalues, curEigSpec[[1 + i]]]},
+                                      FitFamilyWithEigenvaluesGradualII[
+                                          (* ### Yet to construct ### *)
+                                          Function[Evaluate[Map[Symbol["k" <> ToString[#]] &,
+                                                                Range[1, Length[restEigSpecs]]]],
+                                                   Evaluate[FFWETmp[newEigs,
+                                                                    MapIndexed[#1[[1]] /. {k -> Symbol["k" <> ToString[#2[[1]]]]} &,
+                                                                               restEigSpecs]]]],
+                                          newEigs,
+                                          restEigSpecs]]]],
+              (* ### vv The last iteration branch, we're performing FT in the last eigenvalue set                        ### *)
+              Module[{anAns = FitFamilyWithEigenvaluesAdvanced[family, curEigSpec]},
+                     Module[{i},
+                            For[i = 1, i <= Length[curEigSpec] - 1, i ++,
+                                (FFWERes[Append[alreadyTransformedEigenvalues, curEigSpec[[1 + i]]]]
+                                 = AA[i] /. anAns)]]]]];
+FitFamilyWithEigenvaluesGradual[family_, eigenvaluesSpecs__] :=
+    (* ### vv The {q,t}-specification is needed to check, whether we have all the polynomials precomputed ### *)
+    FitFamilyWithEigenvaluesGradualInternal[family,
+                                            {q, t},
+                                            List[eigenvaluesSpecs]];
+
