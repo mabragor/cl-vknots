@@ -2,13 +2,9 @@
 << "knot-theory-knovanov-ev-utils.m";
 << "tuple-iterator.m";
 
-(* ### vv Convenient constants to specify filenames ### *)
-CCCWorkDir = "/home/popolit/quicklisp/local-projects/cl-vknots";
-CCCSrcDir = CCCWorkDir <> "/src";
-CCCDataDir = CCCWorkDir <> "/data";
 (* ### vv Constants to make the series detection robust ### *)
-CCCSeriesShiftParr = 1;
-CCCSeriesShiftAntiParr = 1;
+CCCSeriesShiftParr = 2;
+CCCSeriesShiftAntiParr = 2;
 CCCExtraPoints = 2;
 FindPretzelEvos[genus_] :=
     (* ### ^^ Find evolution coefficients for pretzel knots of genus `genus`. ### *)
@@ -18,9 +14,6 @@ FindPretzelEvos[genus_] :=
                    (* ### ^^ We loop over all the 2^n-tants ### *)
                    FindPretzelEvosForNTant[genus, signs, fdlog]];
            Close[fdlog]];
-Debugg[fdlog_, msg_] :=
-    If[Null =!= fdlog,
-       WriteString[fdlog, msg]];
 LoadPrecomputedKhovanovs[genus_, signs_, fdlog_] :=
     Module[{},
            ClearAll[PrecompKh]; (* ### << We want to free memory from the previous round ### *)
@@ -35,10 +28,14 @@ FindPretzelEvosForNTant[genus_, signs_, fdlog_] :=
            LoadPrecomputedKhovanovs[genus, signs, fdlog];
            Debugg[fdlog, "Calculating evos for: ("
                   <> StringRiffle[Map[ToString, signs], ", "] <> ") ..."];
-           Module[{seriesExprs = Append[Module[{i}, Table[signs[[i]] (k + CCCSeriesShiftParr),
+           Module[{seriesExprs = Append[Module[{i}, Table[signs[[i]] (k + If[ListQ[CCCSeriesShiftParr],
+                                                                             CCCSeriesShiftParr[[i]],
+                                                                             CCCSeriesShiftParr]),
                                                           {i, 1, genus}]],
                                         If[EvenQ[genus + 1],
-                                           signs[[-1]] (k + CCCSeriesShiftParr),
+                                           signs[[-1]] (k + If[ListQ[CCCSeriesShiftParr],
+                                                               CCCSeriesShiftParr[[-1]],
+                                                               CCCSeriesShiftParr]),
                                            signs[[-1]] 2 (k + CCCSeriesShiftAntiParr)]]},
                   (* Print[seriesExprs]; *)
                   (* Print[MkPrecompFunction[seriesExprs]]; *)
@@ -66,7 +63,18 @@ MkPrecompEigSpecs[seriesExprs_] :=
                    PosFundEigenvalues[],
                    NegAdjEigenvalues[]]]];
 
-FindPretzelEvosForNTant[2, {1,1,1}, Null]
+Block[{CCCEigenvaluesCritLength = Null,
+       CCCSeriesShiftParr = {2, 9},
+       CCCSeriesShiftAntiParr = 5},
+      FindPretzelEvosForNTant[2, {-1,1,1}, Null]]
+
+                        restIndices: {0, 0} curSeries: -2 - k
+shifts {9 + k, 2 (5 + k)}
+shiftIndices {9, 10}
+{{0, 3}, {nz, 2}}
+
+
+
 
 ?? FFWETmp
 

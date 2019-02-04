@@ -1,6 +1,11 @@
 
 Quiet[<< KnotTheory`];
 
+<< "tuple-iterator.m";
+
+CCCWorkDir = "/home/popolit/quicklisp/local-projects/cl-vknots";
+CCCDataDir = CCCWorkDir <> "/data";
+CCCSrcDir = CCCWorkDir <> "/src";
 TwoStrandKhovanov[n_] :=
     Kh[BR[2, Join[{1,-1,1,-1},
 		  Map[If[n > 0, 1, -1] &, Range[1, Abs[n]]]]]][q,t];
@@ -878,19 +883,33 @@ FitFamilyWithEigenvaluesGradualInternal[family_, allowedVars_, eigenvaluesSpecs_
            If[Not[AllPrecomputedQ[family, allowedVars, eigenvaluesSpecs]],
               Return[$Failed]];
            ClearAll[FFWETmp]; (* ### << The temporary symbol where we will store all the evolution intermediate results ### *)
-           Block[{FFWERes = <||>},
+           Block[{FFWERes = <||>,
+                  fdlog = OpenWrite["/home/popolit/tmp/FFWEGradual.log"]},
                  FitFamilyWithEigenvaluesGradualII[family, {}, eigenvaluesSpecs];
                  (* ### vv Don't forget to uncomment this (commented-out for debugging purposes) ### *)
                  (* ClearAll[FFWETmp]; *)
+                 Close[fdlog];
                  FFWERes]];
+Debugg[fdlog_, msg_] :=
+    If[Null =!= fdlog,
+       WriteString[fdlog, msg]];
+CCCEigenvaluesCritLength = Null;
 FitFamilyWithEigenvaluesGradualII[family_, alreadyTransformedEigenvalues_, eigenvaluesYetToTransform_] :=
     Module[{curEigSpec = eigenvaluesYetToTransform[[1]],
-            restEigSpecs = eigenvaluesYetToTransform[[2 ;; ]]},
+            restEigSpecs = eigenvaluesYetToTransform[[2 ;; ]],
+            successFlag = True},
+           If[CCCEigenvalueCritLength === Length[alreadyTransformedEigenvalues],
+              Return[]];
            If[{} =!= restEigSpecs,
               (* ### vv The regular iteration branch ### *)
               Iterate[{restIndices, MkTupleIter @@ Map[{0, extraPoints + Length[#] - 1 -1} &, restEigSpecs]},
-                      Print["restIndices ", restIndices];
+                      Print["restIndices: ", restIndices, " curSeries: ", curEigSpec[[1]]];
                       Module[{shiftIndices = ShiftIndices[restIndices, Map[#[[1]] &, restEigSpecs]]},
+                             Debugg[fdlog, "Calculating for: "
+                                    <> ToString[alreadyTransformedEigenvalues, InputForm]
+                                    <> " " <> ToString[curEigSpec, InputForm]
+                                    <> " " <> ToString[shiftIndices, InputForm]
+                                    <> " ..."];
                              Print["shiftIndices ", shiftIndices];
                              Module[{anAns = FitFamilyWithEigenvaluesAdvanced[Function[{k},
                                                                                        (* ### vv Here we use unshifted indices   ### *)
@@ -898,6 +917,10 @@ FitFamilyWithEigenvaluesGradualII[family_, alreadyTransformedEigenvalues_, eigen
                                                                                        (* ###    definitio of `family` function  ### *)
                                                                                        family @@ Join[{k}, restIndices]],
                                                                               curEigSpec]},
+                                    If[checkFailed === anAns,
+                                       Debugg[fdlog, " failed\n"];
+                                       successFlag = False;
+                                       Break[]];
                                     (* ### ^^ At these point we have the evolution coefficients ### *)
                                     (* ###    Now we need to recurse                            ### *)
                                     Module[{i},
@@ -907,12 +930,16 @@ FitFamilyWithEigenvaluesGradualII[family_, alreadyTransformedEigenvalues_, eigen
                                                                     shiftIndices]],
                                                    (AA[i] /. anAns) (* ### << That's because we know what                ### *)
                                                    (*                         `FitFamilyWithEigenvaluesAdvanced` returns ### *)
-                                                  ]]]]]];
+                                                  ]]]];
+                             Debugg[fdlog, " done!\n"]]];
+              If[Not[successFlag],
+                 Return[$Failed]];
               (* ### ^^ We've performed Fourier transform in the first eigenvalue set                                    ### *)
               (* ### vv Now we are ready to recurse, or finish and collect the results                                   ### *)
-              Module[{i},  For[i = 1, i <= Length[curEigSpec] - 1, i ++,
+              Module[{i},
+                     For[i = 1, i <= Length[curEigSpec] - 1, i ++,
                                Module[{newEigs = Append[alreadyTransformedEigenvalues, curEigSpec[[1 + i]]]},
-                                      FitFamilyWithEigenvaluesGradualII[
+                                      Module[{res = FitFamilyWithEigenvaluesGradualII[
                                           (* ### Yet to construct ### *)
                                           Function[Evaluate[Map[Symbol["k" <> ToString[#]] &,
                                                                 Range[1, Length[restEigSpecs]]]],
@@ -920,16 +947,46 @@ FitFamilyWithEigenvaluesGradualII[family_, alreadyTransformedEigenvalues_, eigen
                                                                     MapIndexed[#1[[1]] /. {k -> Symbol["k" <> ToString[#2[[1]]]]} &,
                                                                                restEigSpecs]]]],
                                           newEigs,
-                                          restEigSpecs]]]],
+                                          restEigSpecs]},
+                                             If[$Failed === res,
+                                                Return[$Failed]]]]]],
               (* ### vv The last iteration branch, we're performing FT in the last eigenvalue set                        ### *)
+              Debugg[fdlog, "Calculating for: "
+                     <> ToString[alreadyTransformedEigenvalues, InputForm]
+                     <> " " <> ToString[curEigSpec, InputForm]
+                     <> " " <> ToString[{}, InputForm]
+                     <> " ..."];
               Module[{anAns = FitFamilyWithEigenvaluesAdvanced[family, curEigSpec]},
+                     If[checkFailed === anAns,
+                        Debugg[fdlog, " failed\n"];
+                        Return[$Failed]];
                      Module[{i},
                             For[i = 1, i <= Length[curEigSpec] - 1, i ++,
                                 (FFWERes[Append[alreadyTransformedEigenvalues, curEigSpec[[1 + i]]]]
-                                 = AA[i] /. anAns)]]]]];
+                                 = AA[i] /. anAns)]]];
+              Debugg[fdlog, " done!"]]];
 FitFamilyWithEigenvaluesGradual[family_, eigenvaluesSpecs__] :=
     (* ### vv The {q,t}-specification is needed to check, whether we have all the polynomials precomputed ### *)
     FitFamilyWithEigenvaluesGradualInternal[family,
                                             {q, t},
                                             List[eigenvaluesSpecs]];
-
+EvoFname[signs_] :=
+    (CCCDataDir <> "/pretzel-kh-evo-" <> ToString[Length[signs]] <> "-"
+     <> StringRiffle[Map[ToString, signs], "-"] <> ".m");
+MkSymList[symHead_, numSyms_] :=
+    Map[Symbol[ToString[symHead] <> ToString[#]] &, Range[1, numSyms]];
+MkEvoFunction[evoRules_] :=
+    Module[{numArgs = Length[Keys[evoRules][[1]]]}, (* ### << I know this is a bit excessive, but I don't know any other way ### *)
+           Function[Evaluate[MkSymList["n", numArgs]],
+                    Evaluate[Simplify[
+                        Plus @@ KeyValueMap[#2
+                                            * Times @@ MapIndexed[Function[{eigenvalue, number},
+                                                                           eigenvalue^(Symbol["n" <> ToString[number[[1]]]])],
+                                                                  #1] &,
+                                            evoRules]]]]];
+(* ### vv Loads all precomputed khovanov polynomials for pretzel knots of a given genus ### *)
+LoadAllPrecomps[genus_] :=
+    Iterate[{signs, MkTupleIter @@ Table[AList[1, -1], {i, 1, genus + 1}]},
+            Get[CCCWorkDir <> "/data/pretzel-khovanovs-" <> ToString[genus + 1]
+                <> "-" <> StringRiffle[Map[ToString, signs], "-"]
+                <> ".m"]];
