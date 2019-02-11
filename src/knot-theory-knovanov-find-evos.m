@@ -14,36 +14,32 @@ FindPretzelEvos[genus_] :=
     (* ### ^^ Find evolution coefficients for pretzel knots of genus `genus`. ### *)
     Module[{signIter = MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, genus + 1}]]],
             fdlog = OpenWrite[CCCDataDir <> "/pretzel-evo-" <> ToString[genus+1] <> ".log"]},
-           Module[{signs, validQ},
-                  While[True,
-                        {signs, validQ} = signIter[];
-                        If[Not[validQ],
-                           Break[]];
-                        (* ### ^^ We loop over all the 2^n-tants ### *)
-                        ClearAll[PrecompKh]; (* ### << We want to free memory from the previous round ### *)
-                        (* ### vv Load the precomputed data ### *)
-                        WriteString[fdlog, "Loading data for: ("
-                                    <> StringRiffle[Map[ToString, signs], ", "] <> ") ..."];
-                        Get[CCCDataDir <> "/pretzel-khovanovs-" <> ToString[genus + 1]
-                            <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"];
-                        WriteString[fdlog, " ... done!"];
-                        WriteString[fdlog, "Calculating evos for: ("
-                                    <> StringRiffle[Map[ToString, signs], ", "] <> ") ..."];
-                        Module[{seriesExprs = Append[Module[{i}, Table[signs[[i]] (k + CCCSeriesShiftParr),
-                                                                       {i, 1, genus}]],
-                                                     If[EvenQ[genus + 1],
-                                                        signs[[-1]] (k + CCCSeriesShiftParr),
-                                                        signs[[-1]] 2 (k + CCCSeriesShiftAntiParr)]]},
-                               Module[{theAns = Block[{extraPoints = CCCExtraPoints},
-                                                      (FitFamilyWithEigenvaluesAdvanced
-                                                       @@ Prepend[MkPrecompEigSpecs[seriesExprs],
-                                                                  MkPrecompFunction[seriesExprs]])]},
-                                      Module[{fd = OpenWrite[CCCDataDir <> "/pretzel-kh-evo-" <> ToString[genus+1]
-                                                             <> "-" <> StringRiffle[Map[ToString, signs], "-"]
-                                                             <> ".m"]},
-                                             WriteString[fd, ToString[theAns, InputForm] <> ""];
-                                             Close[fd]]]];
-                        WriteString[fdlog, " done!"]]];
+           Iterate[{signs, signIter},
+                   (* ### ^^ We loop over all the 2^n-tants ### *)
+                   ClearAll[PrecompKh]; (* ### << We want to free memory from the previous round ### *)
+                   (* ### vv Load the precomputed data ### *)
+                   WriteString[fdlog, "Loading data for: ("
+                               <> StringRiffle[Map[ToString, signs], ", "] <> ") ..."];
+                   Get[CCCDataDir <> "/pretzel-khovanovs-" <> ToString[genus + 1]
+                       <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"];
+                   WriteString[fdlog, " ... done!"];
+                   WriteString[fdlog, "Calculating evos for: ("
+                               <> StringRiffle[Map[ToString, signs], ", "] <> ") ..."];
+                   Module[{seriesExprs = Append[Module[{i}, Table[signs[[i]] (k + CCCSeriesShiftParr),
+                                                                  {i, 1, genus}]],
+                                                If[EvenQ[genus + 1],
+                                                   signs[[-1]] (k + CCCSeriesShiftParr),
+                                                   signs[[-1]] 2 (k + CCCSeriesShiftAntiParr)]]},
+                          Module[{theAns = Block[{extraPoints = CCCExtraPoints},
+                                                 (FitFamilyWithEigenvaluesAdvanced
+                                                  @@ Prepend[MkPrecompEigSpecs[seriesExprs],
+                                                             MkPrecompFunction[seriesExprs]])]},
+                                 Module[{fd = OpenWrite[CCCDataDir <> "/pretzel-kh-evo-" <> ToString[genus+1]
+                                                        <> "-" <> StringRiffle[Map[ToString, signs], "-"]
+                                                        <> ".m"]},
+                                        WriteString[fd, ToString[theAns, InputForm] <> ""];
+                                        Close[fd]]]];
+                   WriteString[fdlog, " done!"]];
            Close[fdlog]];
 MkPrecompFunction[seriesExprs_] :=                
     (Function @@ {Map[Symbol["k" <> ToString[#]] &, Range[1, Length[seriesExprs]]],

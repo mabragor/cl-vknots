@@ -161,6 +161,18 @@ SkipUntilIter[item_, subiter_] :=
                                  If[Not[valid],
                                     Block[{}, depletedQ = True; {Null, False}],
                                     {subitem, True}]]]]]];
+(* ### vv The main macro-interface to using iterators                                           ### *)
+(* ###    Let's see if I can get enough control over the Mathematica evaluator to write this    ### *)
+ClearAll[Iterate];
+SetAttributes[Iterate, HoldAllComplete];
+Iterate[{var_, iterator_}, body_] :=
+    Module[{GSIter = iterator},
+           While[True,
+                 {var, validQ} = GSIter[];
+                 If[Not[validQ],
+                    Break[]];
+                 body]];
+
 
 
 (* ### vv Example of use:                                         ### *)
@@ -169,6 +181,12 @@ SkipUntilIter[item_, subiter_] :=
 
 (* ### vv An example of using a `skip until` iterator                         ### *)
 (* ###    a = SkipUntilIter["r", MkListIter[{"a", "b", "c", "r", "t", "y"}]]; ### *)
+
+(* ### vv An example of usage of an `Iterate` macro            ### *)
+(* ###    As you can see, it easily supports nested iterations ### *)
+(* ###    Iterate[{myVar, MkRangeIter[4,6]},                   ### *)
+(* ###            Iterate[{myVar2, MkRangeIter[9,1,-1]},       ### *)
+(* ###                    Print[myVar, " ", myVar2]]]          ### *)
 
 
 

@@ -857,3 +857,6 @@ PretzelBSWithParallelOrients[genus_] :=
 PretzelKhovanov[windings_] :=
     Kh[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
                             windings]][q,t];
+
+
+FitFamilyWithEigenvaluesGradual[family_, eigenvaluesSpecs__] :=
