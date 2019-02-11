@@ -166,18 +166,18 @@ SkipUntilIter[item_, subiter_] :=
 ClearAll[Iterate];
 SetAttributes[Iterate, HoldAllComplete];
 Iterate[{var_, iterator_}, body_] :=
-    Module[{GSIter = iterator},
+    Module[{GSIter = iterator, (* ### << We want iterator expression to be evaluated exactly once ### *)
+            validQ},
            While[True,
                  {var, validQ} = GSIter[];
                  If[Not[validQ],
-                    Break[]];
-                 body]];
+                    Break[],
+                    body]]];
 
 
-
-(* ### vv Example of use:                                         ### *)
-(* ###    a = MkTupleIter[{4,8}, {5,0,-1}, AList["a", "b", "c"]]; ### *)
-(* ###    CollectIter[a]                                          ### *)
+(* ### vv Example of use:                                                     ### *)
+(* ###    a = MkTupleIter[{4,8}, {5,0,-1}, AList["a", "b", "c"]];             ### *)
+(* ###    CollectIter[a]                                                      ### *)
 
 (* ### vv An example of using a `skip until` iterator                         ### *)
 (* ###    a = SkipUntilIter["r", MkListIter[{"a", "b", "c", "r", "t", "y"}]]; ### *)
@@ -187,6 +187,4 @@ Iterate[{var_, iterator_}, body_] :=
 (* ###    Iterate[{myVar, MkRangeIter[4,6]},                   ### *)
 (* ###            Iterate[{myVar2, MkRangeIter[9,1,-1]},       ### *)
 (* ###                    Print[myVar, " ", myVar2]]]          ### *)
-
-
 
