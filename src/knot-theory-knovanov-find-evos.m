@@ -81,11 +81,45 @@ N3SliceFit1[a_, b_] :=
 
 (* ### vv Figure out evolutions in planes in the exceptional region inside +++ region for genus 2 pretzel knots ### *)
 Module[{k},
-       For[k = 7, k <= 7, k ++,
-           Timing[n3sliceFit1[-2 k] = N3SliceFit1[1 + 2 k, -2 k]]]]
+       For[k = 7, k <= 8, k ++,
+           Timing[n3sliceFit1[-2 k] = N3SliceFit1[1 + 2 k, -2 k]]]];
 
-(* Simplify[n3sliceFit1[-14]] // InputForm *)
+Simplify[n3sliceFit1[-18]] // InputForm
 
+n3sliceFit1[-16] =
+    <|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^6*t^3 + q^8*t^3 - q^30*t^15 + 
+                 q^32*t^16 - q^34*t^16 - 2*q^34*t^17 + q^36*t^17 + q^36*t^18 - 2*q^38*t^18 - 
+                 q^38*t^19 + q^40*t^19 - q^42*t^20 + q^62*t^31 + q^62*t^32 - q^64*t^32 + 
+                 q^66*t^32 - q^64*t^33 + 2*q^66*t^33 - q^68*t^33 + q^66*t^34 - 2*q^68*t^34 + 
+                 q^70*t^34 - q^68*t^35 + 2*q^70*t^35 - q^72*t^35 + q^70*t^36 - q^72*t^36 + 
+                 q^74*t^36 + q^74*t^37)/((-1 + q^2*t)^2*(q + q^3*t)), 
+    {q, q^3*t} -> (q^31*t^16 - q^31*t^17 - 2*q^33*t^17 - q^35*t^18 - q^35*t^19 + 
+                   2*q^37*t^19 - 2*q^39*t^20)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q, -(q^3*t)} -> (q^31*t^16 + q^31*t^17)/(2 + 2*q^2*t), 
+    {q^3*t, q} -> (q^31*t^16 - q^31*t^17 - 2*q^33*t^17 - q^35*t^18 - q^35*t^19 + 
+                   2*q^37*t^19 - 2*q^39*t^20)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+    (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), q} -> (q^31*t^16 + q^31*t^17)/(2 + 2*q^2*t), 
+    {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
+n3sliceFit1[-14] =
+    <|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^6*t^3 + q^8*t^3 - q^26*t^13 + 
+                 q^28*t^14 - q^30*t^14 - 2*q^30*t^15 + q^32*t^15 + q^32*t^16 - 2*q^34*t^16 - 
+                 q^34*t^17 + q^36*t^17 - q^38*t^18 + q^54*t^27 + q^54*t^28 - q^56*t^28 + 
+                 q^58*t^28 - q^56*t^29 + 2*q^58*t^29 - q^60*t^29 + q^58*t^30 - 2*q^60*t^30 + 
+                 q^62*t^30 - q^60*t^31 + 2*q^62*t^31 - q^64*t^31 + q^62*t^32 - q^64*t^32 + 
+                 q^66*t^32 + q^66*t^33)/((-1 + q^2*t)^2*(q + q^3*t)), 
+    {q, q^3*t} -> (q^27*t^14 - q^27*t^15 - 2*q^29*t^15 - q^31*t^16 - q^31*t^17 + 
+                   2*q^33*t^17 - 2*q^35*t^18)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q, -(q^3*t)} -> (q^27*t^14 + q^27*t^15)/(2 + 2*q^2*t), 
+    {q^3*t, q} -> (q^27*t^14 - q^27*t^15 - 2*q^29*t^15 - q^31*t^16 - q^31*t^17 + 
+                   2*q^33*t^17 - 2*q^35*t^18)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+    (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), q} -> (q^27*t^14 + q^27*t^15)/(2 + 2*q^2*t), 
+    {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
 n3sliceFit1[-12] =
     <|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^6*t^3 + q^8*t^3 - q^22*t^11 + 
                  q^24*t^12 - q^26*t^12 - 2*q^26*t^13 + q^28*t^13 + q^28*t^14 - 
@@ -191,7 +225,7 @@ n3sliceFit1[-2] =
     {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
 
 (* ### vv Try to find the n3 evolution in the exceptional region ### *)
-Block[{kC = -6,
+Block[{kC = -10,
        extraPoints = 2},
       Iterate[{{eig1, eig2}, MkTupleIter[AList @@ PosFundEigenvalues[], AList @@ PosFundEigenvalues[]]},
               FitFamilyWithEigenvaluesGradual[Function[{k1},
@@ -223,20 +257,5 @@ Solve[0 == Sum[CC[i] x^i, {i, 0, theOrder-1}] /. ans1[[1]],
 
 Block[{k = 5},
       Module[{fun = Function[{k}, Expand[Simplify[n3sliceFit1[-2 k][{q,q}](q + t q^3)(1 - t q^2)^2]]]},
-             Length[Expand[Simplify[fun[k+1] - fun[k]]]]]]
-
-                  
-Out[45]= 38
-
-                  
-Out[44]= 38
-
-                  
-Out[43]= 36
-
-                  
-Out[42]= 32
-
-                  
-Out[41]= 29
+             Expand[Simplify[(fun[k+2] - fun[k+1]) - t^2 q^4 (fun[k+1] - fun[k])]]]]
 
