@@ -245,30 +245,35 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 		   (* 				  Map[#^power &, Rest[#]]] &, *)
 		   (* 			   specs] *)
 		  (* Print["comb and indets: ", List[comb, indets, family]]; *)
-		  Module[{eqns = Map[(family @@ #) - (comb @@ #) == 0 &,
+		  Module[{eqns = Map[(family @@ #) - (comb @@ #) &,
 				     Tuples[Map[Range[0, Length[#] - 1 - 1] &,
-						specs]]]},
-			 Module[{ans = Solve[eqns, indets]},
-				(* Print["solved the system: ", ans]; *)
-				If[1 =!= Length[ans],
-				   Message["More than one solution to a linear system"],
-				   Module[{indices = Tuples[Map[Range[0, Length[#] - 1 - 1 + extraPoints]&,
-								specs]]},
-					  Module[{check = Tally[Map[If[0 === FullSimplify[(family @@ #) - (comb @@ #) /. ans[[1]]],
-								       0,
-								       nz] &,
-								    indices]]},
-						 If[1 === Length[check],
-						    Module[{},
-							   Print[check];
-							   Map[Rule[#[[1]],
-								    ExpandNumerator[
-									FullSimplify[(* 1/(Times
-											@@ MapIndexed[correctionFactors[[#2[[1]], #1]] &,
-												      (List @@ #[[1]])]) *)
-										     #[[2]]]]] &,
-							       ans[[1]]]],
-						    Module[{}, Print[check]; checkFailed]]]]]]]]];
+						specs]]],
+                          lhs, rhs, ans},
+                         rhs = Simplify[- (eqns /. Map[Rule[#, 0] &, indets])];
+                         (* ### ^^ This minus is because a x == b <-> a x - b == 0 ### *)
+                         lhs = Map[Function[{eqn},
+                                            Map[Simplify[D[eqn, #]] &, indets]], (* ### << We know equation is linear in indets ### *)
+                                   eqns];
+                         (* Print[lhs, rhs]; *)
+                         ans = Simplify[Inverse[lhs] . rhs];
+			 Module[{ans = Module[{i}, Table[Rule[indets[[i]], ans[[i]]], {i, 1, Length[indets]}]]},
+                                Module[{indices = Tuples[Map[Range[0, Length[#] - 1 - 1 + extraPoints]&,
+                                                             specs]]},
+                                       Module[{check = Tally[Map[If[0 === FullSimplify[(family @@ #) - (comb @@ #) /. ans],
+                                                                    0,
+                                                                    nz] &,
+                                                                 indices]]},
+                                              If[1 === Length[check],
+                                                 Module[{},
+                                                        Print[check];
+                                                        Map[Rule[#[[1]],
+                                                                 ExpandNumerator[
+                                                                     FullSimplify[(* 1/(Times
+                                                                                     @@ MapIndexed[correctionFactors[[#2[[1]], #1]] &,
+                                                                                     (List @@ #[[1]])]) *)
+                                                                                  #[[2]]]]] &,
+                                                            ans]],
+                                                 Module[{}, Print[check]; checkFailed]]]]]]]];
 PlanarDiagramToAdvancedStructures[pd_] :=
     (* ### Massage the terse format of the planar diagram ### *)
     (* ### into more convenient collection of maps, which is more suitable to for asking actual questions about PD ### *)
@@ -990,3 +995,5 @@ LoadAllPrecomps[genus_] :=
             Get[CCCWorkDir <> "/data/pretzel-khovanovs-" <> ToString[genus + 1]
                 <> "-" <> StringRiffle[Map[ToString, signs], "-"]
                 <> ".m"]];
+
+

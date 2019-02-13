@@ -62,28 +62,181 @@ MkPrecompEigSpecs[seriesExprs_] :=
                 If[EvenQ[Length[seriesExprs]],
                    PosFundEigenvalues[],
                    NegAdjEigenvalues[]]]];
+N3SliceFit1[a_, b_] :=
+    Block[{kA = a,
+           kB = a,
+           kC = b,
+           CCCEigenvaluesCritLength = Null,
+           extraPoints = 2},
+          LoadPrecomputedKhovanovs[2, {1,1,-1}, Null];
+          FitFamilyWithEigenvaluesGradual[Function[{k1, k2},
+                                                   PrecompKh[k1 + kA, k2 + kB, kC]],
+                                          Prepend[PosFundEigenvalues[], k + kA],
+                                          Prepend[PosFundEigenvalues[], k + kB]]];
 
-Block[{CCCEigenvaluesCritLength = Null,
-       CCCSeriesShiftParr = {2, 9},
-       CCCSeriesShiftAntiParr = 5},
-      FindPretzelEvosForNTant[2, {-1,1,1}, Null]]
+(* Block[{CCCEigenvaluesCritLength = Null, *)
+(*        CCCSeriesShiftParr = {2, 9}, *)
+(*        CCCSeriesShiftAntiParr = 5, *)
+(*       FindPretzelEvosForNTant[2, {-1,1,1}, Null]] *)
 
-                        restIndices: {0, 0} curSeries: -2 - k
-shifts {9 + k, 2 (5 + k)}
-shiftIndices {9, 10}
-{{0, 3}, {nz, 2}}
+(* ### vv Figure out evolutions in planes in the exceptional region inside +++ region for genus 2 pretzel knots ### *)
+Module[{k},
+       For[k = 7, k <= 7, k ++,
+           Timing[n3sliceFit1[-2 k] = N3SliceFit1[1 + 2 k, -2 k]]]]
+
+(* Simplify[n3sliceFit1[-14]] // InputForm *)
+
+n3sliceFit1[-12] =
+    <|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^6*t^3 + q^8*t^3 - q^22*t^11 + 
+                 q^24*t^12 - q^26*t^12 - 2*q^26*t^13 + q^28*t^13 + q^28*t^14 - 
+                 2*q^30*t^14 - q^30*t^15 + q^32*t^15 - q^34*t^16 + q^46*t^23 + q^46*t^24 - 
+                 q^48*t^24 + q^50*t^24 - q^48*t^25 + 2*q^50*t^25 - q^52*t^25 + q^50*t^26 - 
+                 2*q^52*t^26 + q^54*t^26 - q^52*t^27 + 2*q^54*t^27 - q^56*t^27 + 
+                 q^54*t^28 - q^56*t^28 + q^58*t^28 + q^58*t^29)/
+    ((-1 + q^2*t)^2*(q + q^3*t)), {q, q^3*t} -> 
+    (q^23*t^12 - q^23*t^13 - 2*q^25*t^13 - q^27*t^14 - q^27*t^15 + 
+     2*q^29*t^15 - 2*q^31*t^16)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q, -(q^3*t)} -> (q^23*t^12 + q^23*t^13)/(2 + 2*q^2*t), 
+    {q^3*t, q} -> (q^23*t^12 - q^23*t^13 - 2*q^25*t^13 - q^27*t^14 - q^27*t^15 + 
+                   2*q^29*t^15 - 2*q^31*t^16)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+    (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), q} -> (q^23*t^12 + q^23*t^13)/(2 + 2*q^2*t), 
+    {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
+n3sliceFit1[-10] =
+    <|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^6*t^3 + q^8*t^3 - q^18*t^9 + 
+                 q^20*t^10 - q^22*t^10 - 2*q^22*t^11 + q^24*t^11 + q^24*t^12 - 
+                 2*q^26*t^12 - q^26*t^13 + q^28*t^13 - q^30*t^14 + q^38*t^19 + q^38*t^20 - 
+                 q^40*t^20 + q^42*t^20 - q^40*t^21 + 2*q^42*t^21 - q^44*t^21 + q^42*t^22 - 
+                 2*q^44*t^22 + q^46*t^22 - q^44*t^23 + 2*q^46*t^23 - q^48*t^23 + 
+                 q^46*t^24 - q^48*t^24 + q^50*t^24 + q^50*t^25)/
+    ((-1 + q^2*t)^2*(q + q^3*t)), {q, q^3*t} -> 
+    (q^19*t^10 - q^19*t^11 - 2*q^21*t^11 - q^23*t^12 - q^23*t^13 + 
+     2*q^25*t^13 - 2*q^27*t^14)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q, -(q^3*t)} -> (q^19*t^10 + q^19*t^11)/(2 + 2*q^2*t), 
+    {q^3*t, q} -> (q^19*t^10 - q^19*t^11 - 2*q^21*t^11 - q^23*t^12 - q^23*t^13 + 
+                   2*q^25*t^13 - 2*q^27*t^14)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+    (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), q} -> (q^19*t^10 + q^19*t^11)/(2 + 2*q^2*t), 
+    {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
+n3sliceFit1[-8] =
+    <|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^6*t^3 + q^8*t^3 - q^14*t^7 + 
+                 q^16*t^8 - q^18*t^8 - 2*q^18*t^9 + q^20*t^9 + q^20*t^10 - 2*q^22*t^10 - 
+                 q^22*t^11 + q^24*t^11 - q^26*t^12 + q^30*t^15 + q^30*t^16 - q^32*t^16 + 
+                 q^34*t^16 - q^32*t^17 + 2*q^34*t^17 - q^36*t^17 + q^34*t^18 - 
+                 2*q^36*t^18 + q^38*t^18 - q^36*t^19 + 2*q^38*t^19 - q^40*t^19 + 
+                 q^38*t^20 - q^40*t^20 + q^42*t^20 + q^42*t^21)/
+    ((-1 + q^2*t)^2*(q + q^3*t)), {q, q^3*t} -> 
+    (q^15*t^8 - q^15*t^9 - 2*q^17*t^9 - q^19*t^10 - q^19*t^11 + 2*q^21*t^11 - 
+     2*q^23*t^12)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q, -(q^3*t)} -> (q^15*t^8 + q^15*t^9)/(2 + 2*q^2*t), 
+    {q^3*t, q} -> (q^15*t^8 - q^15*t^9 - 2*q^17*t^9 - q^19*t^10 - q^19*t^11 + 
+                   2*q^21*t^11 - 2*q^23*t^12)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+    (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), q} -> (q^15*t^8 + q^15*t^9)/(2 + 2*q^2*t), 
+    {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
+n3sliceFit1[-6] =
+    <|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^6*t^3 + q^8*t^3 - q^10*t^5 + 
+                 q^12*t^6 - q^14*t^6 - 2*q^14*t^7 + q^16*t^7 + q^16*t^8 - 2*q^18*t^8 - 
+                 q^18*t^9 + q^20*t^9 - q^22*t^10 + q^22*t^11 + q^22*t^12 - q^24*t^12 + 
+                 q^26*t^12 - q^24*t^13 + 2*q^26*t^13 - q^28*t^13 + q^26*t^14 - 
+                 2*q^28*t^14 + q^30*t^14 - q^28*t^15 + 2*q^30*t^15 - q^32*t^15 + 
+                 q^30*t^16 - q^32*t^16 + q^34*t^16 + q^34*t^17)/
+    ((-1 + q^2*t)^2*(q + q^3*t)), {q, q^3*t} -> 
+    (q^11*t^6 - q^11*t^7 - 2*q^13*t^7 - q^15*t^8 - q^15*t^9 + 2*q^17*t^9 - 
+     2*q^19*t^10)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q, -(q^3*t)} -> (q^11*t^6 + q^11*t^7)/(2 + 2*q^2*t), 
+    {q^3*t, q} -> (q^11*t^6 - q^11*t^7 - 2*q^13*t^7 - q^15*t^8 - q^15*t^9 + 
+                   2*q^17*t^9 - 2*q^19*t^10)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+    (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), q} -> (q^11*t^6 + q^11*t^7)/(2 + 2*q^2*t), 
+    {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
+n3sliceFit1[-4] =
+<|{q, q} -> (1 + q^2 - q^4*t - q^4*t^2 + q^8*t^3 + q^8*t^4 - q^10*t^4 - 
+    2*q^10*t^5 + q^12*t^5 + q^12*t^6 - 2*q^14*t^6 + q^16*t^7 + q^14*t^8 - 
+    q^16*t^8 - q^16*t^9 + 2*q^18*t^9 - q^20*t^9 + q^18*t^10 - 2*q^20*t^10 + 
+    q^22*t^10 - q^20*t^11 + 2*q^22*t^11 - q^24*t^11 + q^22*t^12 - q^24*t^12 + 
+    q^26*t^12 + q^26*t^13)/((-1 + q^2*t)^2*(q + q^3*t)), 
+ {q, q^3*t} -> (q^7*t^4 - q^7*t^5 - 2*q^9*t^5 - q^11*t^6 - q^11*t^7 + 
+    2*q^13*t^7 - 2*q^15*t^8)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+ {q, -(q^3*t)} -> (q^7*t^4 + q^7*t^5)/(2 + 2*q^2*t), 
+ {q^3*t, q} -> (q^7*t^4 - q^7*t^5 - 2*q^9*t^5 - q^11*t^6 - q^11*t^7 + 
+    2*q^13*t^7 - 2*q^15*t^8)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+ {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+   (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+ {-(q^3*t), q} -> (q^7*t^4 + q^7*t^5)/(2 + 2*q^2*t), 
+ {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+ {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
+n3sliceFit1[-2] =
+    <|{q, q} -> (1 + q^2 - q^2*t - q^4*t - q^6*t^2 + 2*q^8*t^3 + q^6*t^4 - 
+                 q^10*t^4 - q^8*t^5 + q^10*t^5 + q^10*t^6 - 2*q^12*t^6 - q^12*t^7 + 
+                 2*q^14*t^7 - q^16*t^7 + q^14*t^8 - q^16*t^8 + q^18*t^8 + q^18*t^9)/
+    ((-1 + q^2*t)^2*(q + q^3*t)), {q, q^3*t} -> 
+    (q^3*t^2 - q^3*t^3 - 2*q^5*t^3 - q^7*t^4 - q^7*t^5 + 2*q^9*t^5 - 
+     2*q^11*t^6)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q, -(q^3*t)} -> (q^3*t^2 + q^3*t^3)/(2 + 2*q^2*t), 
+    {q^3*t, q} -> (q^3*t^2 - q^3*t^3 - 2*q^5*t^3 - q^7*t^4 - q^7*t^5 + 
+                   2*q^9*t^5 - 2*q^11*t^6)/(2*(-1 + q^2*t)^2*(1 + q^2*t)), 
+    {q^3*t, q^3*t} -> (1 + t - 3*q^2*t + q^2*t^2 + 4*q^4*t^2)/
+    (4*q*(-1 + q^2*t)^2), {q^3*t, -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), q} -> (q^3*t^2 + q^3*t^3)/(2 + 2*q^2*t), 
+    {-(q^3*t), q^3*t} -> (1 + t)/(4*q + 4*q^3*t), 
+    {-(q^3*t), -(q^3*t)} -> (1 + t)/(4*q + 4*q^3*t)|>;
+
+(* ### vv Try to find the n3 evolution in the exceptional region ### *)
+Block[{kC = -6,
+       extraPoints = 2},
+      Iterate[{{eig1, eig2}, MkTupleIter[AList @@ PosFundEigenvalues[], AList @@ PosFundEigenvalues[]]},
+              FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                       n3sliceFit1[kC - 2 k1][{eig1, eig2}]],
+                                              Prepend[NegAdjEigenvalues[], kC - 2 k]]]]
+
+n3sliceFit1[-2 (6)][{q,q}]
+
+theOrder = 4;
+theDelta = 2;
+eqns = Map[Function[{n},
+                    0 == (Plus @@
+                          Map[Function[{delta},
+                                       Simplify[n3sliceFit1[-2 (n + delta)][{q,q}]]
+                                       * CC[delta]],
+                              Range[0, theOrder-1]])],
+           Range[theDelta, theDelta + theOrder+1]];
+ans = Solve[eqns (* /. {t -> -1} *),
+	    Map[CC[#] &, Range[1,theOrder]]];
+ans1 = FullSimplify[ans]
+
+                                                                                                   
+
+ans1
+
+Solve[0 == Sum[CC[i] x^i, {i, 0, theOrder-1}] /. ans1[[1]],
+      x]
 
 
+Block[{k = 5},
+      Module[{fun = Function[{k}, Expand[Simplify[n3sliceFit1[-2 k][{q,q}](q + t q^3)(1 - t q^2)^2]]]},
+             Length[Expand[Simplify[fun[k+1] - fun[k]]]]]]
 
+                  
+Out[45]= 38
 
-?? FFWETmp
+                  
+Out[44]= 38
 
+                  
+Out[43]= 36
 
+                  
+Out[42]= 32
 
+                  
+Out[41]= 29
 
-Module[{serSpecs = {k+1, k+1}},
-       FitFamilyWithEigenvaluesGradual @@ Prepend[MkPrecompEigSpecs[serSpecs],
-                                                  MkPrecompFunction[serSpecs]]]
-
-
-                

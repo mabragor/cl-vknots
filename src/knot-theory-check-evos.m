@@ -5,7 +5,6 @@ evoRulesMMM = Get[EvoFname[{-1,-1,-1}]];
 evoRulesPPP = Get[EvoFname[{1,1,1}]];
 evoRulesPPM = Get[EvoFname[{1,1,-1}]];
 evoRulesMMP = Get[EvoFname[{-1,-1,1}]];
-
 TeXifyEvoRules[signsStr_, evoRules_] :=
     (* ### ^^ The goal of this function is to serialize evolution rules in such a way, that one conveniently can ### *)
     (* ###    copy-paste them in TeX.                                                                            ### *)
@@ -32,7 +31,6 @@ TheorFundJones[genus_] :=
                                                                   {m, 0, 1}],
                                                               {i, 0, genus}],
                                           {k, 0, 1}]]]]];
-
 (* TeXifyEvoRules["--+", evoRulesMMP] *)
 (* fun = MkEvoFunction[evoRulesMMP]; *)
 LoadAllPrecomps[2];
@@ -41,6 +39,60 @@ funPPM = MkEvoFunction[evoRulesPPM];
 funMMM = MkEvoFunction[evoRulesMMM];
 funMMP = MkEvoFunction[evoRulesMMP];
 funJones = TheorFundJones[2];
+ClearAll[WithWrittenFrame];
+SetAttributes[WithWrittenFrame, HoldAllComplete];
+WithWrittenFrame[{fd_, opening_, closing_}, body_] :=
+    CompoundExpression[WriteString[fd, If[ListQ[opening],
+                                          StringJoin @@ Map[ToString, opening],
+                                          opening]],
+                       body,
+                       WriteString[fd, If[ListQ[closing],
+                                          StringJoin @@ Map[ToString, closing],
+                                          closing]]];
+(* ### vv Matching my braid orientation conventions with Morozov's ### *)
+(* Expand[Factor[Block[{n0 = -5, n1 = 0, n2 = 0}, *)
+(*                     Simplify[(funPPP[n0, n1, n2]/(q + q^(-1))^2 /. {t -> -1})]]]] *)
+(* Expand[Factor[Block[{n0 = 0, n1 = 0, n2 = 2}, *)
+(*                     Simplify[(funPPP[n0, n1, n2] /. {t -> -1})/(q + q^(-1))]]]] *)
+(* Block[{n0 = 0, n1 = 0, n2 = 2}, *)
+(*       Expand[Simplify[funJones[n0, n1, n2]/(q+q^(-1))^2 (- q^(-15))]]] *)
+(* Block[{n0 = 0, n1 = 0, n2 = 3}, *)
+(*       Simplify[(funPPP[n0, n1, 2 n2] /. {t -> -1}) *)
+(*                /(funJones[n0, n1, 2 n2] (-q^(-3))^(n0 + n1) /. {q -> 1/q})]] *)
+(* Module[{n0,n1,n2, max = 5}, *)
+(*        Tally[Flatten[Table[Simplify[(funPPP[n0, n1, 2 n2] /. {t -> -1}) *)
+(*                                     /(funJones[n0, n1, 2 n2] (-q^(-3))^(n0 + n1 + 0 n2) /. {q -> 1/q})], *)
+(*                            {n0, -max, max}, *)
+(*                            {n1, -max, max}, *)
+(*                            {n2, -max, max}]]]] *)
+CCCPicXSize = 300;
+CCCPicYSize = 300;
+CCCPicXCoordStart = 0;
+CCCPicYCoordStart = 0;
+CCCBasePointXShift = 15;
+CCCBasePointYShift = 15;
+VizualizeEvolutions[] :=
+    Module[{theFd = OpenWrite["/home/popolit/tmp/visualize-evolutions.tex"]},
+           Iterate[{n3, MkRangeIter[-10, 10, 2]},
+                   WithWrittenFrame[{theFd,
+                                     {"$n_3 = ", n3, "$\n\\begin{align}\n", "\\begin{picture}(", CCCPicXSize, ",", CCCPicYSize, ")\n"},
+                                     {"\\end{picture}\n", "\\end{align}\n"}},
+                                    Iterate[{{n1, n2}, MkTupleIter[{-10, 10}, {-10, 10}]},
+                                            WithWrittenFrame[{theFd,
+                                                              {"\\put(", CCCPicXCoordStart + n1 * CCCBasePointXShift,
+                                                               ", ", CCCPicYCoordStart + n2 * CCCBasePointYShift, ") {\n"},
+                                                              "}\n"},
+                                                             WriteString[theFd, "\\basePoint\n"];
+                                                             If[0 === Simplify[funPPP[n1,n2,n3] - PrecompKh[n1,n2,n3]],
+                                                                WriteString[theFd, "\\urPoint\n"]];
+                                                             If[0 === Simplify[funPPM[n1,n2,n3] - PrecompKh[n1,n2,n3]],
+                                                                WriteString[theFd, "\\rPoint\n"]];
+                                                             If[0 === Simplify[funMMP[n1,n2,n3] - PrecompKh[n1,n2,n3]],
+                                                                WriteString[theFd, "\\lPoint\n"]];
+                                                             If[0 === Simplify[funMMM[n1,n2,n3] - PrecompKh[n1,n2,n3]],
+                                                                WriteString[theFd, "\\dlPoint\n"]]]]]];
+           Close[theFd];
+           Success];
 
 (* ### vv Matching of my and Morozov's conventions about braids orientations and framing ### *)
 (* Expand[Factor[Block[{n0 = -5, n1 = 0, n2 = 0}, *)
@@ -59,6 +111,10 @@ funJones = TheorFundJones[2];
 (*                            {n1, -max, max}, *)
 (*                            {n2, -max, max}]]]] *)
 
+VizualizeEvolutions[]
+
+Simplify[funMMP[1,2,4] - PrecompKh[1,2,4]]
+
 anAns = Module[{res = {}},
                Iterate[{ns, MkTupleIter[{-10, -1}, {1, 10}, {0, 10, 2}]},
                        If[Not[Or[0 === Simplify[(funPPP @@ ns) - PrecompKh @@ ns],
@@ -68,7 +124,7 @@ anAns = Module[{res = {}},
                           PrependTo[res, ns]]];
                res];
 
-funMMM[1,1,1]
+(* funMMM[1,1,1] *)
 
 anAns
 

@@ -168,12 +168,22 @@ SetAttributes[Iterate, HoldAllComplete];
 Iterate[{var_, iterator_}, body_] :=
     Module[{GSIter = iterator, (* ### << We want iterator expression to be evaluated exactly once ### *)
             validQ},
-           While[True,
-                 {var, validQ} = GSIter[];
-                 If[Not[validQ],
-                    Break[],
-                    body]]];
-
+           If[List === Head[Unevaluated[var]],
+              Module[{GSvar}, (* ### << This gensym variable is needed, because when depleted, iterator returns {Null, False} ### *)
+                     Module[var,
+                            While[True,
+                                  {GSvar, validQ} = GSIter[];
+                                  If[Not[validQ],
+                                     Break[],
+                                     Block[{},
+                                           var = GSvar; (* ### << The actual destructuring ### *)
+                                           body]]]]],
+              Module[{var},
+                     While[True,
+                           {var, validQ} = GSIter[];
+                           If[Not[validQ],
+                              Break[],
+                              body]]]]];
 
 (* ### vv Example of use:                                                     ### *)
 (* ###    a = MkTupleIter[{4,8}, {5,0,-1}, AList["a", "b", "c"]];             ### *)
