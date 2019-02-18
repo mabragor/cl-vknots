@@ -1,6 +1,7 @@
 
 << "knot-theory-knovanov-ev-utils.m";
 
+evoRules["PPPP"] = Get[EvoFname[{1,1,1,1}]];
 evoRules["MM"] = Get[EvoFname[{-1,-1}]];
 evoRules["PP"] = Get[EvoFname[{1,1}]];
 evoRules["MMM"] = Get[EvoFname[{-1,-1,-1}]];
@@ -42,7 +43,7 @@ TheorFundJones[genus_] :=
 (* TeXifyEvoRules["--+", evoRulesMMP] *)
 (* fun = MkEvoFunction[evoRulesMMP]; *)
 LoadAllPrecomps[2];
-Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP"}]]},
+Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP", "PPPP"}]]},
         Rule[evoFun[regionLabel], MkEvoFunction[evoRules[regionLabel]]]
         /. {Rule -> Set}];
 funJones = TheorFundJones[2];
@@ -75,9 +76,24 @@ CombUpEvoMap[assoc_] :=
 (* Block[{n0 = 10, n1 = 20, n2 = 15}, *)
 (*       Simplify[(evoFun["PPM"][n0, n1, 2 n2] /. {t -> -1, q -> 1/q}) (-q^(3))^(n0 + n1) *)
 (*                /funJones[n0, n1, 2 n2]]] *)
-Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP"}]]},
+Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP", "PPPP"}]]},
         Rule[evoRulesCombed[regionLabel], CombUpEvoMap[evoRules[regionLabel]]]
         /. {Rule -> Set}];
+(* ### vv Assume that we know dependence on the last parameter only in even points   ### *)
+(* ###    Therefore we don't know the signs of the eigenvalues. Doubles the amount   ### *)
+(* ###    of the elements of the association by introducing a bunch of new variables ### *)
+(* ###    that correspond to the choice of sign. Assumes input is well-formed        ### *)
+(* ###    (i.e. eigenvalues w.r.t last parameter are all positive)                   ### *)
+BlowUpLastEigSigns[assoc_, indetHead_] :=
+    Module[{indets = {}},
+           {Association[Flatten[KeyValueMap[Function[{key, val},
+                                                     AppendTo[indets, indetHead @@ key];
+                                                     {Rule[key, indetHead @@ key],
+                                                      Rule[Mask @@ Append[key[[ ;;-2]],
+                                                                          - key[[-1]]],
+                                                           val - indetHead @@ key]}],
+                                            assoc]]],
+            indets}];
 (* ### vv Restore the dependence on the last evolution parameter, corresponding to the antiparallel braid ### *)
 (* ###    from the requirement that the result is symmetric function of the eigenvalues.                  ### *)
 SymmetricallyRestoreEvoMap[assoc_] :=
@@ -134,9 +150,10 @@ PrettyPrintRules[assoc_, preAssoc_] :=
     (* ### ^^ We need to add the preassoc, to print also delta's ### *)
     Module[{res = {},
             aIndets = GetAIndets[preAssoc]},
+           (* Print["aIndets", aIndets]; *)
            Scan[Function[{key},
                          If[Or[0 =!= assoc[key], 0 =!= preAssoc[key]],
-                            Module[{val = assoc[key]},
+                            Module[{val = Lookup[assoc, key, 0]},
                                    (* Print["val: ", val]; *)
                                    AppendTo[res,
                                             If[1 === Length[Permutations[key]],
@@ -145,12 +162,173 @@ PrettyPrintRules[assoc_, preAssoc_] :=
                                             * Module[{coeff = Factor[Simplify[val]], i},
                                                      For[i = 1, i <= Length[aIndets], i ++,
                                                          coeff += (Simplify[D[preAssoc[key], aIndets[[i]]]]
-                                                                   * Subscript[\[Delta], i])];
+                                                                   * Subscript[Delta, i])];
                                                      coeff]]]]],
                 DeleteDuplicates[Map[Sort, Keys[assoc]]]];
            (Plus @@ res) /. {t -> T} // TeXForm];
+PrettyPrintRulesNaive[assoc_, preAssoc_] :=
+    (* ### ^^ We need to add the preassoc, to print also delta's ### *)
+    Module[{res = {},
+            aIndets = GetAIndets[preAssoc]},
+           (* Print["aIndets", aIndets]; *)
+           Scan[Function[{key},
+                         If[Or[0 =!= assoc[key], 0 =!= preAssoc[key]],
+                            Module[{val = Lookup[assoc, key, 0]},
+                                   (* Print["val: ", val]; *)
+                                   AppendTo[res,
+                                            Simplify[Times @@ MapIndexed[#1^Subscript[n, #2[[1]]-1] &, key]]
+                                            * Module[{coeff = Factor[Simplify[val]], i},
+                                                     For[i = 1, i <= Length[aIndets], i ++,
+                                                         coeff += (Simplify[D[preAssoc[key], aIndets[[i]]]]
+                                                                   * Subscript[Delta, i])];
+                                                     coeff]]]]],
+                Keys[assoc]];
+           (Plus @@ res) /. {t -> T} // TeXForm];
+CCCAlphabet = {"AA", "BB", "CC", "DD", "EE"}; (* ### << More than enough for our purposes ### *)
+(* ### vv More elaborate version of symmetric restoring, where regions have more complex shape and  ### *)
+(* ###    therefore we need to consider several of them in order to get the whole picture correctly ### *)
+SymmRestoreNPletEvoMap[assocs__] :=
+    Module[{indets = {}},
+           Module[{blownUpAssocs = MapIndexed[Module[{res = BlowUpLastEigSigns[#1, Symbol[CCCAlphabet[[#2[[1]]]]]]},
+                                                     indets = Join[indets, res[[2]]];
+                                                     res[[1]]] &,
+                                              List[assocs]]},
+                  (* {blownUpAssocs, indets} *)
+                  (* ### vv Alright, now we need to generate a bunch of equations ### *)
+                  (* ###    These include: each blown up assoc is symmetric w.r.t all of its arguments except i-th ### *)
+                  (* ###    When we do a cyclic permutation of argument, we get to the next assoc ### *)
+                  Module[{eqns = {}},
+                         For[i = 1, i < Length[blownUpAssocs], i ++, (* ### << We loop over all but last association ### *)
+                             AppendTo[eqns,
+                                      KeyValueMap[Function[{key, val},
+                                                           0 == (val - Lookup[blownUpAssocs[[i+1]],
+                                                                              Mask[key[[-1]], Sequence @@ key[[ ;; -2]]],
+                                                                              0])],
+                                                  blownUpAssocs[[i]]]]];
+                         (* ### ^^ Invariance w.r.t cyclic permutation ### *)
+                         For[i = 1, i <= Length[blownUpAssocs], i ++, (* ### << Here we loop over *all* associations ### *)
+                             Module[{seenQ = <||>},
+                                    AppendTo[eqns,
+                                             KeyValueMap[Function[{key, val},
+                                                                  Module[{sortedKey = Mask[key[[i]], Sequence @@ Join[key[[1 ;; i - 1]],
+                                                                                                                      key[[i + 1 ;; ]]]]},
+                                                                         If[KeyExistsQ[seenQ, sortedKey],
+                                                                            {},
+                                                                            Block[{},
+                                                                                  seenQ[sortedKey] = True;
+                                                                                  Map[Function[{subkey},
+                                                                                               Module[{newKey = Mask[Sequence
+                                                                                                                     @@ subkey[[1 ;; i - 1]],
+                                                                                                                     sortedKey[[1]],
+                                                                                                                     Sequence
+                                                                                                                     @@ subkey[[i ;; ]]]},
+                                                                                                      0 == (val
+                                                                                                            - Lookup[blownUpAssocs[[i]],
+                                                                                                                     newKey,
+                                                                                                                     0])]],
+                                                                                      Permutations[sortedKey[[2 ;; ]]]]]]]],
+                                                         blownUpAssocs[[i]]]]]];
+                         (* ### ^^ Symmetry w.r.t all permutations of all other indices ### *)
+                         eqns = Flatten[eqns];
+                         Module[{ans = Solve[eqns, indets]},
+                                blownUpAssocs /. ans[[1]]]]]];
+CheckRulesSymmetricQ[assoc_] :=
+    And @@ Flatten[KeyValueMap[Function[{key, val},
+                                        Map[0 === Simplify[val - assoc[key]] &,
+                                            Permutations[key]]],
+                               assoc]];
+
+CheckRulesSymmetricQ[evoRulesCombed["PPPP"]]
+
+Factor[Simplify[evoRulesCombed["PPPP"]]]
+
+(* ### vv The three "positive" covariant regions ### *)
+aa = SymmRestoreNPletEvoMap[evoRulesCombed["MPPAlt1"],
+                            evoRulesCombed["PMPAlt1"],
+                            evoRulesCombed["PPMAlt1"]];
+bb = Map[Factor[Simplify[# /. (Solve[Factor[Simplify[#]][Mask[1,-1,-1]] == 0,
+                                     AA[1,1,1]][[1]])]] &,
+         aa];
+
+(* ### vv The three "negative" covariant regions ### *)
+aa = SymmRestoreNPletEvoMap[evoRulesCombed["PMMAlt1"],
+                            evoRulesCombed["MPMAlt1"],
+                            evoRulesCombed["MMPAlt1"]];
+bb = Map[Factor[Simplify[# /. (Solve[Factor[Simplify[#]][Mask[1,-1,-1]] == 0,
+                                     AA[1,1,1]][[1]])]] &,
+         aa];
+
+Factor[Simplify[bb[[1]]]]
+
+PrettyPrintRules[evoRulesCombed["PPPP"], <||>]
+
+Apart[FullSimplify[evoRulesCombed["PP"][Mask[1,1]]], t]
+
+                      2
+         1      -1 - q
+Out[13]= - + -------------
+         2            2
+             2 (-1 + q  t)
+
+Apart[FullSimplify[evoRulesCombed["PPP"][Mask[1,1,1]]], t]
+
+                      3                3
+         q       q + q           -q + q
+Out[14]= - + -------------- + -------------
+         4            2   2            2
+             2 (-1 + q  t)    4 (-1 + q  t)
+
+Apart[FullSimplify[evoRulesCombed["PPPP"][Mask[1,1,1,1]]], t]
+
+          2        2    4          2    4           2    4
+         q       -q  - q          q  - q          -q  + q
+Out[12]= -- + -------------- + -------------- + -------------
+         8             2   3            2   2            2
+              2 (-1 + q  t)    4 (-1 + q  t)    8 (-1 + q  t)
+
+
+Apart[FullSimplify[evoRulesCombed["PP"][Mask[1,1]]], t]
+
+
+Block[{index = 1},
+      PrettyPrintRulesNaive[bb[[index]],
+                            aa[[index]]]]
+
+Out[18]//TeXForm= 
+   (-1)^{n_0} \left(\frac{T+1}{4 q \left(q^2
+    T+1\right)}-\text{Delta}_1\right)+(-1)^{n_1} \left(\frac{T+1}{4 q
+    \left(q^2 T+1\right)}-\text{Delta}_1\right)+(-1)^{n_2} \left(\frac{T+1}{4
+    q \left(q^2 T+1\right)}-\text{Delta}_1\right)+(-1)^{n_0+n_1+n_2}
+    \left(\frac{T+1}{4 q \left(q^2
+    T+1\right)}-\text{Delta}_1\right)+\text{Delta}_1
+    (-1)^{n_0+n_1}+\text{Delta}_1 (-1)^{n_0+n_2}+\text{Delta}_1
+    (-1)^{n_1+n_2}+\text{Delta}_1+\frac{(-1)^{n_2} (T+1) \left(q^2
+    T\right)^{n_0+n_1}}{2 q \left(q^2 T+1\right)}+\frac{(-1)^{n_1} (T+1)
+    \left(q^2 T\right)^{n_0+n_2}}{2 q \left(q^2 T+1\right)}+\frac{(-1)^{n_0} q
+    (T+1) \left(q^2 T\right)^{n_1+n_2}}{2 \left(q^2 T+1\right)}+\frac{\left(2
+    q^8 T^3+q^6 T^3-q^6 T^2-q^2 T+q^2+2\right) \left(q^2 T\right)^{n_1+n_2}}{2
+    q \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}+\frac{(T+1) \left(q^4
+    T+1\right) \left(q^4 T^2+1\right) \left(q^2 T\right)^{n_1+n_2} \left(-q^4
+    T^2\right)^{n_0}}{2 q^3 T \left(q^2 T+1\right)}-\frac{\left(q^4 T+1\right)
+    \left(q^4 T^2+1\right) \left(q^4 T^2-q^2 T+1\right) \left(q^2
+    T\right)^{n_0+n_1+n_2}}{q^3 T \left(q^2 T-1\right)^2 \left(q^2
+    T+1\right)}-\frac{\left(2 q^8 T^4-2 q^6 T^3+q^4 T^3+q^4 T^2+2 q^2
+    T+T-1\right) \left(q^2 T\right)^{n_0+n_1}}{2 q \left(q^2 T-1\right)^2
+    \left(q^2 T+1\right)}-\frac{\left(2 q^8 T^4-2 q^6 T^3+q^4 T^3+q^4 T^2+2
+    q^2 T+T-1\right) \left(q^2 T\right)^{n_0+n_2}}{2 q \left(q^2 T-1\right)^2
+    \left(q^2 T+1\right)}+\frac{(T+1) \left(q^4 T+1\right) \left(q^8
+    T^4+1\right) \left(q^2 T\right)^{n_1+n_2} \left(q^4 T^2\right)^{n_0}}{2
+    q^3 T \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}+\frac{q T^2 \left(q^4
+    T+1\right)}{\left(q^2 T-1\right)^2 \left(q^2 T+1\right)}
+
+          
 
 FullSymmRestore["PPMAlt1"]
+
+Block[{label = "PPMAlt1"},
+      Association[KeyValueMap[Rule[Mask[#1[[2]], #1[[1]], #1[[3]]], #2] &, evoRulesCombed[label]]]
+      - evoRulesCombed[label]]
+            
 
 PrettyPrintRules[CombUpEvoMap2[evoRulesCombed["MMM"]], <||>]
 
