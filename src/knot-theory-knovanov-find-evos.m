@@ -139,8 +139,13 @@ N3SliceFit6[a_, b_] :=
 N3SliceFit6Assign[a_, b_] :=
     Set @@ Rule[n3sliceFit6[b], N3SliceFit6[a, b]];
 
-(* FindPretzelEvosForNTant[1, {-1, -1}, Null] *)
+(* ### vv Example of how to try to find evolution in one octant ### *)
+(* Block[{CCCExtraPoints = 2, *)
+(*        CCCSeriesShiftParr = 1, *)
+(*        q = E, t = Pi}, *)
+(*       FindPretzelEvosForNTant[3, {1,1,1,1}, Null]] *)
 
+(* ### vv When I was figuring out how to get evolution in complicated-shape regions, I did a lot of these explicit stuff ### *)
 (* N3SliceFit2[3, 2] *)
 (* Iterate[{l, MkRangeIter[1, 5]}, *)
 (*         N3SliceFit2Assign[2 l + 1, 2 l]]; *)
@@ -161,9 +166,6 @@ N3SliceFit6Assign[a_, b_] :=
 (*       N3SliceFit5[Floor[(l + shift)/2] * 2, 1 + l]] *)
 (* Block[{shift = 4, l = 11}, *)
 (*       PrecompKh[l + 1, - 0 - Floor[(l + shift)/2] * 2, - 2 0 - Floor[(l + shift)/2] * 2]] *)
-(* LoadPrecomputedKhovanovs[2, {1,-1,1}, Null]; *)
-(* Block[{shift = 4, l = 8}, *)
-(*       Simplify[PrecompKh[Floor[(l + shift)/2] * 2 + 5, -1 - l, Floor[(l + shift)/2] * 2 + 2 2]]] *)
 
 (* hypotn3sliceFit3[-5] = *)
 (*     <|{q, 1} -> (1 - 2*q^2*t - q^2*t^2 + q^6*t^3 - q^8*t^4)/ *)
