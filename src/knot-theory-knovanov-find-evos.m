@@ -139,41 +139,33 @@ N3SliceFit6[a_, b_] :=
 N3SliceFit6Assign[a_, b_] :=
     Set @@ Rule[n3sliceFit6[b], N3SliceFit6[a, b]];
 
-(* FindPretzelEvosForNTant[1, {-1, -1}, Null] *)
+(* ### vv Example of how to try to find evolution in one octant ### *)
+(* Block[{CCCExtraPoints = 2, *)
+(*        CCCSeriesShiftParr = 1, *)
+(*        q = E, t = Pi}, *)
+(*       FindPretzelEvosForNTant[3, {1,1,1,1}, Null]] *)
 
-N3SliceFit2[3, 2]
-
-Iterate[{l, MkRangeIter[1, 5]},
-        N3SliceFit2Assign[2 l + 1, 2 l]];
-
-Iterate[{l, MkRangeIter[1, 5]},
-        N3SliceFit3Assign[2 (l + 1), -1 - l]];
-
-Block[{l = 7},
-      N3SliceFit3Assign[2 (l + 1), -1 - l]];
-
-Block[{shift = 4},
-      Iterate[{l, MkRangeIter[1, 7]},
-              N3SliceFit4Assign[Floor[(l + shift)/2] * 2, -1 - l]]]
-
-Block[{shift = 4},
-      Iterate[{l, MkRangeIter[1, 7]},
-              N3SliceFit5Assign[Floor[(l + shift)/2] * 2, 1 + l]]]
-
-Block[{shift = 4},
-      Iterate[{l, MkRangeIter[1, 7]},
-              N3SliceFit6Assign[Floor[(l + shift)/2] * 2, 1 + l]]]
-
-
-Block[{shift = 4, l = 1},
-      N3SliceFit5[Floor[(l + shift)/2] * 2, 1 + l]]
-
-Block[{shift = 4, l = 11},
-      PrecompKh[l + 1, - 0 - Floor[(l + shift)/2] * 2, - 2 0 - Floor[(l + shift)/2] * 2]]
-
-
-n3sliceFit3[-11] // InputForm
-
+(* ### vv When I was figuring out how to get evolution in complicated-shape regions, I did a lot of these explicit stuff ### *)
+(* N3SliceFit2[3, 2] *)
+(* Iterate[{l, MkRangeIter[1, 5]}, *)
+(*         N3SliceFit2Assign[2 l + 1, 2 l]]; *)
+(* Iterate[{l, MkRangeIter[1, 5]}, *)
+(*         N3SliceFit3Assign[2 (l + 1), -1 - l]]; *)
+(* Block[{l = 7}, *)
+(*       N3SliceFit3Assign[2 (l + 1), -1 - l]]; *)
+(* Block[{shift = 4}, *)
+(*       Iterate[{l, MkRangeIter[1, 7]}, *)
+(*               N3SliceFit4Assign[Floor[(l + shift)/2] * 2, -1 - l]]] *)
+(* Block[{shift = 4}, *)
+(*       Iterate[{l, MkRangeIter[1, 7]}, *)
+(*               N3SliceFit5Assign[Floor[(l + shift)/2] * 2, 1 + l]]] *)
+(* Block[{shift = 4}, *)
+(*       Iterate[{l, MkRangeIter[1, 7]}, *)
+(*               N3SliceFit6Assign[Floor[(l + shift)/2] * 2, 1 + l]]] *)
+(* Block[{shift = 4, l = 1}, *)
+(*       N3SliceFit5[Floor[(l + shift)/2] * 2, 1 + l]] *)
+(* Block[{shift = 4, l = 11}, *)
+(*       PrecompKh[l + 1, - 0 - Floor[(l + shift)/2] * 2, - 2 0 - Floor[(l + shift)/2] * 2]] *)
 
 LoadPrecomputedKhovanovs[2, {1,-1,1}, Null];
 
