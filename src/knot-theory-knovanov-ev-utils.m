@@ -255,7 +255,7 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
                                             Map[Simplify[D[eqn, #]] &, indets]], (* ### << We know equation is linear in indets ### *)
                                    eqns];
                          (* Print[lhs, rhs]; *)
-                         ans = Simplify[Inverse[lhs] . rhs];
+                         ans = Simplify[Inverse[lhs (* , ZeroTest -> PossibleZeroQ[Simplify[# /. {q -> Pi, t -> E}]] & *)] . rhs];
 			 Module[{ans = Module[{i}, Table[Rule[indets[[i]], ans[[i]]], {i, 1, Length[indets]}]]},
                                 Module[{indices = Tuples[Map[Range[0, Length[#] - 1 - 1 + extraPoints]&,
                                                              specs]]},
@@ -976,8 +976,14 @@ FitFamilyWithEigenvaluesGradual[family_, eigenvaluesSpecs__] :=
                                             {q, t},
                                             List[eigenvaluesSpecs]];
 EvoFname[signs_] :=
+    EvoFname[signs, Null];
+EvoFname[signs_, altIndex_] :=
     (CCCDataDir <> "/pretzel-kh-evo-" <> ToString[Length[signs]] <> "-"
-     <> StringRiffle[Map[ToString, signs], "-"] <> ".m");
+     <> StringRiffle[Map[ToString, signs], "-"]
+     <> If[Null === altIndex,
+           "",
+           "-alt" <> ToString[altIndex]]
+     <> ".m");
 MkSymList[symHead_, numSyms_] :=
     Map[Symbol[ToString[symHead] <> ToString[#]] &, Range[1, numSyms]];
 MkEvoFunction[evoRules_] :=

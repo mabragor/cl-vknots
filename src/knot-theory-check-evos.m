@@ -1,10 +1,19 @@
 
 << "knot-theory-knovanov-ev-utils.m";
 
-evoRulesMMM = Get[EvoFname[{-1,-1,-1}]];
-evoRulesPPP = Get[EvoFname[{1,1,1}]];
-evoRulesPPM = Get[EvoFname[{1,1,-1}]];
-evoRulesMMP = Get[EvoFname[{-1,-1,1}]];
+evoRules["MM"] = Get[EvoFname[{-1,-1}]];
+evoRules["PP"] = Get[EvoFname[{1,1}]];
+evoRules["MMM"] = Get[EvoFname[{-1,-1,-1}]];
+evoRules["PPP"] = Get[EvoFname[{1,1,1}]];
+evoRules["PPM"] = Get[EvoFname[{1,1,-1}]];
+evoRules["MMP"] = Get[EvoFname[{-1,-1,1}]];
+evoRules["PPMAlt1"] = Get[EvoFname[{1,1,-1}, 1]];
+evoRules["MMPAlt1"] = Get[EvoFname[{-1,-1,1}, 1]];
+evoRules["PMPAlt1"] = Get[EvoFname[{1,-1,1}, 1]];
+evoRules["MPPAlt1"] = Get[EvoFname[{-1,1,1}, 1]];
+evoRules["MPMAlt1"] = Get[EvoFname[{-1,1,-1}, 1]];
+evoRules["PMMAlt1"] = Get[EvoFname[{1,-1,-1}, 1]];
+regionLabels = {"MMM", "PPP", "PPM", "MMP", "PPMAlt1", "MMPAlt1", "PMPAlt1", "MPPAlt1", "MPMAlt1", "PMMAlt1"};
 TeXifyEvoRules[signsStr_, evoRules_] :=
     (* ### ^^ The goal of this function is to serialize evolution rules in such a way, that one conveniently can ### *)
     (* ###    copy-paste them in TeX.                                                                            ### *)
@@ -20,7 +29,6 @@ TeXifyEvoRules[signsStr_, evoRules_] :=
                             <> "\n\\end{align}")];
            Close[fd];
            Success];
-
 qq[n_] := (q^n - q^(-n))/(q - q^(-1));
 AMatrix = 1/qq[2] {{1, qq[3]}, {1, -1}};
 Lambda[m_] := (-1)^m q^(m (m+1));
@@ -34,10 +42,9 @@ TheorFundJones[genus_] :=
 (* TeXifyEvoRules["--+", evoRulesMMP] *)
 (* fun = MkEvoFunction[evoRulesMMP]; *)
 LoadAllPrecomps[2];
-funPPP = MkEvoFunction[evoRulesPPP];
-funPPM = MkEvoFunction[evoRulesPPM];
-funMMM = MkEvoFunction[evoRulesMMM];
-funMMP = MkEvoFunction[evoRulesMMP];
+Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP"}]]},
+        Rule[evoFun[regionLabel], MkEvoFunction[evoRules[regionLabel]]]
+        /. {Rule -> Set}];
 funJones = TheorFundJones[2];
 ClearAll[WithWrittenFrame];
 SetAttributes[WithWrittenFrame, HoldAllComplete];
@@ -49,6 +56,15 @@ WithWrittenFrame[{fd_, opening_, closing_}, body_] :=
                        WriteString[fd, If[ListQ[closing],
                                           StringJoin @@ Map[ToString, closing],
                                           closing]]];
+CombUpEvoMap[assoc_] :=
+    Association[Map[Function[{rule},
+                             Module[{modrule = rule /. {q -> 1/q, t -> 1/t}},
+                                    Rule[If[EvenQ[Length[modrule[[1]]]],
+                                            (Mask @@ Map[# t q^3 &, modrule[[1]]]),
+                                            (Mask @@ Append[Map[# t q^3 &, modrule[[1, 1 ;; -2]]],
+                                                            modrule[[1, -1]]])],
+                                         Factor[Simplify[modrule[[2]]]]]]],
+                    Select[Normal[assoc], 0 =!= #[[2]] &]]];
 (* ### vv Matching my braid orientation conventions with Morozov's ### *)
 (* Expand[Factor[Block[{n0 = -5, n1 = 0, n2 = 0}, *)
 (*                     Simplify[(funPPP[n0, n1, n2]/(q + q^(-1))^2 /. {t -> -1})]]]] *)
@@ -56,9 +72,200 @@ WithWrittenFrame[{fd_, opening_, closing_}, body_] :=
 (*                     Simplify[(funPPP[n0, n1, n2] /. {t -> -1})/(q + q^(-1))]]]] *)
 (* Block[{n0 = 0, n1 = 0, n2 = 2}, *)
 (*       Expand[Simplify[funJones[n0, n1, n2]/(q+q^(-1))^2 (- q^(-15))]]] *)
-(* Block[{n0 = 0, n1 = 0, n2 = 3}, *)
-(*       Simplify[(funPPP[n0, n1, 2 n2] /. {t -> -1}) *)
-(*                /(funJones[n0, n1, 2 n2] (-q^(-3))^(n0 + n1) /. {q -> 1/q})]] *)
+(* Block[{n0 = 10, n1 = 20, n2 = 15}, *)
+(*       Simplify[(evoFun["PPM"][n0, n1, 2 n2] /. {t -> -1, q -> 1/q}) (-q^(3))^(n0 + n1) *)
+(*                /funJones[n0, n1, 2 n2]]] *)
+Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP"}]]},
+        Rule[evoRulesCombed[regionLabel], CombUpEvoMap[evoRules[regionLabel]]]
+        /. {Rule -> Set}];
+(* ### vv Restore the dependence on the last evolution parameter, corresponding to the antiparallel braid ### *)
+(* ###    from the requirement that the result is symmetric function of the eigenvalues.                  ### *)
+SymmetricallyRestoreEvoMap[assoc_] :=
+    Module[{res = <||>, key, val,
+            indets = {}},
+           Iterate[{{eig1, eig2, eig3}, MkTupleIter[AList[1, -1, t q^2], AList[1, -1, t q^2], AList[1, -1, t q^2]]},
+                   If[t q^2 === eig3,
+                      AssociateTo[res, Rule[Mask[eig1, eig2, eig3], Lookup[assoc, Mask[eig1, eig2, eig3], 0]]],
+                      If[1 === eig3,
+                         Block[{},
+                               AppendTo[indets, AA[eig1, eig2, eig3]];
+                               AssociateTo[res, Rule[Mask[eig1, eig2, eig3], AA[eig1, eig2, eig3]]]],
+                         If[-1 === eig3,
+                            AssociateTo[res, Rule[Mask[eig1, eig2, eig3],
+                                                  Lookup[assoc, Mask[eig1, eig2, -eig3], 0] - AA[eig1, eig2, -eig3]]]]]]];
+           (* ### vv We further need to solve for symmetry ### *)
+           Module[{eqns = {}},
+                  Scan[Function[{eigSet},
+                                AppendTo[eqns, Map[Lookup[res, Mask @@ #, 0] - Lookup[res, Mask @@ eigSet, 0] == 0 &,
+                                                   Permutations[eigSet]]]],
+                       DeleteDuplicates[Map[Sort, Tuples[{1, -1, t q^2}, 3]]]];
+                  Module[{ans = Quiet[Solve[Flatten[eqns], indets]]},
+                         res /. ans[[1]]]]];
+FullSymmRestore[label_] :=
+    Module[{tmpans = Factor[SymmetricallyRestoreEvoMap[evoRulesCombed[label]]]},
+           Rule[evoRulesSymrest[label],
+                Factor[Simplify[tmpans /. Simplify[Solve[tmpans[Mask[-1,-1,1]] == 0,
+                                                         {AA[1,1,1]}][[1]]]]]]
+           /. {Rule -> Set}];
+PretzelAnsatz[r_, g_, eigs_] :=
+    Module[{i, k},
+           Sum[Product[Plus @@ Map[AA[k, #] lambda[i, #] &,
+                                   eigs],
+                       {i, 0, g}],
+               {k, 0, r}]];
+FullSymmRestore["PPM"];
+FullSymmRestore["PPP"];
+FullSymmRestore["MMM"];
+CombUpEvoMap2[assoc_] :=
+    Module[{res = <||>, key, val},
+           Iterate[{rule, MkListIter[Normal[assoc]]},
+                   (* Print["rule: ", rule]; *)
+                   key = rule[[1]]; val = rule[[2]]; (* ### << We need this destructuring ### *)
+                   Module[{modKey = Mask @@ Simplify[Abs[List @@ key], Assumptions -> q > 0 && t > 0]},
+                          Module[{prevVal = Lookup[res, modKey, 0]},
+                                 (* Print["modKey: ", modKey, " prevVal: ", prevVal]; *)
+                                 AssociateTo[res, Rule[modKey, prevVal + val]]]]];
+           Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, res]]];
+(* ### vv Figure out all free AA[*] parameters that occur in the values of a given association ### *)
+GetAIndets[assoc_] :=
+    Sort[Select[Variables[Values[assoc]],
+                AA === Head[#] &]];
+PrettyPrintRules[assoc_, preAssoc_] :=
+    (* ### ^^ We need to add the preassoc, to print also delta's ### *)
+    Module[{res = {},
+            aIndets = GetAIndets[preAssoc]},
+           Scan[Function[{key},
+                         If[Or[0 =!= assoc[key], 0 =!= preAssoc[key]],
+                            Module[{val = assoc[key]},
+                                   (* Print["val: ", val]; *)
+                                   AppendTo[res,
+                                            If[1 === Length[Permutations[key]],
+                                               Simplify[Times @@ MapIndexed[#1^Subscript[n, #2[[1]]-1] &, key]],
+                                               (Simplify[Times @@ MapIndexed[#1^Subscript[n, #2[[1]]-1] &, key]] + perms)]
+                                            * Module[{coeff = Factor[Simplify[val]], i},
+                                                     For[i = 1, i <= Length[aIndets], i ++,
+                                                         coeff += (Simplify[D[preAssoc[key], aIndets[[i]]]]
+                                                                   * Subscript[\[Delta], i])];
+                                                     coeff]]]]],
+                DeleteDuplicates[Map[Sort, Keys[assoc]]]];
+           (Plus @@ res) /. {t -> T} // TeXForm];
+
+FullSymmRestore["PPMAlt1"]
+
+PrettyPrintRules[CombUpEvoMap2[evoRulesCombed["MMM"]], <||>]
+
+Out[5]//TeXForm= 
+   -\frac{\left(q^8 T^4-q^6 T^3+q^2 T^2+2 q^2 T-1\right) \left(\left(q^2
+    T\right)^{n_1+n_2}+\text{perms}\right)}{q \left(q^2 T-1\right)^2 \left(q^2
+    T+1\right)}+\frac{\left(q^4 T+1\right) \left(q^4 T^2+1\right) \left(q^4
+    T^2-q^2 T+1\right) \left(q^2 T\right)^{n_0+n_1+n_2}}{q^3 \left(q^2
+    T-1\right)^2 \left(q^2 T+1\right)}+\frac{q^6 T^3+q^4 T^3+q^4 T^2-q^2 T^2-2
+    q^2 T+T+1}{q \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}
+
+Out[4]//TeXForm= 
+   \frac{\left(q^8 T^4-2 q^6 T^3-q^6 T^2+q^2 T-1\right) \left(\left(q^2
+    T\right)^{n_1+n_2}+\text{perms}\right)}{q T \left(q^2 T-1\right)^2
+    \left(q^2 T+1\right)}+\frac{\left(q^4 T+1\right) \left(q^4 T^2+1\right)
+    \left(q^4 T^2-q^2 T+1\right) \left(q^2 T\right)^{n_0+n_1+n_2}}{q^3 T^2
+    \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}+\frac{q \left(q^6 T^3+q^6
+    T^2-2 q^4 T^2-q^4 T+q^2 T+q^2+1\right)}{\left(q^2 T-1\right)^2 \left(q^2
+    T+1\right)}
+
+Out[3]//TeXForm= 
+   \frac{\left(q^8 T^3+q^6 T^3-q^4 T^2-q^4 T+q^2+1\right) \left(\left(q^2
+    T\right)^{n_1+n_2}+\text{perms}\right)}{q \left(q^2 T-1\right)^2 \left(q^2
+    T+1\right)}-\frac{\left(q^4 T+1\right) \left(q^4 T^2+1\right) \left(q^4
+    T^2-q^2 T+1\right) \left(q^2 T\right)^{n_0+n_1+n_2}}{q^3 T \left(q^2
+    T-1\right)^2 \left(q^2 T+1\right)}+\frac{q \left(q^4 T^3-2 q^2 T^2-2 q^2
+    T+1\right)}{\left(q^2 T-1\right)^2 \left(q^2 T+1\right)}
+
+?? SymmetricallyRestoreEvoMap
+
+preRules = SymmetricallyRestoreEvoMap[evoRulesCombed["PPMAlt1"]];
+
+Apart[preRules, AA[1,1,1]]
+
+
+Variables[evoRulesSymrest["MMM"]]
+
+GetAIndets[SymmetricallyRestoreEvoMap[Evaluate[evoRulesCombed["PPM"]]]]
+
+D[AA[1,1,1]^2, AA[1,1,1]]
+
+Out[49]= {AA[1, 1, 1]}
+
+Block[{label = "MMM"},
+      PrettyPrintRules[evoRulesSymrest[label],
+                       SymmetricallyRestoreEvoMap[Evaluate[evoRulesCombed[label]]]]]
+
+                  
+                  
+
+Factor[Simplify[preRules /. Solve[preRules[Mask[1,1,-1]] - preRules[Mask[t q^2, t q^2,-1]] == 0,
+                                  AA[1,1,1]][[1]]]]
+
+Select[Normal[Simplify[evoRulesSymrest["PPP"]]],
+       0 =!= #[[2]] &] /. {t -> T} // TeXForm
+
+         
+
+Simplify[evoRulesSymrest["PPM"][Mask[1,1,1]] /. {t -> -1}]
+
+Simplify[evoRulesSymrest["PPM"][Mask[t q^2, t q^2, t q^2]] /. {t -> -1}]
+
+Factor[Simplify[evoRulesSymrest["PPP"] - evoRulesSymrest["PPM"]]]
+
+Factor[Simplify[ans2]]
+
+                   
+(* ### vv Symbolic checks that my formula coincides with formula (5) from 1412.2616 ### *)
+(* Simplify[(funPPM[n0, n1, 2 n2] /. {t -> -1, q -> 1/q}) (-q^(3))^(n0 + n1) *)
+(*          - funJones[n0, n1, 2 n2], *)
+(*          Assumptions -> Element[n0, Integers] && Element[n1, Integers] && Element[n2, Integers]] *)
+(* ### ---------------------------------------------------------------------------------------- ### *)
+(* funPPMCombed = MkEvoFunction[CombUpEvoMap[evoRules["PPM"]]]; *)
+(* Simplify[(funPPMCombed[n0, n1, 2 n2] /. {t -> -1}) *)
+(*          - funJones[n0, n1, 2 n2], *)
+(*          Assumptions -> Element[n0, Integers] && Element[n1, Integers] && Element[n2, Integers]] *)
+(* ### ^^ Alright, after first combing we still get match with Jones ### *)
+
+
+funPPMCombed2 = MkEvoFunction[CombUpEvoMap2[CombUpEvoMap[evoRulesPPM]]];
+
+(* ### vv After the second combing, the function is still in agreement with Jones at t = -1 ### *)
+Simplify[(funPPMCombed2[2 n0, 2 n1, 2 n2] /. {t -> -1})
+         - funJones[2 n0, 2 n1, 2 n2],
+         Assumptions -> Element[n0, Integers] && Element[n1, Integers] && Element[n2, Integers]]
+
+
+evoRulesMMMCombed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesMMM]]]];
+evoRulesPPPCombed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesPPP]]]];
+evoRulesPPMCombed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesPPM]]]];
+evoRulesMMPCombed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesMMP]]]];
+evoRulesPPMAlt1Combed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesPPMAlt1]]]];
+evoRulesMMPAlt1Combed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesMMPAlt1]]]];
+evoRulesPMPAlt1Combed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesPMPAlt1]]]];
+evoRulesMPPAlt1Combed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesMPPAlt1]]]];
+evoRulesMPMAlt1Combed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesMPMAlt1]]]];
+evoRulesPMMAlt1Combed2 = Association[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, CombUpEvoMap2[CombUpEvoMap[evoRulesPMMAlt1]]]];
+
+evoRulesMMMDiff = Association[Select[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, evoRulesMMMCombed2 - evoRulesPPMCombed2],
+                                     0 =!= #[[2]] &]];
+evoRulesPPPDiff = Association[Select[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, evoRulesPPPCombed2 - evoRulesPPMCombed2],
+                                     0 =!= #[[2]] &]];
+evoRulesPPMDiff = Association[Select[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, evoRulesPPMCombed2 - evoRulesPPMCombed2],
+                                     0 =!= #[[2]] &]];
+evoRulesPPMDiff = Association[Select[KeyValueMap[Rule[#1, Factor[Simplify[#2]]] &, evoRulesPPMCombed2 - evoRulesPPMCombed2],
+                                     0 =!= #[[2]] &]];
+
+(* ### vv The Jones function is indeed symmetric in all of its arguments ### *)
+Map[funJones[n1, n2, n3] - funJones @@ # &,
+    Permutations[{n1,n2,n3}]]
+
+
+CombUpEvoMap2[CombUpEvoMap[evoRulesPPM] /. {t -> -1}]
+
+    
 (* Module[{n0,n1,n2, max = 5}, *)
 (*        Tally[Flatten[Table[Simplify[(funPPP[n0, n1, 2 n2] /. {t -> -1}) *)
 (*                                     /(funJones[n0, n1, 2 n2] (-q^(-3))^(n0 + n1 + 0 n2) /. {q -> 1/q})], *)
@@ -71,28 +278,59 @@ CCCPicXCoordStart = 0;
 CCCPicYCoordStart = 0;
 CCCBasePointXShift = 15;
 CCCBasePointYShift = 15;
+CCCLatticeSize = 4;
 VizualizeEvolutions[] :=
     Module[{theFd = OpenWrite["/home/popolit/tmp/visualize-evolutions.tex"]},
-           Iterate[{n3, MkRangeIter[-10, 10, 2]},
+           Iterate[{n3, MkRangeIter[-CCCLatticeSize, CCCLatticeSize, 2]},
                    WithWrittenFrame[{theFd,
-                                     {"$n_3 = ", n3, "$\n\\begin{align}\n", "\\begin{picture}(", CCCPicXSize, ",", CCCPicYSize, ")\n"},
+                                     {"$n_3 = ", n3, "$\n\\begin{align}\n",
+                                      "\\begin{picture}(", CCCPicXSize, ",", CCCPicYSize, ")"
+                                      , "(", -CCCPicXSize/2, ",", -CCCPicYSize/2, ")\n"},
                                      {"\\end{picture}\n", "\\end{align}\n"}},
-                                    Iterate[{{n1, n2}, MkTupleIter[{-10, 10}, {-10, 10}]},
+                                    Iterate[{{n1, n2}, MkTupleIter[{-CCCLatticeSize, CCCLatticeSize},
+                                                                   {-CCCLatticeSize, CCCLatticeSize}]},
                                             WithWrittenFrame[{theFd,
                                                               {"\\put(", CCCPicXCoordStart + n1 * CCCBasePointXShift,
                                                                ", ", CCCPicYCoordStart + n2 * CCCBasePointYShift, ") {\n"},
                                                               "}\n"},
                                                              WriteString[theFd, "\\basePoint\n"];
-                                                             If[0 === Simplify[funPPP[n1,n2,n3] - PrecompKh[n1,n2,n3]],
-                                                                WriteString[theFd, "\\urPoint\n"]];
-                                                             If[0 === Simplify[funPPM[n1,n2,n3] - PrecompKh[n1,n2,n3]],
-                                                                WriteString[theFd, "\\rPoint\n"]];
-                                                             If[0 === Simplify[funMMP[n1,n2,n3] - PrecompKh[n1,n2,n3]],
-                                                                WriteString[theFd, "\\lPoint\n"]];
-                                                             If[0 === Simplify[funMMM[n1,n2,n3] - PrecompKh[n1,n2,n3]],
-                                                                WriteString[theFd, "\\dlPoint\n"]]]]]];
+                                                             Module[{expr = PrecompKh[n1,n2,n3]},
+                                                                    If[0 === Simplify[funPPP[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\urPoint\n"]];
+                                                                    If[0 === Simplify[funPPM[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\rPoint\n"]];
+                                                                    If[0 === Simplify[funMMP[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\lPoint\n"]];
+                                                                    If[0 === Simplify[funMMM[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\dlPoint\n"]];
+                                                                    If[0 === Simplify[funPPMAlt1[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\uPoint\n"]];
+                                                                    If[0 === Simplify[funMMPAlt1[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\dPoint\n"]];
+                                                                    If[0 === Simplify[funPMPAlt1[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\drPoint\n"]];
+                                                                    If[0 === Simplify[funMPPAlt1[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\ulPoint\n"]];
+                                                                    If[0 === Simplify[funMPMAlt1[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\drAltPoint\n"]];
+                                                                    If[0 === Simplify[funPMMAlt1[n1,n2,n3] - expr],
+                                                                       WriteString[theFd, "\\ulAltPoint\n"]];
+                                                                   ];
+                                                            ]]]];
            Close[theFd];
            Success];
+
+Block[{n1 = 10, n2 = -3, n3 = 6},
+      FullSimplify[funPMPAlt1[n1, n2, n3] - PrecompKh[n1, n2, n3]]]
+
+TeXifyEvoRules["+--alt", evoRulesPMMAlt1]
+
+evoRulesPPMMod1 = evoRulesPPM;
+evoRulesPPMMod1[{q,q, (t^2 q^4)^(-1)}] = 0;
+
+evoRulesPPMMod1
+
+evoRulesPPMAlt1 - evoRulesPPMMod1
 
 (* ### vv Matching of my and Morozov's conventions about braids orientations and framing ### *)
 (* Expand[Factor[Block[{n0 = -5, n1 = 0, n2 = 0}, *)
@@ -104,6 +342,11 @@ VizualizeEvolutions[] :=
 (* Block[{n0 = 0, n1 = 0, n2 = 3}, *)
 (*       Simplify[(funPPP[n0, n1, 2 n2] /. {t -> -1}) *)
 (*                /(funJones[n0, n1, 2 n2] (-q^(-3))^(n0 + n1) /. {q -> 1/q})]] *)
+
+Simplify[(evoFun["MM"][n0, n1] /. {t -> -1})
+         - (TheorFundJones[1][n0, n1, 2 n2] (-q^(-3))^(n0 + n1) /. {q -> 1/q}),
+         Assumptions -> q > 0 && t > 0 && Element[n0, Integers] && Element[n1, Integers]]
+
 (* Module[{n0,n1,n2, max = 5}, *)
 (*        Tally[Flatten[Table[Simplify[(funPPP[n0, n1, 2 n2] /. {t -> -1}) *)
 (*                                     /(funJones[n0, n1, 2 n2] (-q^(-3))^(n0 + n1 + 0 n2) /. {q -> 1/q})], *)
@@ -111,7 +354,11 @@ VizualizeEvolutions[] :=
 (*                            {n1, -max, max}, *)
 (*                            {n2, -max, max}]]]] *)
 
-VizualizeEvolutions[]
+Block[{CCCLatticeSize = 8},
+      VizualizeEvolutions[]]
+
+        
+Out[4]= Success
 
 Simplify[funMMP[1,2,4] - PrecompKh[1,2,4]]
 

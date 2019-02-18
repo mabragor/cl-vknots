@@ -155,6 +155,33 @@ Block[{CCCMaxParallelWindings = 22,
                                            #[[2]] >= Abs[#[[3]]],
                                            #[[2]] <= Abs[#[[3]]] + 5 + 1] &]]
 
+Block[{CCCMaxParallelWindings = 16,
+       CCCMaxAntiparallelWindings = 10},
+      PrecomputePretzelsSoft[{-1,-1,1}, And[#[[1]] <= -#[[3]],
+                                            #[[1]] >= -#[[3]] - 5 - 1,
+                                            #[[2]] <= -#[[3]],
+                                            #[[2]] >= -#[[3]]] - 5 - 1 &]];
+
+Block[{CCCMaxParallelWindings = 23,
+       CCCMaxAntiparallelWindings = 26,
+       shift = 4},
+      PrecomputePretzelsSoft[{1,-1,-1}, And[#[[2]] <= -#[[1]],
+                                            #[[2]] >= -(Floor[(#[[1]] + shift)/2] * 2 + 5),
+                                            #[[3]] <= -#[[1]],
+                                            #[[3]] >= -(Floor[(#[[1]] + shift)/2] * 2 + 2 4),
+                                            #[[1]] <= 11
+                                           ] &]]
+
+Block[{CCCMaxParallelWindings = 23,
+       CCCMaxAntiparallelWindings = 26,
+       shift = 4},
+      PrecomputePretzelsSoft[{-1,1,-1}, And[#[[1]] <= -#[[2]],
+                                            #[[1]] >= -(Floor[(#[[2]] + shift)/2] * 2 + 5),
+                                            #[[3]] <= -#[[2]],
+                                            #[[3]] >= -(Floor[(#[[2]] + shift)/2] * 2 + 2 4),
+                                            #[[2]] <= 11
+                                           ] &]]
+
 (* a = SkipUntilIter[{-1,1}, *)
 (*                   MkTupleIter @@ Map[AList @@ # &, Module[{i}, Table[{1,-1}, {i, 1, 1 + 1}]]]]; *)
 (* a = MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings}, *)
