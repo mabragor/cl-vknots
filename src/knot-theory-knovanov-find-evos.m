@@ -2,6 +2,7 @@
 << "knot-theory-knovanov-ev-utils.m";
 << "tuple-iterator.m";
 
+
 (* ### vv Constants to make the series detection robust ### *)
 CCCSeriesShiftParr = 2;
 CCCSeriesShiftAntiParr = 2;
@@ -24,6 +25,10 @@ LoadPrecomputedKhovanovs[genus_, signs_, fdlog_] :=
                <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"];
            Debugg[fdlog, " ... done!"]];
 FindPretzelEvosForNTant[genus_, signs_, fdlog_] :=
+    FindPretzelEvosForNTant[genus, "kh", PrecompKh, signs, fdlog];
+FindReducedPretzelEvosForNTant[genus_, signs_, fdlog_] :=
+    FindPretzelEvosForNTant[genus, "kh-red", PrecompKhRed, signs, fdlog];
+FindPretzelEvosForNTant[genus_Integer, fnameRoot_String, pollyFun_Symbol, signs_List, fdlog_] :=
     Module[{},
            LoadPrecomputedKhovanovs[genus, signs, fdlog];
            Debugg[fdlog, "Calculating evos for: ("
@@ -42,25 +47,34 @@ FindPretzelEvosForNTant[genus_, signs_, fdlog_] :=
                   (* Print[MkPrecompEigSpecs[seriesExprs]]; *)
                   Module[{theAns = Block[{extraPoints = CCCExtraPoints},
                                          (FitFamilyWithEigenvaluesGradual
-                                          @@ Prepend[MkPrecompEigSpecs[seriesExprs],
-                                                     MkPrecompFunction[seriesExprs]])]},
-                         Module[{fd = OpenWrite[CCCDataDir <> "/pretzel-kh-evo-" <> ToString[genus+1]
+                                          @@ Prepend[MkPrecompEigSpecs[fnameRoot, seriesExprs],
+                                                     MkPrecompFunction[pollyFun, seriesExprs]])]},
+                         Module[{fd = OpenWrite[CCCDataDir <> "/pretzel-" <> fnameRoot <> "-evo-" <> ToString[genus+1]
                                                 <> "-" <> StringRiffle[Map[ToString, signs], "-"]
                                                 <> ".m"]},
                                 WriteString[fd, ToString[Factor[Simplify[theAns]], InputForm] <> ""];
                                 Close[fd]]]];
            Debugg[fdlog, " done!"]];
-MkPrecompFunction[seriesExprs_] :=                
+MkPrecompFunction[pollyFun_, seriesExprs_] :=                
     (Function @@ {Map[Symbol["k" <> ToString[#]] &, Range[1, Length[seriesExprs]]],
-                  PrecompKh @@ MapIndexed[#1 /. {k ->
-                                                 Symbol["k" <> ToString[#2[[1]]]]} &,
-                                          seriesExprs]});
-MkPrecompEigSpecs[seriesExprs_] :=
+                  pollyFun @@ MapIndexed[#1 /. {k ->
+                                                Symbol["k" <> ToString[#2[[1]]]]} &,
+                                         seriesExprs]});
+MkPrecompEigSpecs["kh", seriesExprs_] :=
     Append[Map[Join[{#}, PosFundEigenvalues[]] &,
                seriesExprs[[;;-2]]],
            Join[{seriesExprs[[-1]]},
                 If[EvenQ[Length[seriesExprs]],
                    PosFundEigenvalues[],
+                   NegAdjEigenvalues[]]]];
+PosFundRedEigenvalues[] :=
+    {q, -q, t q^3, -t q^3};
+MkPrecompEigSpecs["kh-red", seriesExprs_] :=
+    Append[Map[Join[{#}, PosFundRedEigenvalues[]] &,
+               seriesExprs[[;;-2]]],
+           Join[{seriesExprs[[-1]]},
+                If[EvenQ[Length[seriesExprs]],
+                   PosFundRedEigenvalues[],
                    NegAdjEigenvalues[]]]];
 N3SliceFit1[a_, b_] :=
     Block[{kA = a,
@@ -140,10 +154,10 @@ N3SliceFit6Assign[a_, b_] :=
     Set @@ Rule[n3sliceFit6[b], N3SliceFit6[a, b]];
 
 (* ### vv Example of how to try to find evolution in one octant ### *)
-(* Block[{CCCExtraPoints = 2, *)
-(*        CCCSeriesShiftParr = 1, *)
-(*        q = E, t = Pi}, *)
-(*       FindPretzelEvosForNTant[3, {1,1,1,1}, Null]] *)
+Block[{CCCExtraPoints = 2,
+       CCCSeriesShiftParr = 1,
+       CCCSeriesShiftAntiParr = 0},
+      FindReducedPretzelEvosForNTant[1, {1,1}, Null]]
 
 (* ### vv When I was figuring out how to get evolution in complicated-shape regions, I did a lot of these explicit stuff ### *)
 (* N3SliceFit2[3, 2] *)
@@ -792,6 +806,32 @@ ans1
 
 Solve[0 == Sum[CC[i] x^i, {i, 0, theOrder-1}] /. ans1[[1]],
       x]
+
+
+Block[{k = 4},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[Simplify[PrecompKhRed[1, k + 1]]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - q fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] + q fun1[k]]]];
+             fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - t q^3 fun2[k]]]];
+             fun4 = Function[{k}, Expand[Simplify[fun3[k+1] + t q^3 fun3[k]]]];
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun4[k]
+            ]]
+
+Block[{k = 3},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[Simplify[PrecompKhRed[1,2 k]]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - q^2 fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - t^2 q^6 fun1[k]]]];
+             (* fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - t^4 q^8 fun2[k]]]]; *)
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun2[k]
+            ]]
+
+                                                                        
+
+
 
 
 Block[{k = 6},
