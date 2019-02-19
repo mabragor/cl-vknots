@@ -2,6 +2,8 @@
 << "knot-theory-knovanov-ev-utils.m";
 
 evoRules["PPred"] = Get[EvoFname["red", {1,1}]];
+evoRules["PPPPPP"] = Get[EvoFname[{1,1,1,1,1,1}]];
+evoRules["PPPPP"] = Get[EvoFname[{1,1,1,1,1}]];
 evoRules["PPPP"] = Get[EvoFname[{1,1,1,1}]];
 evoRules["MM"] = Get[EvoFname[{-1,-1}]];
 evoRules["PP"] = Get[EvoFname[{1,1}]];
@@ -16,6 +18,7 @@ evoRules["MPPAlt1"] = Get[EvoFname[{-1,1,1}, 1]];
 evoRules["MPMAlt1"] = Get[EvoFname[{-1,1,-1}, 1]];
 evoRules["PMMAlt1"] = Get[EvoFname[{1,-1,-1}, 1]];
 regionLabels = {"MMM", "PPP", "PPM", "MMP", "PPMAlt1", "MMPAlt1", "PMPAlt1", "MPPAlt1", "MPMAlt1", "PMMAlt1"};
+auxRegionLabels = {"MM", "PP", "PPPP", "PPPPP", "PPPPPP"};
 TeXifyEvoRules[signsStr_, evoRules_] :=
     (* ### ^^ The goal of this function is to serialize evolution rules in such a way, that one conveniently can ### *)
     (* ###    copy-paste them in TeX.                                                                            ### *)
@@ -43,11 +46,12 @@ TheorFundJones[genus_] :=
                                           {k, 0, 1}]]]]];
 (* TeXifyEvoRules["--+", evoRulesMMP] *)
 (* fun = MkEvoFunction[evoRulesMMP]; *)
-LoadAllPrecomps[2];
-Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP", "PPPP"}]]},
-        Rule[evoFun[regionLabel], MkEvoFunction[evoRules[regionLabel]]]
-        /. {Rule -> Set}];
-funJones = TheorFundJones[2];
+(* ### vv This code was needed to test against Jones ### *)
+(* B[LoadAllPrecomps[2]; *)
+(*   Iterate[{regionLabel, MkListIter[Join[regionLabels, auxRegionLabels]]}, *)
+(*           Rule[evoFun[regionLabel], MkEvoFunction[evoRules[regionLabel]]] *)
+(*           /. {Rule -> Set}];] *)
+(* funJones = TheorFundJones[2]; *)
 ClearAll[WithWrittenFrame];
 SetAttributes[WithWrittenFrame, HoldAllComplete];
 WithWrittenFrame[{fd_, opening_, closing_}, body_] :=
@@ -77,7 +81,7 @@ CombUpEvoMap[assoc_] :=
 (* Block[{n0 = 10, n1 = 20, n2 = 15}, *)
 (*       Simplify[(evoFun["PPM"][n0, n1, 2 n2] /. {t -> -1, q -> 1/q}) (-q^(3))^(n0 + n1) *)
 (*                /funJones[n0, n1, 2 n2]]] *)
-Iterate[{regionLabel, MkListIter[Join[regionLabels, {"MM", "PP", "PPPP"}]]},
+Iterate[{regionLabel, MkListIter[Join[regionLabels, auxRegionLabels]]},
         Rule[evoRulesCombed[regionLabel], CombUpEvoMap[evoRules[regionLabel]]]
         /. {Rule -> Set}];
 (* ### vv Assume that we know dependence on the last parameter only in even points   ### *)
@@ -97,27 +101,51 @@ BlowUpLastEigSigns[assoc_, indetHead_] :=
             indets}];
 (* ### vv Restore the dependence on the last evolution parameter, corresponding to the antiparallel braid ### *)
 (* ###    from the requirement that the result is symmetric function of the eigenvalues.                  ### *)
+(* ### vv This element is to conveniently structure the code, without CompoundExpression[...] or          ### *)
+(* ###    Block[{}, ...]                                                                                  ### *)
+ClearAll[B];
+SetAttributes[B, HoldAllComplete];
+B[body_] :=
+    CompoundExpression[body];
 SymmetricallyRestoreEvoMap[assoc_] :=
-    Module[{res = <||>, key, val,
-            indets = {}},
-           Iterate[{{eig1, eig2, eig3}, MkTupleIter[AList[1, -1, t q^2], AList[1, -1, t q^2], AList[1, -1, t q^2]]},
-                   If[t q^2 === eig3,
-                      AssociateTo[res, Rule[Mask[eig1, eig2, eig3], Lookup[assoc, Mask[eig1, eig2, eig3], 0]]],
-                      If[1 === eig3,
-                         Block[{},
-                               AppendTo[indets, AA[eig1, eig2, eig3]];
-                               AssociateTo[res, Rule[Mask[eig1, eig2, eig3], AA[eig1, eig2, eig3]]]],
-                         If[-1 === eig3,
-                            AssociateTo[res, Rule[Mask[eig1, eig2, eig3],
-                                                  Lookup[assoc, Mask[eig1, eig2, -eig3], 0] - AA[eig1, eig2, -eig3]]]]]]];
-           (* ### vv We further need to solve for symmetry ### *)
+    Module[{indets, blownUpAssoc},
+           {blownUpAssoc, indets} = BlowUpLastEigSigns[assoc, AA];
            Module[{eqns = {}},
-                  Scan[Function[{eigSet},
-                                AppendTo[eqns, Map[Lookup[res, Mask @@ #, 0] - Lookup[res, Mask @@ eigSet, 0] == 0 &,
-                                                   Permutations[eigSet]]]],
-                       DeleteDuplicates[Map[Sort, Tuples[{1, -1, t q^2}, 3]]]];
-                  Module[{ans = Quiet[Solve[Flatten[eqns], indets]]},
-                         res /. ans[[1]]]]];
+                  Module[{seenQ = <||>},
+                         eqns = KeyValueMap[Function[{key, val},
+                                                     Module[{sortedKey = Sort[key]},
+                                                            If[KeyExistsQ[seenQ, sortedKey],
+                                                               {},
+                                                               B[seenQ[sortedKey] = True;
+                                                                 Map[Function[{permKey},
+                                                                              0 == (val - Lookup[blownUpAssoc, permKey, 0])],
+                                                                     Permutations[sortedKey]]]]]],
+                                            blownUpAssoc];
+                         (* ### ^^ Symmetry w.r.t permutation of all indices ### *)
+                         eqns = Flatten[eqns];
+                         Module[{ans = Solve[eqns, indets]},
+                                blownUpAssoc /. ans[[1]]]]]];
+(* SymmetricallyRestoreEvoMap[assoc_] := *)
+(*     Module[{res = <||>, key, val, *)
+(*             indets = {}}, *)
+(*            Iterate[{{eig1, eig2, eig3}, MkTupleIter[AList[1, -1, t q^2], AList[1, -1, t q^2], AList[1, -1, t q^2]]}, *)
+(*                    If[t q^2 === eig3, *)
+(*                       AssociateTo[res, Rule[Mask[eig1, eig2, eig3], Lookup[assoc, Mask[eig1, eig2, eig3], 0]]], *)
+(*                       If[1 === eig3, *)
+(*                          Block[{}, *)
+(*                                AppendTo[indets, AA[eig1, eig2, eig3]]; *)
+(*                                AssociateTo[res, Rule[Mask[eig1, eig2, eig3], AA[eig1, eig2, eig3]]]], *)
+(*                          If[-1 === eig3, *)
+(*                             AssociateTo[res, Rule[Mask[eig1, eig2, eig3], *)
+(*                                                   Lookup[assoc, Mask[eig1, eig2, -eig3], 0] - AA[eig1, eig2, -eig3]]]]]]]; *)
+(*            (\* ### vv We further need to solve for symmetry ### *\) *)
+(*            Module[{eqns = {}}, *)
+(*                   Scan[Function[{eigSet}, *)
+(*                                 AppendTo[eqns, Map[Lookup[res, Mask @@ #, 0] - Lookup[res, Mask @@ eigSet, 0] == 0 &, *)
+(*                                                    Permutations[eigSet]]]], *)
+(*                        DeleteDuplicates[Map[Sort, Tuples[{1, -1, t q^2}, 3]]]]; *)
+(*                   Module[{ans = Quiet[Solve[Flatten[eqns], indets]]}, *)
+(*                          res /. ans[[1]]]]]; *)
 FullSymmRestore[label_] :=
     Module[{tmpans = Factor[SymmetricallyRestoreEvoMap[evoRulesCombed[label]]]},
            Rule[evoRulesSymrest[label],
@@ -196,8 +224,8 @@ SymmRestoreNPletEvoMap[assocs__] :=
                                               List[assocs]]},
                   (* {blownUpAssocs, indets} *)
                   (* ### vv Alright, now we need to generate a bunch of equations ### *)
-                  (* ###    These include: each blown up assoc is symmetric w.r.t all of its arguments except i-th ### *)
-                  (* ###    When we do a cyclic permutation of argument, we get to the next assoc ### *)
+                  (* ###    These include: when we do a cyclic permutation of argument, we get to the next assoc   ### *)
+                  (* ###                   each blown up assoc is symmetric w.r.t all of its arguments except i-th ### *)
                   Module[{eqns = {}},
                          For[i = 1, i < Length[blownUpAssocs], i ++, (* ### << We loop over all but last association ### *)
                              AppendTo[eqns,
@@ -238,6 +266,82 @@ CheckRulesSymmetricQ[assoc_] :=
                                         Map[0 === Simplify[val - assoc[key]] &,
                                             Permutations[key]]],
                                assoc]];
+qtOne = (-t) (1 + q^4 t)/(1 + q^2 t)/(1 - q^2 t);
+qtTwo = (1 - q^2 t)/q;
+qtThree = (1 - q^2 t + q^4 t^2)/(-t)/q^2;
+TheorEvo[g_] :=
+    (qtOne
+     Product[1/qtTwo + qtThree/qtTwo (q^2 t)^n[i],
+             {i, 0, g}]
+     + (qtOne qtThree
+        Product[1/qtTwo - 1/qtTwo (q^2 t)^n[i],
+                {i, 0, g}]));
+MkEvoExpr[evoRules_] :=
+    Module[{numArgs = Length[Keys[evoRules][[1]]]}, (* ### << I know this is a bit excessive, but I don't know any other way ### *)
+           Simplify[Plus @@ KeyValueMap[#2
+                                        * Times @@ MapIndexed[Function[{eigenvalue, number},
+                                                                       eigenvalue^n[number[[1]] - 1]],
+                                                              #1] &,
+                                        evoRules]]];
+
+TheorEvoCorr[g_] :=
+    q^(g+1) (t + 1)/2/(1 + q^2 t) (Product[1/2 + 1/2 (-1)^n[i] + (q^2 t)^n[i],
+                                           {i, 0, g}]
+                                   + Product[1/2 + 1/2 (-1)^n[i] - (q^2 t)^n[i],
+                                             {i, 0, g}]);
+
+TheorEvoCorr2[g_] :=
+    q^(g+1)/2^(g+1) (t + 1)/(1 + q^2 t) Product[1 - (-1)^n[i],
+                                                {i, 0, g}];
+
+theorCross1 = ExpandNumerator[Simplify[qtOne / qtTwo (qtThree/qtTwo)^2 + qtOne qtThree /qtTwo /(-qtTwo)^2]];
+
+evoRulesSymrest["PPP"][Mask[-1,-1,-1]]
+
+TheorEvoCorr[2]
+
+Module[{g = 2},
+       Factor[Simplify[(MkEvoExpr[(* bb *) evoRulesSymrest["PPP"]]
+                        - TheorEvo[g] - TheorEvoCorr[g] - TheorEvoCorr2[g])
+                      ]]]
+
+                   n[0]            n[1]            n[2]   3
+         (-1 + (-1)    ) (-1 + (-1)    ) (-1 + (-1)    ) q  (1 + t)
+Out[39]= ----------------------------------------------------------
+                                        2
+                                4 (1 + q  t)
+
+         
+Factor[Simplify[evoRulesSymrest["PPP"][Mask[-1,-1,-1]]]]
+
+           3
+          q  (1 + t)
+Out[15]= ------------
+                 2
+         4 (1 + q  t)
+
+
+
+Factor[Simplify[evoRulesSymrest["PPP"][Mask[q^2 t, q^2 t, 1]]
+                - theorCross1]]
+ 
+           3
+          q  (1 + t)
+Out[14]= ------------
+                 2
+         2 (1 + q  t)
+
+
+Simplify[TheorEvo[2]]
+
+   
+FullSymmRestore["PPP"];
+
+
+
+SymmetricallyRestoreEvoMap[evoRulesCombed["PPPPP"]][Mask[-1,-1,-1,-1,-1]]
+
+FullSymmRestore["PPPPP"]
 
 CheckRulesSymmetricQ[evoRulesCombed["PPPP"]]
 
@@ -261,68 +365,144 @@ bb = Map[Factor[Simplify[# /. (Solve[Factor[Simplify[#]][Mask[1,-1,-1]] == 0,
 
 Factor[Simplify[bb[[1]]]]
 
-PrettyPrintRules[evoRulesCombed["PPPP"], <||>]
+(* ### vv The three "positive" covariant regions ### *)
+aa = SymmetricallyRestoreEvoMap[evoRulesCombed["PPPPP"]];
+bb = Factor[Simplify[aa /. (Solve[Factor[Simplify[aa]][Mask[1,1,1,-1,-1]] == 0,
+                                  AA[1,1,1,1,1]][[1]])]];
 
-Apart[FullSimplify[evoRulesCombed["PP"][Mask[1,1]]], t]
-
-                      2
-         1      -1 - q
-Out[13]= - + -------------
-         2            2
-             2 (-1 + q  t)
-
-Apart[FullSimplify[evoRulesCombed["PPP"][Mask[1,1,1]]], t]
-
-                      3                3
-         q       q + q           -q + q
-Out[14]= - + -------------- + -------------
-         4            2   2            2
-             2 (-1 + q  t)    4 (-1 + q  t)
-
-Apart[FullSimplify[evoRulesCombed["PPPP"][Mask[1,1,1,1]]], t]
-
-          2        2    4          2    4           2    4
-         q       -q  - q          q  - q          -q  + q
-Out[12]= -- + -------------- + -------------- + -------------
-         8             2   3            2   2            2
-              2 (-1 + q  t)    4 (-1 + q  t)    8 (-1 + q  t)
+bb
 
 
-Apart[FullSimplify[evoRulesCombed["PP"][Mask[1,1]]], t]
+(* ### vvv Figuring out evolution coefficient of (1)^(g+1) ### *)
+(* B[TheorOneCoeff[g_] := *)
+(*     (q^(g-1)/2^g q^2 (t+1)/(1 + q^2 t) + q^(g-1) (1 + q^4 t)/(1 - q^2 t)^(g)/(1 + q^2 t) *)
+(*      (\* + q^(g+1)/2^g /(1 + q^2 t) *\)); *)
+(*   Apart[FullSimplify[evoRulesCombed["PP"][Mask[1,1]] *)
+(*                      - TheorOneCoeff[1]], *)
+(*         t] *)
+(*   Apart[FullSimplify[evoRulesCombed["PPP"][Mask[1,1,1]] *)
+(*                      - TheorOneCoeff[2]], *)
+(*         t] *)
+(*   Apart[FullSimplify[evoRulesCombed["PPPP"][Mask[1,1,1,1]] *)
+(*                      - TheorOneCoeff[3]], *)
+(*         t] *)
+(*   Apart[FullSimplify[evoRulesCombed["PPPPP"][Mask[1,1,1,1,1]] *)
+(*                      - TheorOneCoeff[4]], *)
+(*         t] // InputForm *)
+(*   Apart[FullSimplify[evoRulesCombed["PPPPPP"][Mask[1,1,1,1,1,1]] *)
+(*                      - TheorOneCoeff[5]], *)
+(*         t] // InputForm] *)
+
+TheorTwoCoeff[g_] :=
+    (1 + q^4 t) (1 + q^4 t^2) (1 - q^2 t + q^4 t^2)^(g-1)
+    /q^(g+1) /t^(g) /(-1 + q^2 t)^g /(1 + q^2 t);
+
+TheorQSquaredTEvenGenus[g_] :=
+    (- t)(1 + q^4 t)/(1 + q^2 t)/(1 - q^2 t)
+    * (q^(g+1) (1 - q^2 t + q^4 t^2) /q^2 /t /(1 - q^2 t)^(g+1)
+       - (1 - q^2 t + q^4 t^2)^(g+1)/q^(g+1)/t^(g+1)/(1 - q^2 t)^(g+1));
+AuxQSquaredTTerm[g_] :=
+    q^(g-1) (1 + (1 - 1/2^g)(-1 + q^2)/(1 + q^2 t)
+             + (1 - q^2)/2/(1 - q^2 t)^g Sum[1/2^i (1 - q^2 t)^i, {i, 0, g-1}]
+             + q^2/(1 - q^2 t)^g);
+TheorQSquaredTOddGenusPart[g_] :=
+    (1 + q^4 t)/(1 + q^2 t)/(1 - q^2 t)
+    * (q^(g+1) t/(1 - q^2 t)^(g+1) - t (1 - q^2 t + q^4 t^2)^(g+1)/q^(g+1)/t^(g+1)/(1 - q^2 t)^(g+1));
+TheorQSquaredTOddGenusWhole[g_] :=
+    ((1 + q^4 t)/(1 + q^2 t)/(1 - q^2 t) (-t) (1 - q^2 t + q^4 t^2)^(g+1)/q^(g+1)/t^(g+1)/(1 - q^2 t)^(g+1)
+     + (1 + q^4 t) q^(g+1)/(1 - q^2 t)^(g+2)/(1 + q^2 t)/q^2 (1 - q^2 t + q^4 t^2)
+     + q^(g+1) (1 + t)/(1 + q^2 t));
+TheorQSquaredTAllGenera[g_] :=
+    (s1 (1 + q^4 t)/(1 + q^2 t)/(-1 + q^2 t) t (1 - q^2 t + q^4 t^2)^(g+1)/q^(g+1)/t^(g+1)/(-1 + q^2 t)^(g+1)
+     - s2 (1 + q^4 t)/(1 + q^2 t)/(-1 + q^2 t) (1 - q^2 t + q^4 t^2) /q^2 q^(g+1)/(-1 + q^2 t)^(g+1)
+     + s3 1/2 (1 - (-1)^g) q^(g+1) (t + 1)/(1 + q^2 t));
+
+Simplify[AuxQSquaredTTerm[g]]
+
+          -1 + g       4      2               2   g
+         q       (1 + q  t + q  (1 + t) (1 - q  t) )
+Out[73]= -------------------------------------------
+                         2   g       2
+                   (1 - q  t)  (1 + q  t)
+
+anExprEvenGenus = Simplify[Sum[TheorTwoCoeff[2 k - 2 i] q^(2 i)/(1 - q^2 t)^(2 i),
+                               {i, 0, k - 1}] (* /. {q -> E, t -> Pi} *),
+                           Assumptions -> q > 0 && t > 0 && Element[k, Integers]] /. {k -> g/2};
+
+anExprOddGenus = Simplify[Sum[TheorTwoCoeff[2 k + 1 - 2 i] q^(2 i)/(1 - q^2 t)^(2 i),
+                              {i, 0, k}] (* /. {q -> E, t -> Pi} *),
+                          Assumptions -> q > 0 && t > 0 && Element[k, Integers]] /. {k -> (g-1)/2};
 
 
-Block[{index = 1},
-      PrettyPrintRulesNaive[bb[[index]],
-                            aa[[index]]]]
+(* FullSimplify[anExprOddGenus] // TeXForm *)
 
-Out[18]//TeXForm= 
-   (-1)^{n_0} \left(\frac{T+1}{4 q \left(q^2
-    T+1\right)}-\text{Delta}_1\right)+(-1)^{n_1} \left(\frac{T+1}{4 q
-    \left(q^2 T+1\right)}-\text{Delta}_1\right)+(-1)^{n_2} \left(\frac{T+1}{4
-    q \left(q^2 T+1\right)}-\text{Delta}_1\right)+(-1)^{n_0+n_1+n_2}
-    \left(\frac{T+1}{4 q \left(q^2
-    T+1\right)}-\text{Delta}_1\right)+\text{Delta}_1
-    (-1)^{n_0+n_1}+\text{Delta}_1 (-1)^{n_0+n_2}+\text{Delta}_1
-    (-1)^{n_1+n_2}+\text{Delta}_1+\frac{(-1)^{n_2} (T+1) \left(q^2
-    T\right)^{n_0+n_1}}{2 q \left(q^2 T+1\right)}+\frac{(-1)^{n_1} (T+1)
-    \left(q^2 T\right)^{n_0+n_2}}{2 q \left(q^2 T+1\right)}+\frac{(-1)^{n_0} q
-    (T+1) \left(q^2 T\right)^{n_1+n_2}}{2 \left(q^2 T+1\right)}+\frac{\left(2
-    q^8 T^3+q^6 T^3-q^6 T^2-q^2 T+q^2+2\right) \left(q^2 T\right)^{n_1+n_2}}{2
-    q \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}+\frac{(T+1) \left(q^4
-    T+1\right) \left(q^4 T^2+1\right) \left(q^2 T\right)^{n_1+n_2} \left(-q^4
-    T^2\right)^{n_0}}{2 q^3 T \left(q^2 T+1\right)}-\frac{\left(q^4 T+1\right)
-    \left(q^4 T^2+1\right) \left(q^4 T^2-q^2 T+1\right) \left(q^2
-    T\right)^{n_0+n_1+n_2}}{q^3 T \left(q^2 T-1\right)^2 \left(q^2
-    T+1\right)}-\frac{\left(2 q^8 T^4-2 q^6 T^3+q^4 T^3+q^4 T^2+2 q^2
-    T+T-1\right) \left(q^2 T\right)^{n_0+n_1}}{2 q \left(q^2 T-1\right)^2
-    \left(q^2 T+1\right)}-\frac{\left(2 q^8 T^4-2 q^6 T^3+q^4 T^3+q^4 T^2+2
-    q^2 T+T-1\right) \left(q^2 T\right)^{n_0+n_2}}{2 q \left(q^2 T-1\right)^2
-    \left(q^2 T+1\right)}+\frac{(T+1) \left(q^4 T+1\right) \left(q^8
-    T^4+1\right) \left(q^2 T\right)^{n_1+n_2} \left(q^4 T^2\right)^{n_0}}{2
-    q^3 T \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}+\frac{q T^2 \left(q^4
-    T+1\right)}{\left(q^2 T-1\right)^2 \left(q^2 T+1\right)}
+Block[{s1 = 1, s2 = 1, s3 = 1},
+      Apart[Factor[FullSimplify[evoRulesCombed["PP"][Mask[q^2 t, q^2 t]]
+                                (* - TheorTwoCoeff[1] *)
+                                (* - TheorQSquaredTOddGenus[1] *)
+                                (* - AuxQSquaredTTerm[1] *)
+                                (* - TheorQSquaredTOddGenusWhole[1] *)
+                                - TheorQSquaredTAllGenera[1]
+                                (* - 1 - (1 - 1/2)(-1 + q^2)/(1 + q^2 t) *)
+                                (* - (1 - q^2)/2/(1 - q^2 t) Sum[1/2^i (1 - q^2 t)^i, {i, 0, 0}] *)
+                                (* - q^2/(1 - q^2 t) *)
+                               ]],
+            t]]
 
-          
+Block[{s1 = 1, s2 = 1, s3 = 1},
+      Factor[FullSimplify[evoRulesSymrest["PPP"][Mask[q^2 t, q^2 t, q^2 t]]
+                          (* - TheorTwoCoeff[2] *)
+                          - TheorQSquaredTAllGenera[2]
+                          (* - TheorQSquaredTEvenGenus[2] *)
+                          (* - (anExpr /. {g -> 2}) *)
+                         ]]]
+
+Block[{s1 = 1, s2 = 1, s3 = 1},
+      Apart[Factor[FullSimplify[evoRulesCombed["PPPP"][Mask[q^2 t, q^2 t, q^2 t, q^2 t]]
+                                (* - TheorTwoCoeff[3] - q^2 /(1 - q^2 t)^2 TheorTwoCoeff[1] *)
+                               ]
+                   (* - q^2(1 + (1 - 1/8)(-1 + q^2)/(1 + q^2 t) *)
+                   (*       + (1 - q^2)/2/(1 - q^2 t)^3 Sum[1/2^i (1 - q^2 t)^i, {i, 0, 2}] *)
+                   (*       + q^2/(1 - q^2 t)^3) *)
+                   - TheorQSquaredTAllGenera[3]
+                   (* - TheorQSquaredTOddGenusWhole[3] *)
+                   (* - TheorQSquaredTOddGenus[3] *)
+                   (* - AuxQSquaredTTerm[3] *)
+                  ], t]]
+
+(* ### vv The three "positive" covariant regions ### *)
+aa = SymmetricallyRestoreEvoMap[evoRulesCombed["PPPPP"]];
+bb = Factor[Simplify[aa /. (Solve[Factor[Simplify[aa]][Mask[1,1,1,-1,-1]] == 0,
+                                  AA[1,1,1,1,1]][[1]])]];
+
+Block[{s1 = 1, s2 = 1, s3 = 1},
+      Factor[FullSimplify[evoRulesCombed["PPPPP"][Mask[q^2 t, q^2 t, q^2 t, q^2 t, q^2 t]]
+                          (* - TheorTwoCoeff[4] - q^2 /(1 - q^2 t)^2 TheorTwoCoeff[2] *)
+                          (* - TheorQSquaredTEvenGenus[4] *)
+                          - TheorQSquaredTAllGenera[4]
+                          (* - (anExpr /. {g -> 4}) *)
+                         ]]]
+
+Block[{s1 = 1, s2 = 1, s3 = 1},
+      Apart[ExpandNumerator[Factor[FullSimplify[evoRulesCombed["PPPPPP"][Mask @@ Table[q^2 t, {i, 1, 6}]]
+                                                (* - TheorTwoCoeff[5] - q^2 /(1 - q^2 t)^2 TheorTwoCoeff[3] *)
+                                                (* - q^4 /(1 - q^2 t)^4 TheorTwoCoeff[1] *)
+                                                (* - TheorQSquaredTOddGenus[5] *)
+                                                (* - AuxQSquaredTTerm[5] *)
+                                                (* - TheorQSquaredTOddGenusWhole[5] *)
+                                                - TheorQSquaredTAllGenera[5]
+                                               ]
+                                   (* - q^4 (1 + (1 - 1/32)(-1 + q^2)/(1 + q^2 t) *)
+                                   (*        + (1 - q^2)/2/(1 - q^2 t)^5 Sum[1/2^i (1 - q^2 t)^i, {i, 0, 4}] *)
+                                   (*        + q^2/(1 - q^2 t)^5) *)
+                                  ]],
+            t]]
+
+
+Block[{n = 20},
+      Factor[FullSimplify[qq[n] q^(n-1)]]]
+
+
 
 FullSymmRestore["PPMAlt1"]
 
@@ -377,6 +557,18 @@ Block[{label = "MMM"},
       PrettyPrintRules[evoRulesSymrest[label],
                        SymmetricallyRestoreEvoMap[Evaluate[evoRulesCombed[label]]]]]
 
+evoRulesCombed["PP"][Mask[-1, -1]]
+                                                                              
+Block[{label = "PP"},
+      PrettyPrintRules[evoRulesCombed[label],
+                       <||>]]
+
+Out[19]//TeXForm= 
+   \frac{(-1)^{n_0+n_1} q^2 (T+1)}{2 \left(q^2 T+1\right)}+\frac{\left(q^8
+    T^3+q^6 T^3-q^2 T+1\right) \left(q^2 T\right)^{n_0+n_1}}{q^2 T \left(q^2
+    T-1\right) \left(q^2 T+1\right)}+\frac{q^2 T-q^2-2}{2 \left(q^2
+    T-1\right)}
+                                                                              
                   
                   
 
@@ -396,7 +588,36 @@ Factor[Simplify[evoRulesSymrest["PPP"] - evoRulesSymrest["PPM"]]]
 
 Factor[Simplify[ans2]]
 
-                   
+
+Factor[FullSimplify[evoRulesCombed["PP"][Mask[-1,-1]]]]
+
+           2
+          q  (1 + t)
+Out[22]= ------------
+                 2
+         2 (1 + q  t)
+
+evoRulesSymrest["PPP"]
+
+Factor[Simplify[Apart[FullSimplify[evoRulesSymrest["PPP"][Mask[-1,-1,-1]]]
+
+
+          3
+         q  t (1 + t)
+Out[12]= ------------
+                 2
+         4 (1 + q  t)
+
+Factor[Simplify[Apart[FullSimplify[evoRulesCombed["PPPP"][Mask[-1,-1,-1,-1]]]
+                      t]]]
+
+          4
+         q  t (1 + t)
+Out[14]= ------------
+                 2
+         8 (1 + q  t)
+
+
 (* ### vv Symbolic checks that my formula coincides with formula (5) from 1412.2616 ### *)
 (* Simplify[(funPPM[n0, n1, 2 n2] /. {t -> -1, q -> 1/q}) (-q^(3))^(n0 + n1) *)
 (*          - funJones[n0, n1, 2 n2], *)

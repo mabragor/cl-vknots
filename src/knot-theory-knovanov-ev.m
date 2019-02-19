@@ -153,8 +153,6 @@ Block[{CCCMaxParallelWindings = 8,
        CCCMaxAntiparallelWindings = 6},
       PrecomputeReducedPretzelsSoft[{1,1}]]
 
-PretzelReducedKhovanov[{1,1}]
-
 (* ### vv Snippets to precompute Khovanov polynomials for pretzel knots ### *)
 (* Block[{CCCMaxParallelWindings = 10, *)
 (*        CCCMaxAntiparallelWindings = 10}, *)
