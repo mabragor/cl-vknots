@@ -143,6 +143,10 @@ PrecomputePretzelsSoft[signs_, filterFun_] :=
           ];
 
 
+Block[{CCCMaxParallelWindings = 6,
+       CCCMaxAntiparallelWindings = 8},
+      PrecomputePretzelsSoft[{1,1,1,1,1,1}]]
+
 (* ### vv Snippets to precompute Khovanov polynomials for pretzel knots ### *)
 (* Block[{CCCMaxParallelWindings = 10, *)
 (*        CCCMaxAntiparallelWindings = 10}, *)

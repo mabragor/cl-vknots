@@ -142,8 +142,8 @@ N3SliceFit6Assign[a_, b_] :=
 (* ### vv Example of how to try to find evolution in one octant ### *)
 (* Block[{CCCExtraPoints = 2, *)
 (*        CCCSeriesShiftParr = 1, *)
-(*        q = E, t = Pi}, *)
-(*       FindPretzelEvosForNTant[3, {1,1,1,1}, Null]] *)
+(*        CCCSeriesShiftAntiParr = 0}, *)
+(*       FindPretzelEvosForNTant[4, {1,1,1,1,1}, Null]] *)
 
 (* ### vv When I was figuring out how to get evolution in complicated-shape regions, I did a lot of these explicit stuff ### *)
 (* N3SliceFit2[3, 2] *)
