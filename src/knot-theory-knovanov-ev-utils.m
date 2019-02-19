@@ -259,7 +259,8 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
 			 Module[{ans = Module[{i}, Table[Rule[indets[[i]], ans[[i]]], {i, 1, Length[indets]}]]},
                                 Module[{indices = Tuples[Map[Range[0, Length[#] - 1 - 1 + extraPoints]&,
                                                              specs]]},
-                                       Module[{check = Tally[Map[If[0 === FullSimplify[(family @@ #) - (comb @@ #) /. ans],
+                                       Module[{check = Tally[Map[If[0 === FullSimplify[((family @@ #) - (comb @@ #) /. ans)
+                                                                                       /. {q -> E, t -> Pi}], (* ### << This is just to make our life simpler in this particular case ### *)
                                                                     0,
                                                                     nz] &,
                                                                  indices]]},
@@ -267,11 +268,7 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
                                                  Module[{},
                                                         Print[check];
                                                         Map[Rule[#[[1]],
-                                                                 ExpandNumerator[
-                                                                     FullSimplify[(* 1/(Times
-                                                                                     @@ MapIndexed[correctionFactors[[#2[[1]], #1]] &,
-                                                                                     (List @@ #[[1]])]) *)
-                                                                                  #[[2]]]]] &,
+                                                                 Factor[Simplify[#[[2]]]]] &,
                                                             ans]],
                                                  Module[{}, Print[check]; checkFailed]]]]]]]];
 PlanarDiagramToAdvancedStructures[pd_] :=
