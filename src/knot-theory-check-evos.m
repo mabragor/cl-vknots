@@ -1,6 +1,7 @@
 
 << "knot-theory-knovanov-ev-utils.m";
 
+evoRules["PPred"] = Get[EvoFname["red", {1,1}]];
 evoRules["PPPPPP"] = Get[EvoFname[{1,1,1,1,1,1}]];
 evoRules["PPPPP"] = Get[EvoFname[{1,1,1,1,1}]];
 evoRules["PPPP"] = Get[EvoFname[{1,1,1,1}]];

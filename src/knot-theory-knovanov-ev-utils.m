@@ -864,6 +864,9 @@ PretzelBSWithParallelOrients[genus_] :=
 PretzelKhovanov[windings_] :=
     Kh[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
                             windings]][q,t];
+PretzelReducedKhovanov[windings_] :=
+    KhReduced[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
+                                   windings]][q,t];
 AllPrecomputedQ[family_, allowedVars_, eigenvaluesSpecs_] :=
     Module[{res = True},
            Iterate[{indices, MkTupleIter @@ Map[{0, extraPoints + Length[#] - 1 - 1} &, eigenvaluesSpecs]},
@@ -972,10 +975,16 @@ FitFamilyWithEigenvaluesGradual[family_, eigenvaluesSpecs__] :=
     FitFamilyWithEigenvaluesGradualInternal[family,
                                             {q, t},
                                             List[eigenvaluesSpecs]];
-EvoFname[signs_] :=
-    EvoFname[signs, Null];
-EvoFname[signs_, altIndex_] :=
-    (CCCDataDir <> "/pretzel-kh-evo-" <> ToString[Length[signs]] <> "-"
+EvoFname["red", signs_List] :=
+    EvoFname["red", signs, Null];
+EvoFname[signs_List] :=
+    EvoFname["vanilla", signs, Null];
+EvoFname[type_String, signs_List, altIndex_] :=
+    (CCCDataDir <> "/pretzel-kh"
+     <> If["red" === type,
+           "-red",
+           ""]
+     <> "-evo-" <> ToString[Length[signs]] <> "-"
      <> StringRiffle[Map[ToString, signs], "-"]
      <> If[Null === altIndex,
            "",

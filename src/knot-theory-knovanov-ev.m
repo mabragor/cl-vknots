@@ -100,9 +100,15 @@ PrecomputePretzelsResume[resumeWindings_, resumeSigns_] :=
                                                   ]];
                                       Close[fd];
                                       Close[fdlog]]]]]];
-PrecomputePretzelsSoft[signs_] :=
+PrecomputePretzelsSoft[signs_List] :=
     PrecomputePretzelsSoft[signs, True &];
-PrecomputePretzelsSoft[signs_, filterFun_] :=
+PrecomputeReducedPretzelsSoft[signs_List] :=
+    PrecomputeReducedPretzelsSoft[signs, True &];
+PrecomputePretzelsSoft[signs_List, filterFun_Function] :=
+    PrecomputePretzelsSoft[PrecompKh, PretzelKhovanov, signs, filterFun];
+PrecomputeReducedPretzelsSoft[signs_List, filterFun_Function] :=
+    PrecomputePretzelsSoft[PrecompKhRed, PretzelReducedKhovanov, signs, filterFun];
+PrecomputePretzelsSoft[polyHead_Symbol, polyFun_Symbol, signs_List, filterFun_Function] :=
     (* ### ^^ Compute pretzel knots for a given genus, that had not already been computed ### *)
     Module[{genus = Length[signs] - 1},
            Get[CCCDataDir <> "/pretzel-khovanovs-" <> ToString[genus + 1] <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"];
@@ -118,17 +124,17 @@ PrecomputePretzelsSoft[signs_, filterFun_] :=
                           (* Print["windings: ", windings]; *)
                           Module[{signedWindings = signs * windings},
                                  (* ### ^^ Elementwise vector multiplication (cool, right?)         ### *)
-                                 If[PrecompKh =!= Head[PrecompKh @@ signedWindings],
+                                 If[polyHead =!= Head[polyHead @@ signedWindings],
                                     (* Print["skipping"]; *)
                                     Continue[]];
                                  If[Not[filterFun[signedWindings]], (* ### << This we need to calculate polys only in ### *)
                                     (* ###                                    regions of complicated shape.           ### *)
                                     Continue[]];
-                                 Debugg[fdlog, "Calculating ("
+                                 Debugg[fdlog, "Calculating " <> ToString[polyHead] <> " ("
                                         <> StringRiffle[Map[ToString, signedWindings], ", "]
                                         <> ") ..."]; (* ### << This way it also works in screen ### *)
-                                 Module[{theAns = PretzelKhovanov[signedWindings]},
-                                        WriteString[fd, "PrecompKh["
+                                 Module[{theAns = polyFun[signedWindings]},
+                                        WriteString[fd, ToString[polyHead] <> "["
                                                     <> StringRiffle[Map[ToString, signedWindings], ", "]
                                                     <> "] := " <> ToString[theAns, InputForm] <> ";\n"];
                                         Debugg[fdlog, " done!\n"]]]];
@@ -143,9 +149,9 @@ PrecomputePretzelsSoft[signs_, filterFun_] :=
           ];
 
 
-Block[{CCCMaxParallelWindings = 6,
-       CCCMaxAntiparallelWindings = 8},
-      PrecomputePretzelsSoft[{1,1,1,1,1,1}]]
+Block[{CCCMaxParallelWindings = 8,
+       CCCMaxAntiparallelWindings = 6},
+      PrecomputeReducedPretzelsSoft[{1,1}]]
 
 (* ### vv Snippets to precompute Khovanov polynomials for pretzel knots ### *)
 (* Block[{CCCMaxParallelWindings = 10, *)
