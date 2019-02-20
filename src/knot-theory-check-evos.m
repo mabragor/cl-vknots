@@ -292,6 +292,31 @@ TheorEvoCorr2[g_] :=
     q^(g+1)/2^(g+1) (t + 1)/(1 + q^2 t) Product[1 - (-1)^n[i],
                                                 {i, 0, g}];
 
+MkEvoExpr[evoRulesCombed["PPred"]]
+
+
+Block[{k = 5},
+      Simplify[KhReduced[PD[BR[2, Table[1, {i, 1, 2 k + 1}]]]][q,t] (1 - q^2 t)
+               /((1 - q^2 t + q^4 t^2) - (t q^2)^(2 k + 2))]]
+
+Block[{k = 1},
+      Expand[Simplify[{(KhReduced[PD[BR[2, Table[1, {i, 1, 2 k + 1}]]]][q,t] /. {q -> 1/q, t -> 1/t})
+                       , Kh[PD[BR[2, Table[1, {i, 1, 2 k + 1}]]]][q,t]}]]]
+
+                  
+          1     1       1         3    5  2    9  3
+Out[55]= {- + ----- + -----, q + q  + q  t  + q  t }
+          q    7  3    5  2
+              q  t    q  t
+
+
+Block[{k = 4},
+      Factor[Simplify[MkEvoExpr[evoRules["PPred"]] /. {n[1] -> 2 k + 1 - n[0]},
+                      Assumptions -> Element[k, Integers]]
+             / KhReduced[PD[BR[2, Table[1, {i, 1, 2 k + 1}]]]][q,t]
+            ]]
+
+
 (* theorCross1 = ExpandNumerator[Simplify[qtOne / qtTwo (qtThree/qtTwo)^2 + qtOne qtThree /qtTwo /(-qtTwo)^2]]; *)
 
 evoRulesSymrest["PPP"][Mask[-1,-1,-1]]
