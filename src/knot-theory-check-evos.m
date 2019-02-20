@@ -18,7 +18,7 @@ evoRules["MPPAlt1"] = Get[EvoFname[{-1,1,1}, 1]];
 evoRules["MPMAlt1"] = Get[EvoFname[{-1,1,-1}, 1]];
 evoRules["PMMAlt1"] = Get[EvoFname[{1,-1,-1}, 1]];
 regionLabels = {"MMM", "PPP", "PPM", "MMP", "PPMAlt1", "MMPAlt1", "PMPAlt1", "MPPAlt1", "MPMAlt1", "PMMAlt1"};
-auxRegionLabels = {"MM", "PP", "PPPP", "PPPPP", "PPPPPP"};
+auxRegionLabels = {"MM", "PP", "PPPP", "PPPPP", "PPPPPP", "PPred"};
 TeXifyEvoRules[signsStr_, evoRules_] :=
     (* ### ^^ The goal of this function is to serialize evolution rules in such a way, that one conveniently can ### *)
     (* ###    copy-paste them in TeX.                                                                            ### *)
@@ -283,18 +283,16 @@ MkEvoExpr[evoRules_] :=
                                                                        eigenvalue^n[number[[1]] - 1]],
                                                               #1] &,
                                         evoRules]]];
-
 TheorEvoCorr[g_] :=
     q^(g+1) (t + 1)/2/(1 + q^2 t) (Product[1/2 + 1/2 (-1)^n[i] + (q^2 t)^n[i],
                                            {i, 0, g}]
                                    + Product[1/2 + 1/2 (-1)^n[i] - (q^2 t)^n[i],
                                              {i, 0, g}]);
-
 TheorEvoCorr2[g_] :=
     q^(g+1)/2^(g+1) (t + 1)/(1 + q^2 t) Product[1 - (-1)^n[i],
                                                 {i, 0, g}];
 
-theorCross1 = ExpandNumerator[Simplify[qtOne / qtTwo (qtThree/qtTwo)^2 + qtOne qtThree /qtTwo /(-qtTwo)^2]];
+(* theorCross1 = ExpandNumerator[Simplify[qtOne / qtTwo (qtThree/qtTwo)^2 + qtOne qtThree /qtTwo /(-qtTwo)^2]]; *)
 
 evoRulesSymrest["PPP"][Mask[-1,-1,-1]]
 
@@ -513,32 +511,18 @@ Block[{label = "PPMAlt1"},
 
 PrettyPrintRules[CombUpEvoMap2[evoRulesCombed["MMM"]], <||>]
 
-Out[5]//TeXForm= 
-   -\frac{\left(q^8 T^4-q^6 T^3+q^2 T^2+2 q^2 T-1\right) \left(\left(q^2
-    T\right)^{n_1+n_2}+\text{perms}\right)}{q \left(q^2 T-1\right)^2 \left(q^2
-    T+1\right)}+\frac{\left(q^4 T+1\right) \left(q^4 T^2+1\right) \left(q^4
-    T^2-q^2 T+1\right) \left(q^2 T\right)^{n_0+n_1+n_2}}{q^3 \left(q^2
-    T-1\right)^2 \left(q^2 T+1\right)}+\frac{q^6 T^3+q^4 T^3+q^4 T^2-q^2 T^2-2
-    q^2 T+T+1}{q \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}
+PrettyPrintRules[Factor[Simplify[evoRulesCombed["PPred"]]], <||>]
 
 Out[4]//TeXForm= 
-   \frac{\left(q^8 T^4-2 q^6 T^3-q^6 T^2+q^2 T-1\right) \left(\left(q^2
-    T\right)^{n_1+n_2}+\text{perms}\right)}{q T \left(q^2 T-1\right)^2
-    \left(q^2 T+1\right)}+\frac{\left(q^4 T+1\right) \left(q^4 T^2+1\right)
-    \left(q^4 T^2-q^2 T+1\right) \left(q^2 T\right)^{n_0+n_1+n_2}}{q^3 T^2
-    \left(q^2 T-1\right)^2 \left(q^2 T+1\right)}+\frac{q \left(q^6 T^3+q^6
-    T^2-2 q^4 T^2-q^4 T+q^2 T+q^2+1\right)}{\left(q^2 T-1\right)^2 \left(q^2
-    T+1\right)}
+   \frac{(-1)^{n_0+n_1} q \left(q^4 T^2+q^3 T-q^2 T-q^2+q-1\right)}{2
+    \left(q^2 T-1\right) \left(q^2 T+1\right)}+\frac{\left(q^8 T^3-q^7 T^3+q^6
+    T^3-q^2 T-q+1\right) \left(-q^2 T\right)^{n_0+n_1}}{2 q T \left(q^2
+    T-1\right) \left(q^2 T+1\right)}+\frac{\left(q^8 T^3+q^7 T^3+q^6 T^3-q^2
+    T+q+1\right) \left(q^2 T\right)^{n_0+n_1}}{2 q T \left(q^2 T-1\right)
+    \left(q^2 T+1\right)}+\frac{q \left(q^4 T^2-q^3 T-q^2 T-q^2-q-1\right)}{2
+    \left(q^2 T-1\right) \left(q^2 T+1\right)}
 
-Out[3]//TeXForm= 
-   \frac{\left(q^8 T^3+q^6 T^3-q^4 T^2-q^4 T+q^2+1\right) \left(\left(q^2
-    T\right)^{n_1+n_2}+\text{perms}\right)}{q \left(q^2 T-1\right)^2 \left(q^2
-    T+1\right)}-\frac{\left(q^4 T+1\right) \left(q^4 T^2+1\right) \left(q^4
-    T^2-q^2 T+1\right) \left(q^2 T\right)^{n_0+n_1+n_2}}{q^3 T \left(q^2
-    T-1\right)^2 \left(q^2 T+1\right)}+\frac{q \left(q^4 T^3-2 q^2 T^2-2 q^2
-    T+1\right)}{\left(q^2 T-1\right)^2 \left(q^2 T+1\right)}
 
-?? SymmetricallyRestoreEvoMap
 
 preRules = SymmetricallyRestoreEvoMap[evoRulesCombed["PPMAlt1"]];
 

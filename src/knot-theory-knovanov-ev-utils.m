@@ -979,6 +979,8 @@ EvoFname["red", signs_List] :=
     EvoFname["red", signs, Null];
 EvoFname[signs_List] :=
     EvoFname["vanilla", signs, Null];
+EvoFname[signs_List, altIndex_] :=
+    EvoFname["vanilla", signs, altIndex];
 EvoFname[type_String, signs_List, altIndex_] :=
     (CCCDataDir <> "/pretzel-kh"
      <> If["red" === type,
