@@ -184,6 +184,39 @@ Iterate[{var_, iterator_}, body_] :=
                            If[Not[validQ],
                               Break[],
                               body]]]]];
+MapIter[fun_, subiter_] :=
+    Module[{depletedQ = False},
+           Function[{},
+                    If[depletedQ, (* ### << If we've decided once that iterator is depleted, we don't waver ### *)
+                       {Null, False},
+                       Module[{subVal, subValidQ},
+                              {subVal, subValidQ} = subiter[];
+                              If[Not[subValidQ],
+                                 Block[{},
+                                       depletedQ = True;
+                                       {Null, False}],
+                                 {fun[subVal], True}]]]]];
+GrepIter[filterFun_, subiter_] :=
+    Module[{depletedQ = False},
+           Function[{},
+                    If[depletedQ, (* ### << If we've decided once that iterator is depleted, we don't waver ### *)
+                       {Null, False},
+                       Module[{subVal, subValidQ},
+                              While[True,
+                                    {subVal, subValidQ} = subiter[];
+                                    (* Print["subVal: ", subVal]; *)
+                                    If[Not[subValidQ],
+                                       Block[{},
+                                             depletedQ = True; Break[]],
+                                       If[True === filterFun[subVal],
+                                          Break[]]]];
+                              If[depletedQ,
+                                 {Null, False},
+                                 {subVal, True}]]]]];
+
+
+(* ### vv Example of use of grepper                                           ### *)
+(* ###    CollectIter[GrepIter[EvenQ, MkRangeIter[1, 10]]]                    ### *)
 
 (* ### vv Example of use:                                                     ### *)
 (* ###    a = MkTupleIter[{4,8}, {5,0,-1}, AList["a", "b", "c"]];             ### *)

@@ -116,11 +116,17 @@ PrecomputePretzelsSoft[polyHead_Symbol, polyFun_Symbol, signs_List, filterFun_Fu
                                    <> ToString[genus + 1] <> "-" <> StringRiffle[Map[ToString, signs], "-"] <> ".m"],
                    (* ### vv There is no need to append to log -- we rewrite it ### *)
                    fdlog = OpenWrite[CCCDataDir <> "/pretzel-khovanovs-" <> ToString[genus + 1] <> ".log"]},
-                  Iterate[{windings, MkTupleIter @@ Join[Module[{i}, Table[{1, CCCMaxParallelWindings},
+                  Iterate[{windings, MkTupleIter @@ Join[Module[{i}, Table[{0, CCCMaxParallelWindings},
                                                                            {i, 1, genus}]],
                                                          If[EvenQ[genus + 1],
-                                                            {{1, CCCMaxParallelWindings}},
-                                                            {{0, CCCMaxAntiparallelWindings, 2}}]]},
+                                                            {{0, CCCMaxParallelWindings}},
+                                                            {{0, CCCMaxAntiparallelWindings, 1}}
+                                                            (* ### ^^ At even genus last odd winding makes sense ### *)
+                                                            (* {{0, CCCMaxAntiparallelWindings, 2}} *)
+                                                           ]]},
+                          If[And[OddQ[windings[[-1]]],
+                                 Or @@ Map[EvenQ, windings[[1 ;; -2]]]],
+                             Continue[]];
                           (* Print["windings: ", windings]; *)
                           Module[{signedWindings = signs * windings},
                                  (* ### ^^ Elementwise vector multiplication (cool, right?)         ### *)
@@ -149,21 +155,87 @@ PrecomputePretzelsSoft[polyHead_Symbol, polyFun_Symbol, signs_List, filterFun_Fu
           ];
 
 
-Block[{CCCMaxParallelWindings = 8,
-       CCCMaxAntiparallelWindings = 6},
-      PrecomputeReducedPretzelsSoft[{1,1}]]
+PretzelKhovanov[{-3, 5, 7}]
+
+         -3   1      1         1         1        1        1        1
+Out[3]= q   + - + ------- + ------- + ------- + ------ + ------ + ------ + 
+              q    25  12    21  11    21  10    19  9    17  9    15  8
+                  q   t     q   t     q   t     q   t    q   t    q   t
+ 
+       1        1        1        1       1       1       1      1
+>    ------ + ------ + ------ + ----- + ----- + ----- + ----- + ----
+      15  7    11  6    13  5    9  4    9  3    7  2    5  2    3
+     q   t    q   t    q   t    q  t    q  t    q  t    q  t    q  t
+
+PretzelKhovanov[{1,1}] // TeXForm
+
+Out[9]//TeXForm= q^6 t^2+q^4 t^2+q^2+1
+
+             2    4  2    6  2
+Out[8]= 1 + q  + q  t  + q  t
+
+Iterate[{g, MkRangeIter[2, 2]},
+        Iterate[{signs, MkTupleIter @@ Table[AList[1, -1], {i, 0, g}]},
+                Block[{CCCMaxParallelWindings = 16,
+                       CCCMaxAntiparallelWindings = 16},
+                      PrecomputeReducedPretzelsSoft[signs]]]];
+
+Iterate[{g, MkRangeIter[4, 4]},
+        Iterate[{signs, MkTupleIter @@ Table[AList[1, -1], {i, 0, g}]},
+                Block[{CCCMaxParallelWindings = 10,
+                       CCCMaxAntiparallelWindings = 10},
+                      PrecomputeReducedPretzelsSoft[signs]]]];
+
+(* Block[{signs = {1,1,-1,-1}}, *)
+(*       Block[{CCCMaxParallelWindings = 17, *)
+(*              CCCMaxAntiparallelWindings = 11}, *)
+(*             PrecomputeReducedPretzelsSoft[signs, *)
+(*                                           And[OddQ[#[[1]]], *)
+(*                                               OddQ[#[[2]]], *)
+(*                                               OddQ[#[[3]]], *)
+(*                                               EvenQ[#[[4]]], *)
+(*                                               Abs[#[[1]]] >= Abs[#[[4]]] + 1, *)
+(*                                               Abs[#[[1]]] <= Abs[#[[4]]] + 1 + 6, *)
+(*                                               Abs[#[[2]]] >= Abs[#[[4]]] + 1, *)
+(*                                               Abs[#[[2]]] <= Abs[#[[4]]] + 1 + 6, *)
+(*                                               Abs[#[[3]]] >= Abs[#[[4]]] + 1, *)
+(*                                               Abs[#[[3]]] <= Abs[#[[4]]] + 1 + 6, *)
+(*                                               Abs[#[[4]]] >= 2, *)
+(*                                               Abs[#[[4]]] <= 10] &]]] *)
+
+(* Iterate[{g, MkRangeIter[3, 3]}, *)
+(*         Block[{CCCMaxParallelWindings = 12, *)
+(*                CCCMaxAntiparallelWindings = 8}, *)
+(*               PrecomputeReducedPretzelsSoft[Table[1, {i, 1, g}] ~Append~ (-1), *)
+(*                                             And @@ Append[Table[#[[i]] <= 6, {i, 1, g}], *)
+(*                                                           #[[g+1]] <= 7] &]]] *)
+
 
 (* ### vv Snippets to precompute Khovanov polynomials for pretzel knots ### *)
 (* Block[{CCCMaxParallelWindings = 10, *)
 (*        CCCMaxAntiparallelWindings = 10}, *)
 (*       Iterate[{signs, MkTupleIter[AList[-1, 1], AList[-1, 1], AList[-1, 1]]}, *)
 (*               PrecomputePretzelsSoft[signs]]] *)
-Block[{CCCMaxParallelWindings = 22,
-       CCCMaxAntiparallelWindings = 16},
-      PrecomputePretzelsSoft[{1,1,-1}, And[#[[1]] >= Abs[#[[3]]],
-                                           #[[1]] <= Abs[#[[3]]] + 5 + 1,
-                                           #[[2]] >= Abs[#[[3]]],
-                                           #[[2]] <= Abs[#[[3]]] + 5 + 1] &]]
+Block[{CCCMaxParallelWindings = 16,
+       CCCMaxAntiparallelWindings = 10},
+      PrecomputeReducedPretzelsSoft[{1,1,-1}, And[#[[1]] >= Abs[#[[3]]] + 1,
+                                                  #[[1]] <= Abs[#[[3]]] + 5 + 1,
+                                                  #[[2]] >= Abs[#[[3]]] + 1,
+                                                  #[[2]] <= Abs[#[[3]]] + 5 + 1] &]]
+
+
+Block[{CCCMaxParallelWindings = 16,
+       CCCMaxAntiparallelWindings = 6},
+      PrecomputeReducedPretzelsSoft[{1,1,1,-1}, And[#[[1]] >= Abs[#[[4]]] + 1,
+                                                    #[[1]] <= Abs[#[[4]]] + 5 + 1,
+                                                    #[[2]] >= Abs[#[[4]]] + 1,
+                                                    #[[2]] <= Abs[#[[4]]] + 5 + 1,
+                                                    #[[3]] >= Abs[#[[4]]] + 1,
+                                                    #[[3]] <= Abs[#[[4]]] + 5 + 1,
+                                                    Abs[#[[4]]] <= 10,
+                                                    EvenQ[#[[4]]]
+                                                   ] &]]
+
 
 Block[{CCCMaxParallelWindings = 16,
        CCCMaxAntiparallelWindings = 10},

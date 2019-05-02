@@ -607,6 +607,11 @@ OrientationMasks[spec_BraidSpec, connectedComponents_, residues_] :=
 (* ###                           OriChoice[II[a, 0] -> 1, II[a, 1] ->, II[b, 1] -> 1 ...],  ### *)
 (* ###                           {10, 20}]                                                  ### *)
 (* ###    This example describes the figure-eight-like knots                                ### *)
+(* ###        ----                                                                          ### *)
+(* ###    Each specification of a braid can be also a `CabledBraid`                         ### *)
+(* ###      CabledBraid[{2, 3}, a, {{1,2,3}, {4,5,6}}, {{7,8,9}, {10,11,12}}]               ### *)
+(* ###                             ^^ so you see that inputs and outputs of cabled braid    ### *)
+(* ###                                are grouped by "master" strand.                       ### *)
 Braidosome[spec_BraidSpec, orientationChoice_, braidWindings_] :=
     ExtendedPDToUsual[PlanarDiagramToAdvancedStructures[PlanarDiagram[spec, orientationChoice, braidWindings]]];
 (* ### vv For a given braid specification, generate a list of possible orientations of the arcs between the braids, ### *)
@@ -860,13 +865,29 @@ PretzelBSWithParallelOrients[genus_] :=
                                                                         (-1)^(genus + 1),
                                                                         1]} &,
                               Range[0, genus]]};
+(* ### vv The fully antiparallel choice of braid orientations for the pretzel knot ### *)
+PretzelBSWithAntiParallelOrients[genus_] :=
+    {PretzelBraidSpec[genus],
+     OriChoice @@ Join @@ Map[{II[LatinLetterSymbol[#], 0] -> 1,
+                               II[LatinLetterSymbol[#], 1] -> (-1)} &,
+                              Range[0, genus]]};
 (* ### vv Khovanov polynomial for simple pretzel knot ### *)
 PretzelKhovanov[windings_] :=
-    Kh[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
-                            windings]][q,t];
+    If[And[OddQ[Length[windings]], (* ### << genus is even ### *)
+           And @@ Map[OddQ, windings]] (* ### << all windings are odd ### *),
+       Kh[Braidosome @@ Append[PretzelBSWithAntiParallelOrients[Length[windings] - 1],
+                               windings]][q,t],
+       (* ### vv The default 'safe' orientation case ### *)
+       Kh[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
+                               windings]][q,t]];
 PretzelReducedKhovanov[windings_] :=
-    KhReduced[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
-                                   windings]][q,t];
+    If[And[OddQ[Length[windings]], (* ### << genus is even ### *)
+           And @@ Map[OddQ, windings]] (* ### << all windings are odd ### *),
+       KhReduced[Braidosome @@ Append[PretzelBSWithAntiParallelOrients[Length[windings] - 1],
+                                      windings]][q,t],
+       (* ### vv The default 'safe' orientation case ### *)
+       KhReduced[Braidosome @@ Append[PretzelBSWithParallelOrients[Length[windings] - 1],
+                                      windings]][q,t]];
 AllPrecomputedQ[family_, allowedVars_, eigenvaluesSpecs_] :=
     Module[{res = True},
            Iterate[{indices, MkTupleIter @@ Map[{0, extraPoints + Length[#] - 1 - 1} &, eigenvaluesSpecs]},
