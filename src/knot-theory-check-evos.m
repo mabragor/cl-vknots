@@ -691,12 +691,24 @@ CheckCutoffFormula[status["bulks"][[2]],
 
 
 
-LoadAllPrecomps[3];
+LoadAllPrecomps[2];
 
 (* PrecompKhRed[7,7,-1,8] *)
 (* Expand[Simplify[EvalAtIndices[(-t) KhRedPStarKnotsTheor[3], {7,7,-1,8}]]] *)
 (* NNSmartChange[KhRedDeltaExcept2KnotsTheor[3], *)
 (*               2] *)
+
+Unframed[PrecompKhRed, {3,3,0}] // InputForm
+
+PrecompKhRed[3,3,0] // InputForm
+
+KhRed(3,3,0) := q^3 + 2*q^7*t^2 + 2*q^9*t^3 + q^11*t^4 + 2*q^13*t^5 + q^15*t^6;
+KhRed(3,3,-1) := q^(-3) + 1/(q^9*t^3) + 1/(q^7*t^2);
+KhRed(3,3,1) := q^(-3) + 1/(q^17*t^7) + 1/(q^15*t^6) + 2/(q^13*t^5) + 3/(q^11*t^4) + 2/(q^9*t^3) + 3/(q^7*t^2) + 2/(q^5*t);
+
+KhRedNorm(3,3,0) := q^3 + 2*q^5*t + q^7*t^2 + 2*q^9*t^3 + 2*q^11*t^4 + q^15*t^6;
+KhRedNorm(3,3,-1) := q^3 + 2*q^5*t + 3*q^7*t^2 + 2*q^9*t^3 + 3*q^11*t^4 + 2*q^13*t^5 + q^15*t^6 + q^17*t^7;
+KhRedNorm(3,3,1) := q^3 + 2*q^5*t + 3*q^7*t^2 + 2*q^9*t^3 + 3*q^11*t^4 + 2*q^13*t^5 + q^15*t^6 + q^17*t^7;
 
 Block[{indices = {7, 9, -3, 4}},
       Expand[Simplify[((Unframed[PrecompKhRed, indices]
