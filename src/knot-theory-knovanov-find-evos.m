@@ -2,7 +2,6 @@
 << "knot-theory-knovanov-ev-utils.m";
 << "tuple-iterator.m";
 
-
 (* ### vv Constants to make the series detection robust ### *)
 CCCSeriesShiftParr = 2;
 CCCSeriesShiftAntiParr = 2;
@@ -152,12 +151,281 @@ N3SliceFit6[a_, b_] :=
                                           Prepend[NegAdjEigenvalues[], -2 k - kC]]];
 N3SliceFit6Assign[a_, b_] :=
     Set @@ Rule[n3sliceFit6[b], N3SliceFit6[a, b]];
+(* ### vv Figure out evolutions in the "complicated" sectors of pretzel phase space ### *)
+N3redSliceFit1[a_, b_] :=
+    Block[{kA = a,
+           kB = a,
+           kC = b,
+           CCCEigenvaluesCritLength = Null,
+           extraPoints = 2},
+          LoadPrecomputedKhovanovs[2, {1,1,-1}, Null];
+          FitFamilyWithEigenvaluesGradual[Function[{k1, k2},
+                                                   PrecompKhRed[k1 + kA, k2 + kB, kC]],
+                                          Prepend[Append[PosFundEigenvalues[], -q], k + kA],
+                                          Prepend[Append[PosFundEigenvalues[], -q], k + kB]]];
+N3redSliceFit1Assign[a_, b_] :=
+    Set @@ Rule[n3redsliceFit1[b], N3redSliceFit1[a, b]];
+N3redSliceFit2[a_, b_] :=
+    Block[{kA = a,
+           kB = b,
+           kC = a + 1,
+           CCCEigenvaluesCritLength = Null,
+           extraPoints = 2},
+          LoadPrecomputedKhovanovs[2, {1,-1,1}, Null];
+          FitFamilyWithEigenvaluesGradual[Function[{k1, k2},
+                                                   PrecompKhRed[2 k1 + kA, kB, 2 k2 + kC]],
+                                          Prepend[{q, t q^3}, 2 k + kA],
+                                          Prepend[{1, (t q^2)^(-1)}, 2 k + kC]]];
+N3redSliceFit2Assign[a_, b_] :=
+    Set @@ Rule[n3redsliceFit2[b], N3redSliceFit2[a, b]];
+N4redSliceFit1[a_, b_] :=
+    Block[{kA = a,
+           kB = a,
+           kC = a,
+           kD = b,
+           CCCEigenvaluesCritLength = Null,
+           extraPoints = 2},
+          LoadPrecomputedKhovanovs[3, {1,1,1,-1}, Null];
+          FitFamilyWithEigenvaluesGradual[Function[{k1, k2, k3},
+                                                   PrecompKhRed[k1 + kA, k2 + kB, k3 + kC, kD]],
+                                          Prepend[Append[PosFundEigenvalues[], -q], k + kA],
+                                          Prepend[Append[PosFundEigenvalues[], -q], k + kB],
+                                          Prepend[Append[PosFundEigenvalues[], -q], k + kC]]];
+N4redSliceFit1Assign[a_, b_] :=
+    Set @@ Rule[n4redsliceFit1[b], N4redSliceFit1[a, b]];
+N4redSliceFit2[a_, b_] :=
+    Block[{kA = a,
+           kB = a,
+           kC = -a,
+           kD = b,
+           CCCEigenvaluesCritLength = Null,
+           extraPoints = 2},
+          LoadPrecomputedKhovanovs[3, {1,1,-1,-1}, Null];
+          FitFamilyWithEigenvaluesGradual[Function[{k1, k2, k3},
+                                                   PrecompKhRed[2 k1 + kA, 2 k2 + kB, -2 k3 + kC, kD]],
+                                          Prepend[{q, t q^3}, 2 k + kA],
+                                          Prepend[{q, t q^3}, 2 k + kB],
+                                          Prepend[{q, t q^3}, - 2 k + kC]]];
+N4redSliceFit2Assign[a_, b_] :=
+    Set @@ Rule[n4redsliceFit2[b], N4redSliceFit2[a, b]];
+N4redSliceFit3[a_, b_] :=
+    Block[{kA = a,
+           kB = a,
+           kC = -a,
+           kD = b,
+           CCCEigenvaluesCritLength = Null,
+           extraPoints = 2},
+          LoadPrecomputedKhovanovs[3, {1,1,-1,-1}, Null];
+          FitFamilyWithEigenvaluesGradual[Function[{k1, k2, k3},
+                                                   PrecompKhRed[2 k1 + kA, 2 k2 + kB, -2 k3 + kC, kD]],
+                                          Prepend[{q, t q^3}, 2 k + kA],
+                                          Prepend[{q, t q^3}, 2 k + kB],
+                                          Prepend[{q, t q^3}, - 2 k + kC]]];
+N4redSliceFit2Assign[a_, b_] :=
+    Set @@ Rule[n4redsliceFit2[b], N4redSliceFit2[a, b]];
+(* ### Consider only *odd* values of all evolution parameters ### *)
+ReduceToKnots[assoc_] :=
+    Module[{res = <||>},
+           Scan[Function[{rule},
+                         Module[{modKey = Mask @@ Simplify[Abs[rule[[1]]], Assumptions -> q > 0 && t > 0],
+                                 signKey = Times @@ Simplify[Sign[rule[[1]]], Assumptions -> q > 0 && t > 0]},
+                                res[modKey] = signKey * rule[[2]] + Lookup[res, modKey, 0]]],
+                Normal[assoc]];
+           Factor[Simplify[res]]];
+
+Iterate[{k, MkRangeIter[2, 10, 2]},
+        N4redSliceFit1Assign[k + 1, -k]];
+Iterate[{k, MkRangeIter[2, 10, 2]},
+        n4redsliceFit1Knots[-k] = ReduceToKnots[n4redsliceFit1[-k]]];
+
+Iterate[{k, MkRangeIter[-1, -7, -2]},
+        N3redSliceFit2Assign[-k + 2, k]]
+
+Iterate[{k, MkRangeIter[2, 10, 2]},
+        N4redSliceFit2Assign[3, -k]]
+
+<< "n4redsliceFit1Knots.m";
+
+Simplify[Sign[-q^2 t],
+         Assumptions -> q > 0 && t > 0]
+
+Abs[{-1,-1}]
+
+
+Iterate[{k, MkRangeIter[2, 10, 2]},
+        n3redsliceFit1Knots[-k] = ReduceToKnots[n3redsliceFit1[-k]]];
+
+
+n4redsliceFit1Knots[-2]
+
+n4redsliceFit1Knots[-6]
+
+(* ### vv Try to find the n3 evolution in the exceptional region for genus 2 reduced Khovanov polynomials ### *)
+Block[{kC = -2,
+       extraPoints = 2,
+       res = <||>},
+      Iterate[{{eig1, eig2}, MkTupleIter[AList[q, t q^3], AList[q, t q^3]]},
+              Module[{ans = FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                                     n3redsliceFit1Knots[kC - 2 k1][Mask[eig1, eig2]]],
+                                                            Prepend[{1, 1/t/q^2, 1/t^2/q^4}, kC - 2 k]]},
+                     KeyValueMap[Function[{key, val},
+                                          res[Join[{eig1, eig2}, key]] = Factor[Simplify[val]]],
+                                 ans]]];
+      res] // InputForm
+
+(* ### vv Try to find the n3 evolution in the exceptional "lower right" region for genus 2 reduced Khovanov polynomials ### *)
+Block[{kC = -1,
+       extraPoints = 1,
+       res = <||>},
+      Iterate[{{eig1, eig2}, MkTupleIter[AList[q, t q^3], AList[1, 1/t /q^2]]},
+              Module[{ans = FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                                     Association[Map[Rule[Mask @@ #[[1]], #[[2]]] &,
+                                                                                     Normal[n3redsliceFit2[kC - 2 k1]]]]
+                                                                     [Mask[eig1, eig2]]],
+                                                            Prepend[{q, t q^3, 1/t 1/q}, kC - 2 k]]},
+                     KeyValueMap[Function[{key, val},
+                                          res[Mask[eig1, Sequence @@ key, eig2]] = Factor[Simplify[val]]],
+                                 ans]]];
+      Factor[Simplify[res]]] // InputForm
+
+{{0, 4}}
+{{0, 4}}
+{{0, 4}}
+{{0, 4}}
+
+Out[38]//InputForm= 
+<|Mask[q, q, 1] -> -((t*(1 - q^2*t + q^4*t^2))/(q*(-1 + q^2*t)^2)), 
+ Mask[q, q^3*t, 1] -> 0, Mask[q, 1/(q*t), 1] -> 0, 
+ Mask[q, q, 1/(q^2*t)] -> -(((1 + q^4*t^2)*(1 - q^2*t + q^4*t^2))/
+    (q^3*t*(-1 + q^2*t)^2)), Mask[q, q^3*t, 1/(q^2*t)] -> 
+  (1 - q^2*t + q^4*t^2)/(q*(-1 + q^2*t)^2), Mask[q, 1/(q*t), 1/(q^2*t)] -> 
+  ((1 + t)*(1 - q^2*t + q^4*t^2))/(q*(-1 + q^2*t)^2), Mask[q^3*t, q, 1] -> 0, 
+ Mask[q^3*t, q^3*t, 1] -> (q*t^2)/(-1 + q^2*t)^2, 
+ Mask[q^3*t, 1/(q*t), 1] -> 0, Mask[q^3*t, q, 1/(q^2*t)] -> 
+  -((t*(1 - q^2*t + q^4*t^2))/(q*(-1 + q^2*t)^2)), 
+ Mask[q^3*t, q^3*t, 1/(q^2*t)] -> 0, Mask[q^3*t, 1/(q*t), 1/(q^2*t)] -> 0|>
+
+(* ### vv Try to find the n4 evolution in the exceptional region for genus 3 reduced Khovanov polynomials ### *)
+Block[{kC = -2,
+       extraPoints = 1,
+       res = <||>},
+      Iterate[{{eig1, eig2, eig3}, MkTupleIter[AList[q, t q^3], AList[q, t q^3], AList[q, t q^3]]},
+              Module[{ans = FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                                     n4redsliceFit1Knots[kC - 2 k1][Mask[eig1, eig2, eig3]]],
+                                                            Prepend[{q, t q^3, 1/t^2/q^3, 1/t 1/q}, kC - 2 k]]},
+                     KeyValueMap[Function[{key, val},
+                                          res[Join[{eig1, eig2, eig3}, key]] = Factor[Simplify[val]]],
+                                 ans]]];
+      Factor[Simplify[res]]] // InputForm
+
+Out[37]//InputForm= 
+<|{q, q, q, q} -> ((1 - q^2*t + q^4*t^2)*(1 - q^2*t + 3*q^4*t^2 - q^6*t^3 + 
+     q^8*t^4))/(q^4*t*(-1 + q^2*t)^3), {q, q, q, q^3*t} -> 
+  -(((1 + q^4*t^2)*(1 - q^2*t + q^4*t^2))/(q^2*(-1 + q^2*t)^3)), 
+ {q, q, q, 1/(q^3*t^2)} -> -(((1 + t)*(1 - q^2*t + q^4*t^2)^3)/
+    (q^4*t*(-1 + q^2*t)^3)), {q, q, q, 1/(q*t)} -> 0, 
+ {q, q, q^3*t, q} -> -(((1 + q^4*t^2)*(1 - q^2*t + q^4*t^2))/
+    (q^2*(-1 + q^2*t)^3)), {q, q, q^3*t, q^3*t} -> 
+  (t*(1 - q^2*t + q^4*t^2))/(-1 + q^2*t)^3, {q, q, q^3*t, 1/(q^3*t^2)} -> 0, 
+ {q, q, q^3*t, 1/(q*t)} -> ((1 + t)*(1 - q^2*t + q^4*t^2)^2)/
+   (q^2*(-1 + q^2*t)^3), {q, q^3*t, q, q} -> 
+  -(((1 + q^4*t^2)*(1 - q^2*t + q^4*t^2))/(q^2*(-1 + q^2*t)^3)), 
+ {q, q^3*t, q, q^3*t} -> (t*(1 - q^2*t + q^4*t^2))/(-1 + q^2*t)^3, 
+ {q, q^3*t, q, 1/(q^3*t^2)} -> 0, {q, q^3*t, q, 1/(q*t)} -> 
+  ((1 + t)*(1 - q^2*t + q^4*t^2)^2)/(q^2*(-1 + q^2*t)^3), 
+ {q, q^3*t, q^3*t, q} -> -((t^2*(1 - q^2*t + q^4*t^2))/(-1 + q^2*t)^3), 
+ {q, q^3*t, q^3*t, q^3*t} -> 0, {q, q^3*t, q^3*t, 1/(q^3*t^2)} -> 0, 
+ {q, q^3*t, q^3*t, 1/(q*t)} -> 0, {q^3*t, q, q, q} -> 
+  -(((1 + q^4*t^2)*(1 - q^2*t + q^4*t^2))/(q^2*(-1 + q^2*t)^3)), 
+ {q^3*t, q, q, q^3*t} -> (t*(1 - q^2*t + q^4*t^2))/(-1 + q^2*t)^3, 
+ {q^3*t, q, q, 1/(q^3*t^2)} -> 0, {q^3*t, q, q, 1/(q*t)} -> 
+  ((1 + t)*(1 - q^2*t + q^4*t^2)^2)/(q^2*(-1 + q^2*t)^3), 
+ {q^3*t, q, q^3*t, q} -> -((t^2*(1 - q^2*t + q^4*t^2))/(-1 + q^2*t)^3), 
+ {q^3*t, q, q^3*t, q^3*t} -> 0, {q^3*t, q, q^3*t, 1/(q^3*t^2)} -> 0, 
+ {q^3*t, q, q^3*t, 1/(q*t)} -> 0, {q^3*t, q^3*t, q, q} -> 
+  -((t^2*(1 - q^2*t + q^4*t^2))/(-1 + q^2*t)^3), 
+ {q^3*t, q^3*t, q, q^3*t} -> 0, {q^3*t, q^3*t, q, 1/(q^3*t^2)} -> 0, 
+ {q^3*t, q^3*t, q, 1/(q*t)} -> 0, {q^3*t, q^3*t, q^3*t, q} -> 0, 
+ {q^3*t, q^3*t, q^3*t, q^3*t} -> (q^2*t^3)/(-1 + q^2*t)^3, 
+ {q^3*t, q^3*t, q^3*t, 1/(q^3*t^2)} -> 0, {q^3*t, q^3*t, q^3*t, 1/(q*t)} -> 
+  0|>
+
+
+Simplify[n3redsliceFit1Knots[-4][Mask[q,q]]]
+
+Block[{k = 3},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[Simplify[n3redsliceFit1Knots[-2 k][Mask[q,q]](1 - t q^2)^2]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - t^2 q^4 fun1[k]]]];
+             fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - t^4 q^8 fun2[k]]]];
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun3[k]
+            ]]
+
+Association[Map[Rule[Mask @@ #[[1]], #[[2]]] &,
+                Normal[n3redsliceFit2[- 5]]]]
+
+
+(* ### genus 2 exceptional region "lower right triangle" ### *)
+Block[{k = 1},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[Simplify[
+                 Association[Map[Rule[Mask @@ #[[1]], #[[2]]] &,
+                                 Normal[n3redsliceFit2[-2 k - 1]]]][Mask[q,1/t/q^2]](1 - t q^2)^2]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - t^2 q^2 fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - 1/q^2 fun1[k]]]];
+             fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - 1/t^2 /q^6 fun2[k]]]];
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun3[k]
+            ]]
+
+Out[32]= 0
+
+
+
+
+Block[{k = 3},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[Simplify[n4redsliceFit1Knots[-2 k][Mask[q,q,q]](1 - t q^2)^3]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - t^4 q^6 fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - q^(-2) fun1[k]]]];
+             fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - t^(-2) q^(-6) fun2[k]]]];
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun3[k]
+            ]]
+
+
+Block[{k = 3},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[Simplify[n4redsliceFit1Knots[-2 k][Mask[q,q,t q^3]](1 - t q^2)^3]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - q^(-2) fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - t^(-2) q^(-6) fun1[k]]]];
+             fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - t^2 q^2 fun2[k]]]];
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun3[k]
+            ]]
+
+Out[32]= 0
+
+Out[31]= 0
+
+
 
 (* ### vv Example of how to try to find evolution in one octant ### *)
 Block[{CCCExtraPoints = 2,
-       CCCSeriesShiftParr = 1,
-       CCCSeriesShiftAntiParr = 0},
-      FindReducedPretzelEvosForNTant[1, {1,1}, Null]]
+       CCCSeriesShiftParr = {1,1,1,7},
+       CCCSeriesShiftAntiParr = 3},
+      FindReducedPretzelEvosForNTant[3, {1,1,1,-1}, Null]]
+
+(* ### vv Example of how to try to find evolution in one octant ### *)
+Block[{CCCExtraPoints = 2,
+       CCCSeriesShiftParr = {3,3,3,2}
+       (* CCCSeriesShiftAntiParr = 3*)
+      }, 
+      FindReducedPretzelEvosForNTant[3, {1,1,-1,-1}, Null]]
+
+
 
 (* ### vv When I was figuring out how to get evolution in complicated-shape regions, I did a lot of these explicit stuff ### *)
 (* N3SliceFit2[3, 2] *)
