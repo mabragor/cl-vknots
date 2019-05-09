@@ -480,29 +480,45 @@ FindLabelInBraidSpec[spec_BraidSpec, label_] :=
 (* ###    The first list element is connection inside the braid,                     ### *)
 (* ###    and the second elementis connection outside the braid.                     ### *)
 ConnectionScheme[spec_BraidSpec, choiceOfResidues_] :=
-    Module[{connections = <||>, i,
-	    lstSpec = List @@ spec},
-	   (* ### vv Create the hash, ready to be populated, and populate with connections inside the braids ### *)
-	   For[i = 1, i <= Length[lstSpec], i ++,
-	       Module[{braid = lstSpec[[i]]},
-		      Scan[Function[{index},
-				    connections[II[braid[[2]], index]] = {OO[braid[[2]],
-									     Mod[index - choiceOfResidues[[i]], braid[[1]]]],
-									  Null};
-				    connections[OO[braid[[2]], index]] = {II[braid[[2]],
-									     Mod[index + choiceOfResidues[[i]], braid[[1]]]],
-									  Null}],
-			   (* ### vv The 0-based numbering convention is for convenience of taking the Mod in shifts ### *)
-			   Range[0, braid[[1]] - 1]]]];
-	   (* ### vv Populate with connections that are outside the braids ### *)
-	   Module[{externalConnectionLabels = DeleteDuplicates[Join @@ Map[#[[3]] ~Join~ #[[4]] &, lstSpec]]},
-		  Scan[Function[{label},
-				Module[{it = FindLabelInBraidSpec[spec, label]},
-				       (* Print["label: ", label, " pos: ", it]; *)
-				       connections[[Key[it[[1]]], 2]] = it[[2]];
-				       connections[[Key[it[[2]]], 2]] = it[[1]]]],
-		       externalConnectionLabels]];
-	   connections];
+    Module[{i, lstSpec = List @@ spec},
+           Block[{connectionsCS = <||>},
+                 (* ### vv Populate the connection hash with connections inside the braids ### *)
+                 For[i = 1, i <= Length[lstSpec], i ++,
+                     CSPopulateInsideConnections[lstSpec[[i]], choiceOrResidues[[i]]]];
+                 (* ### vv Populate with connections that are outside the braids ### *)
+                 Module[{externalConnectionLabels = DeleteDuplicates[Join @@ Map[#[[3]] ~Join~ #[[4]] &, lstSpec]]},
+                        Scan[Function[{label},
+                                      Module[{it = FindLabelInBraidSpec[spec, label]},
+                                             (* Print["label: ", label, " pos: ", it]; *)
+                                             connections[[Key[it[[1]]], 2]] = it[[2]];
+                                             connections[[Key[it[[2]]], 2]] = it[[1]]]],
+                             externalConnectionLabels]];
+                 connectionsCS]];
+
+
+CSPopulateInsideConnections[Braid[numStrands_, label_, inputConns_, outputConns_], residue_] :=
+    (* ### vv `connectionsCS` is dynamically scoped variable, supposed to be set up by the caller ### *)
+    Scan[Function[{index},
+                  connectionsCS[II[label, index]] = {OO[label,Mod[index - residue, numStrands]],
+                                                     Null}; (* ### << By convention the inside-connections are 1st element ### *)
+                  connectionsCS[OO[label, index]] = {II[label, Mod[index + residue, numStrands]],
+                                                     Null}],
+         (* ### vv The 0-based numbering convention is for convenience of taking the Mod in shifts ### *)
+         Range[0, numStrands - 1]];
+CSPopulateInsideConnections[CabledBraid[numCables_, numStrandsPerCable_, label_, inputConns_, outputConns_], residue_] :=
+    (* ### vv `connectionsCS` is dynamically scoped variable, supposed to be set up by the caller ### *)
+    Scan[Function[{index},
+                  Scan[Function[{subIndex},
+                                connectionsCS[II[label, {index, subIndex}]] = {OO[label, {Mod[index - residue, numStrands],
+                                                                                          subIndex}],
+                                                                               Null};
+                                connectionsCS[OO[label, {index, subIndex}]] = {II[label, {Mod[index + residue, numStrands],
+                                                                                          subIndex}],
+                                                                               Null}],
+                       Range[0, numStrandsPerCable - 1]]],
+         (* ### vv The 0-based numbering convention is for convenience of taking the Mod in shifts ### *)
+         Range[0, numCables - 1]];
+
 ExternalConnectionScheme[spec_BraidSpec] :=
     Module[{connections = <||>, i,
 	    lstSpec = List @@ spec},

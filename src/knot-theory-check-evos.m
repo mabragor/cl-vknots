@@ -1,6 +1,15 @@
 
 << "knot-theory-knovanov-ev-utils.m";
 
+KhReduced[PD[TorusKnot[3,4]]][q,t]
+
+qtq[n_] :=
+    ((I s q)^n - (I s q)^(-n))/((I s q) - (I s q)^(-1));
+
+Simplify[(qtq[3] + 1)/qtq[2]^2]
+
+Out[4]= 1
+
 evoRules["PPred"] = Get[EvoFname["red", {1,1}]];
 evoRules["PPPPPP"] = Get[EvoFname[{1,1,1,1,1,1}]];
 evoRules["PPPPP"] = Get[EvoFname[{1,1,1,1,1}]];
