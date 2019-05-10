@@ -463,16 +463,34 @@ CheckKhovanovSkein[knot_, crossingNum_] :=
 (* Kh[CupCapResolution[PlanarDiagramToAdvancedStructures[PD[TorusKnot[3,2]]], *)
 (* 		    X[1,5,2,4]], *)
 (*    Program->"JavaKh"][q,t] *)
-FindLabelInBraidSpec[spec_BraidSpec, label_] :=
-    Module[{i,
-	    specLst = List @@ spec,
-	    res = {}},
-	   For[i = 1, i <= Length[spec], i ++,
-	       Module[{itIn = Position[specLst[[i, 3]], label]},
-		      res = res ~Join~ Map[II[specLst[[i, 2]], #[[1]] - 1] &, itIn]];
-	       Module[{itOut = Position[specLst[[i, 4]], label]},
-		      res = res ~Join~ Map[OO[specLst[[i, 2]], #[[1]] - 1] &, itOut]]];
-	   res];
+CSFindLabelInBraidSpec[spec_BraidSpec, label_] :=
+    (* ### ^^ For this function we assume that BraidSpec is well-formed, i.e. `label` occurs somewhere exactly twice ### *)
+    (* ###    But, in principle, an external arc may join not only "in" and "out" braid ends, but also two ins or two outs ### *)
+    Block[{theIns = {}, theOuts = {}},
+          Scan[Function[{aSpec},
+                        CSFindLabelInBraidSpec[aSpec, label]],
+               List @@ spec];
+          Join[theIns, theOuts]];
+CSFindLabelInBraidSpec[Braid[numStrands_, label_, inputConns_, outputConns_], label_] :=
+    Module[{},
+           theIns = Join[theIns,
+                         Map[II[label, #[[1]] - 1] &,
+                             Position[inputConns, label]]];
+           theOuts = Join[theOuts,
+                          Map[OO[label, #[[1]] - 1] &,
+                              Position[outputConns, label]]];
+           Success];
+
+CSFindLabelInBraidSpec[CabledBraid[numCables_, numStrandsPerCable_, label_, inputConns_, outputConns_], label_] :=
+    Module[{},
+           theIns = Join[theIns,
+                         Map[II[label, #[[1]] - 1] &,
+                             Position[inputConns, label]]];
+           theOuts = Join[theOuts,
+                          Map[OO[label, #[[1]] - 1] &,
+                              Position[outputConns, label]]];
+           Success];
+
 (* ### vv Calculate, which endpoints of the arcs outside of the braids are connected ### *)
 (* ###    (both through the braids and out of the braids) to one another             ### *)
 (* ###    Each endpoint turns out to be connected to *exactly* two other endpoints,  ### *)
@@ -486,16 +504,20 @@ ConnectionScheme[spec_BraidSpec, choiceOfResidues_] :=
                  For[i = 1, i <= Length[lstSpec], i ++,
                      CSPopulateInsideConnections[lstSpec[[i]], choiceOrResidues[[i]]]];
                  (* ### vv Populate with connections that are outside the braids ### *)
-                 Module[{externalConnectionLabels = DeleteDuplicates[Join @@ Map[#[[3]] ~Join~ #[[4]] &, lstSpec]]},
-                        Scan[Function[{label},
-                                      Module[{it = FindLabelInBraidSpec[spec, label]},
-                                             (* Print["label: ", label, " pos: ", it]; *)
-                                             connections[[Key[it[[1]]], 2]] = it[[2]];
-                                             connections[[Key[it[[2]]], 2]] = it[[1]]]],
-                             externalConnectionLabels]];
+                 Scan[Function[{label},
+                               Module[{it = CSFindLabelInBraidSpec[spec, label]},
+                                      (* Print["label: ", label, " pos: ", it]; *)
+                                      connections[[Key[it[[1]]], 2]] = it[[2]];
+                                      connections[[Key[it[[2]]], 2]] = it[[1]]]],
+                      CSGetExternalConnectionLabels[spec]];
                  connectionsCS]];
-
-
+CSGetExternalConnectionLabels[spec_BraidSpec] :=
+    DeleteDuplicates[Flatten[Map[CSGetExternalConnectionLabels,
+                                 List @@ spec]]];
+CSGetExternalConnectionLabels[Braid[numStrands_, label_, inputConns_, outputConns_]] :=
+    {inputConns, outputConns};
+CSGetExternalConnectionLabels[CabledBraid[numCables_, numStrandsPerCable_, label_, inputConns_, outputConns_]] :=
+    {inputConns, outputConns};
 CSPopulateInsideConnections[Braid[numStrands_, label_, inputConns_, outputConns_], residue_] :=
     (* ### vv `connectionsCS` is dynamically scoped variable, supposed to be set up by the caller ### *)
     Scan[Function[{index},
