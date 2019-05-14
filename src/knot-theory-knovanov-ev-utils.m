@@ -480,17 +480,15 @@ CSFindLabelInBraidSpec[Braid[numStrands_, label_, inputConns_, outputConns_], la
                           Map[OO[label, #[[1]] - 1] &,
                               Position[outputConns, label]]];
            Success];
-
 CSFindLabelInBraidSpec[CabledBraid[numCables_, numStrandsPerCable_, label_, inputConns_, outputConns_], label_] :=
     Module[{},
            theIns = Join[theIns,
-                         Map[II[label, #[[1]] - 1] &,
+                         Map[II[label, {#[[1]] - 1, #[[2]] - 1}] &,
                              Position[inputConns, label]]];
            theOuts = Join[theOuts,
-                          Map[OO[label, #[[1]] - 1] &,
+                          Map[OO[label, {#[[1]] - 1, #[[2]] - 1}] &,
                               Position[outputConns, label]]];
            Success];
-
 (* ### vv Calculate, which endpoints of the arcs outside of the braids are connected ### *)
 (* ###    (both through the braids and out of the braids) to one another             ### *)
 (* ###    Each endpoint turns out to be connected to *exactly* two other endpoints,  ### *)
@@ -540,7 +538,6 @@ CSPopulateInsideConnections[CabledBraid[numCables_, numStrandsPerCable_, label_,
                        Range[0, numStrandsPerCable - 1]]],
          (* ### vv The 0-based numbering convention is for convenience of taking the Mod in shifts ### *)
          Range[0, numCables - 1]];
-
 ExternalConnectionScheme[spec_BraidSpec] :=
     Module[{connections = <||>, i,
 	    lstSpec = List @@ spec},
