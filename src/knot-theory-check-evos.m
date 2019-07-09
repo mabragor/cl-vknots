@@ -608,11 +608,195 @@ Signaature[coords_] :=
                                zero += 1]]],
                 coords];
            {minus, zero, plus}];
+SmallFSpecFun[index_] :=
+    1/(1 - q^2 t) (* (1 - NN[index]) *) (1/NN[index] - 1);
+LargeFSpecFun[index_] :=
+    (* 1/(1 - q^2 t) (1 + qtThree NN[index]); *)
+    (1 - 1/(q^2 t) + SmallFSpecFun[index]);
+SmallGSpecFun[index_] :=
+    ((1/(q^2 t) - 1 + q^2 t) NN[index] SmallFSpecFun[index]);
 (* ### ^^ ENDLIB ### *)
+
+LoadAllPrecomps[2]
+
+   
+Unframed[PrecompKhRed, {3,3,-1}]
+
+          3    7  2    9  3
+Out[13]= q  + q  t  + q  t
+
+
+Block[{indices = {3,3,5}},
+      Expand[Simplify[DumbEvalAtIndices[(LargeFSpecFun[0] LargeFSpecFun[1]
+                                         + LargeFSpecFun[0] SmallGSpecFun[2]
+                                         + SmallFSpecFun[1] SmallGSpecFun[2]) NN[0] NN[1] q^3
+                                        /KhRedPStarKnotsTheor[2]
+                                        (* /Unframed[PrecompKhRed, indices] *),
+                                        indices]]]]
+
+Out[39]= 1
+
+Out[38]= 1
+
+Out[37]= 1
+
+Out[36]= 1
+    
+
+
+
+Expand[Simplify[DumbEvalAtIndices[KhRedPStarKnotsTheor[2], {3,3,-1}]]]
+
+          3    7  2    9  3
+Out[18]= q  + q  t  + q  t
+
+Simplify[(1 + qtThree NN[i])/LargeFSpecFun[i]]
+
+Simplify[(1 - NN[i])/SmallGSpecFun[i]]
+
+            2          2
+           q  t (-1 + q  t)
+Out[18]= -(----------------)
+                2      4  2
+           1 - q  t + q  t
+
+               2
+Out[17]= (1 - q  t) NN[i]
+
+               2
+Out[16]= (1 - q  t) NN[i]
+
+Out[15]= q NN[i]
+
+Simplify[(1 - (-q^2 t)^3)/(1 + q^2 t)]
+
+             2      4  2
+Out[6]= 1 - q  t + q  t
+
+qtThree
+
+Simplify[(KhRedPStarKnotsTheor[1] /. {NN[i_] :> (q^2 t)^nn[i]})
+         /. {nn[0] -> 1, nn[1] -> 0}]
+
+Simplify[(KhRedPStarKnotsTheor[5] /. {q -> 1/q, t -> 1/t (* , NN[i_] :> 1/NN[i] *)})
+         /KhRedMStarKnotsTheor[5]]
+
+PretzelReducedKhovanov[{1,2}]
+
+
+Simplify[(KhRedPExceptKnotsTheor[2, 2] /. {q -> 1/q, t -> 1/t})
+         / KhRedMExceptKnotsTheor[2, 2]]
+
+Simplify[(KhRedPExcept2KnotsTheor[2, 2] /. {q -> 1/q, t -> 1/t})
+         / KhRedMExcept2KnotsTheor[2, 2]]
+
+          -2
+Out[24]= q
+
+
+          -2
+Out[23]= q
+    
+Out[19]= PretzelReducedKhovanov[1, 2]
+
+          -2
+Out[18]= q
+    
+LoadAllPrecomps[2]
+
+PrecompKhRed[-1, -2] // InputForm
+
+Out[19]//InputForm= q^(-3) + 1/(q^9*t^3) + 1/(q^7*t^2)
+
+Out[18]//InputForm= q + q^5*t^2 + q^7*t^3
+
+Simplify[(PrecompKhRed[1, 3, 2] /. {q -> 1/q, t -> 1/t})
+         /(PrecompKhRed[-1,-3, -2])]
+PrecompKhRed[-1, -2]
+
+
+Factor[Simplify[Coefficient[Coefficient[Coefficient[KhRedPStarKnotsTheor[2],
+                                                    NN[0], 1],
+                                        NN[1], 1],
+                            NN[2], 1]]]
+
+
+Simplify[(KhRedPStarKnotsTheor[2]
+          / (LargeFSpecFun[0] LargeFSpecFun[1]
+             + LargeFSpecFun[0] SmallGSpecFun[2]
+             + SmallFSpecFun[1] SmallGSpecFun[2]))]
+
+          3
+Out[40]= q  NN[0] NN[1]
+
+
+Expand[Simplify[Block[{nn  = 2},
+                      SmallGSpecFun[0] /. {NN[0] -> (q^2 t)^nn}]]]
+
+          1      4  2
+Out[12]= ---- + q  t
+          2
+         q  t
+
+           1      1
+Out[11]= ----- + ----
+          4  2    2
+         q  t    q  t
+
+              2
+         1 + q  t
+Out[10]= --------
+           4  2
+          q  t
+
+         1
+Out[9]= ----
+         2
+        q  t
+
+              1       1
+Out[8]= 1 + ----- + -----
+             6  3    4  2
+            q  t    q  t
+
+              1
+Out[7]= 1 + -----
+             4  2
+            q  t
+
+Out[6]= 1
+
+Simplify[KhRedPStarKnotsTheor[1]
+         / (LargeFSpecFun[0]  LargeFSpecFun[1] - (* 1/NN[1]*)  SmallFSpecFun[0] SmallGSpecFun[1])]
+
+Simplify[(KhRedPStarKnotsTheor[1] /. {NN[1] -> 1})
+         / (LargeFSpecFun[0])]
+
+          2
+Out[23]= q  NN[0]
+
+
+          4
+         q  t NN[0] NN[1]
+Out[22]= ----------------
+                  2
+            -1 + q  t
+
+
+
 
 qtTwo /. {t -> q^(-2)}
 
-LoadAllPrecomps[3];
+LoadAllPrecomps[2];
+
+Unframed[PrecompKhRed, {3,3,-5}] // InputForm
+
+Out[6]//InputForm= 
+3*q + 2/(q^3*t^2) + 2/(q*t) + 4*q^3*t + 3*q^5*t^2 + 3*q^7*t^3 + 2*q^9*t^4 + 
+ q^11*t^5 + q^13*t^6
+
+Out[5]//InputForm= 
+2*q + q^3*t + q^5*t^2 + 2*q^7*t^3 + q^9*t^4 + q^11*t^5 + q^13*t^6
 
 PrecompKhRed[1,1,1,10]
 
