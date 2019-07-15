@@ -1,8 +1,11 @@
 
 Quiet[<< KnotTheory`];
 
+(* ### vv BEGINIMPORTS ### *)
 << "tuple-iterator.m";
+(* ### ^^ ENDIMPORTS ### *)
 
+(* ### vv BEGINLIB ### *)
 CCCWorkDir = "/home/popolit/quicklisp/local-projects/cl-vknots";
 CCCDataDir = CCCWorkDir <> "/data";
 CCCSrcDir = CCCWorkDir <> "/src";
@@ -272,8 +275,13 @@ FitFamilyWithEigenvaluesAdvanced[family_, eigenvaluesSpecs__] :=
                                                             ans]],
                                                  Module[{}, Print[check]; checkFailed]]]]]]]];
 PlanarDiagramToAdvancedStructures[pd_] :=
-    (* ### Massage the terse format of the planar diagram ### *)
+    (* ### Massage the terse format of the planar diagram                                                          ### *)
     (* ### into more convenient collection of maps, which is more suitable to for asking actual questions about PD ### *)
+    (* ### Collections of maps returned:                                                                           ### *)
+    (* ###   * Next edge of a given one                                                                            ### *)
+    (* ###   * Previous edge of a given one                                                                        ### *)
+    (* ###   * For a given edge -- the crossing it is an *incoming* edge of (for some choice of orientation)       ### *)
+    (* ###   * For a given edge -- the crossing it is an *outgoing* edge of (for some choice of orientation)       ### *)
     Module[{nextEdge = <||>,
 	    prevEdge = <||>,
 	    edgeCrossingsIn = <||>,
@@ -318,6 +326,25 @@ PlanarDiagramToAdvancedStructures[pd_] :=
 		List @@ pd];
 	   Module[{connectedComponents = FindConnectedComponents[nextEdge]},
 		  PDExtended[nextEdge, prevEdge, edgeCrossingsIn, edgeCrossingsOut, connectedComponents]]];
+(* ### vv Substitute an edge in a planar diagram with two endpoints (i.e. unlink the planar diagram at this edge) ### *)
+UnlinkPDAtEdge[edge_Edge, pd_PDConvenient] :=
+  (pd /. {(* ### vv We write the patterns for positive and negative crossings separately ... ### *)
+            Yp[edge, b_Edge, c_Edge, d_Edge] :> Yp[Edge[Sequence @@ edge, "i"], b, c, d],
+            Yp[a_Edge, edge, c_Edge, d_Edge] :> Yp[a, Edge[Sequence @@ edge, "i"], c, d],
+            Yp[a_Edge, b_Edge, edge, d_Edge] :> Yp[a, b, Edge[Sequence @@ edge, "f"], d],
+            Yp[a_Edge, b_Edge, c_Edge, edge] :> Yp[a, b, c, Edge[Sequence @@ edge, "f"]],
+            (* ### ^v  Because I can't figure out, how to write this in a generic way ### *)
+            Ym[edge, b_Edge, c_Edge, d_Edge] :> Ym[Edge[Sequence @@ edge, "i"], b, c, d],
+            Ym[a_Edge, edge, c_Edge, d_Edge] :> Ym[a, Edge[Sequence @@ edge, "i"], c, d],
+            Ym[a_Edge, b_Edge, edge, d_Edge] :> Ym[a, b, Edge[Sequence @@ edge, "f"], d],
+            Ym[a_Edge, b_Edge, c_Edge, edge] :> Ym[a, b, c, Edge[Sequence @@ edge, "f"]]});
+(* ### vv Substitute two edge-endpoints with a single edge (i.e. link the planar diagram at this edge). ### *)
+(* ###    Assumes, that the planar diagram `pd` is well-formed, and `point1` and `point2` are indeed the endpoints ### *)
+LinkPDAtPoints[point1_Edge, point2_Edge, pd_PDConvenient] :=
+    (pd /. {point2 -> point1});
+
+          
+    
 FindConnectedComponents[nextEdge_] :=
     Module[{freeEdges = nextEdge,
 	    connectedComponents = {}},
@@ -822,6 +849,46 @@ UnderIncomingCrossingQ[crossing_, edge_] :=
 	   crossing[[1]] === edge],
        And[Yp === Head[crossing],
 	   crossing[[2]] === edge]];
+(* ### vv Append `head` to all edges' marks. Useful for combining of several planar diagrams into a common one. ### *)
+HeadShift[head_, whole_PDConvenient] :=
+    (whole /. {Edge[seq__] :> Edge[head, seq]});
+(* ### vv Replace a strand in a planar diagram by `n`-cable. ### *)
+Cable[1, pd_PDConvenient] :=
+    pd;
+Cable[n_, pd_PDConvenient] :=
+    Module[{res = {}, head, a, b, c, d, i},
+           Scan[Function[{crossing},
+                         Print["crossing: ", crossing];
+                         head = crossing[[0]];
+                         {a, b, d, c} = List @@ crossing;
+                         (* ### vv Add contribution of corners ### *)
+                         res = Join[res, {head[Edge[Sequence[a], 0, n], Edge[Sequence[b], 1, 0],
+                                               Edge[Sequence[b], 1, 1], Edge[Sequence[a], 1, n]],
+                                          head[Edge[Sequence[a], 0, 1], Edge[Sequence[b], 1, n-1],
+                                               Edge[Sequence[d], 1, 0], Edge[Sequence[a], 1, 1]],
+                                          head[Edge[Sequence[a], n-1, 1], Edge[Sequence[b], n, n-1],
+                                               Edge[Sequence[d], n, 0], Edge[Sequence[c], 0, 1]],
+                                          head[Edge[Sequence[a], n-1, n], Edge[Sequence[b], n, 0],
+                                               Edge[Sequence[b], n, 1], Edge[Sequence[c], 0, n]]}];
+                         (* ### vv Add contribution of borders ### *)
+                         For[i = 1, i <= n - 2, i ++,
+                             res = Join[res, {head[Edge[Sequence[a], i, n], Edge[Sequence[b], i+1, 0],
+                                                   Edge[Sequence[b], i+1, 1], Edge[Sequence[a], i+1, n]],
+                                              head[Edge[Sequence[a], 0, n-i], Edge[Sequence[b], 1, i],
+                                                   Edge[Sequence[b], 1, i+1], Edge[Sequence[a], 1, n-i]],
+                                              head[Edge[Sequence[a], i, 1], Edge[Sequence[b], i+1, n-1],
+                                                   Edge[Sequence[d], i+1, 0], Edge[Sequence[a], i+1, 1]],
+                                              head[Edge[Sequence[a], n-1, n-i], Edge[Sequence[b], n, i],
+                                                   Edge[Sequence[b], n, i+1], Edge[Sequence[c], 0, n-i]]}]];
+                         (* ### vv Add contribution of bulk ### *)
+                         For[i = 1, i <= n - 2, i  ++,
+                             For[j = 1, j <= n - 2, j ++,
+                                 AppendTo[res, head[Edge[Sequence[a], i, n-j], Edge[Sequence[b], i+1, j],
+                                                    Edge[Sequence[b], i+1, j+1], Edge[Sequence[a], i+1, n-j]]]]]],
+                List @@ pd];
+           PDConvenient @@ res];
+(* ### vv Convert an extended representation of a planar diagram into the terse one, that is understood by KnotTheory ### *)
+(* ###    If necessary, adds dummy crossings so that connected components are convenient to cut at.                   ### *)
 ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_]] :=
     Module[{i, j,
 	    myCC = connectedComponents,
@@ -1065,5 +1132,5 @@ LoadAllPrecomps[genus_] :=
             Get[CCCWorkDir <> "/data/pretzel-khovanovs-" <> ToString[genus + 1]
                 <> "-" <> StringRiffle[Map[ToString, signs], "-"]
                 <> ".m"]];
-
+(* ### ^^ ENDLIB ### *)
 
