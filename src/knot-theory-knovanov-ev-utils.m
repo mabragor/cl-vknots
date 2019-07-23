@@ -853,40 +853,64 @@ UnderIncomingCrossingQ[crossing_, edge_] :=
 HeadShift[head_, whole_PDConvenient] :=
     (whole /. {Edge[seq__] :> Edge[head, seq]});
 (* ### vv Replace a strand in a planar diagram by `n`-cable. ### *)
+(* ###    We consider only the case, when the mask of orientations is the same for both cabled strands ### *)
 Cable[1, pd_PDConvenient] :=
     pd;
-Cable[n_, pd_PDConvenient] :=
-    Module[{res = {}, head, a, b, c, d, i},
+Cable[n_, mask_, pd_PDConvenient] :=
+    Module[{res = {}, head, a, b, c, d, i, j},
            Scan[Function[{crossing},
-                         Print["crossing: ", crossing];
-                         head = crossing[[0]];
-                         {a, b, d, c} = List @@ crossing;
-                         (* ### vv Add contribution of corners ### *)
-                         res = Join[res, {head[Edge[Sequence[a], 0, n], Edge[Sequence[b], 1, 0],
-                                               Edge[Sequence[b], 1, 1], Edge[Sequence[a], 1, n]],
-                                          head[Edge[Sequence[a], 0, 1], Edge[Sequence[b], 1, n-1],
-                                               Edge[Sequence[d], 1, 0], Edge[Sequence[a], 1, 1]],
-                                          head[Edge[Sequence[a], n-1, 1], Edge[Sequence[b], n, n-1],
-                                               Edge[Sequence[d], n, 0], Edge[Sequence[c], 0, 1]],
-                                          head[Edge[Sequence[a], n-1, n], Edge[Sequence[b], n, 0],
-                                               Edge[Sequence[b], n, 1], Edge[Sequence[c], 0, n]]}];
-                         (* ### vv Add contribution of borders ### *)
-                         For[i = 1, i <= n - 2, i ++,
-                             res = Join[res, {head[Edge[Sequence[a], i, n], Edge[Sequence[b], i+1, 0],
-                                                   Edge[Sequence[b], i+1, 1], Edge[Sequence[a], i+1, n]],
-                                              head[Edge[Sequence[a], 0, n-i], Edge[Sequence[b], 1, i],
-                                                   Edge[Sequence[b], 1, i+1], Edge[Sequence[a], 1, n-i]],
-                                              head[Edge[Sequence[a], i, 1], Edge[Sequence[b], i+1, n-1],
-                                                   Edge[Sequence[d], i+1, 0], Edge[Sequence[a], i+1, 1]],
-                                              head[Edge[Sequence[a], n-1, n-i], Edge[Sequence[b], n, i],
-                                                   Edge[Sequence[b], n, i+1], Edge[Sequence[c], 0, n-i]]}]];
-                         (* ### vv Add contribution of bulk ### *)
-                         For[i = 1, i <= n - 2, i  ++,
-                             For[j = 1, j <= n - 2, j ++,
-                                 AppendTo[res, head[Edge[Sequence[a], i, n-j], Edge[Sequence[b], i+1, j],
-                                                    Edge[Sequence[b], i+1, j+1], Edge[Sequence[a], i+1, n-j]]]]]],
+                         Module[{tmpRes = {}},
+                                Print["crossing: ", crossing];
+                                head = crossing[[0]];
+                                {a, b, d, c} = List @@ crossing;
+                                (* ### vv Add contribution of corners ### *)
+                                tmpRes = Join[tmpRes, {head[Edge[Sequence[a], 0, n], Edge[Sequence[b], 1, 0],
+                                                            Edge[Sequence[b], 1, 1], Edge[Sequence[a], 1, n]],
+                                                       head[Edge[Sequence[a], 0, 1], Edge[Sequence[b], 1, n-1],
+                                                            Edge[Sequence[d], 1, 0], Edge[Sequence[a], 1, 1]],
+                                                       head[Edge[Sequence[a], n-1, 1], Edge[Sequence[b], n, n-1],
+                                                            Edge[Sequence[d], n, 0], Edge[Sequence[c], 0, 1]],
+                                                       head[Edge[Sequence[a], n-1, n], Edge[Sequence[b], n, 0],
+                                                            Edge[Sequence[b], n, 1], Edge[Sequence[c], 0, n]]}];
+                                (* ### vv Add contribution of borders ### *)
+                                For[i = 1, i <= n - 2, i ++,
+                                    tmpRes = Join[tmpRes, {head[Edge[Sequence[a], i, n], Edge[Sequence[b], i+1, 0],
+                                                                Edge[Sequence[b], i+1, 1], Edge[Sequence[a], i+1, n]],
+                                                           head[Edge[Sequence[a], 0, n-i], Edge[Sequence[b], 1, i],
+                                                                Edge[Sequence[b], 1, i+1], Edge[Sequence[a], 1, n-i]],
+                                                           head[Edge[Sequence[a], i, 1], Edge[Sequence[b], i+1, n-1],
+                                                                Edge[Sequence[d], i+1, 0], Edge[Sequence[a], i+1, 1]],
+                                                           head[Edge[Sequence[a], n-1, n-i], Edge[Sequence[b], n, i],
+                                                                Edge[Sequence[b], n, i+1], Edge[Sequence[c], 0, n-i]]}]];
+                                (* ### vv Add contribution of bulk ### *)
+                                For[i = 1, i <= n - 2, i  ++,
+                                    For[j = 1, j <= n - 2, j ++,
+                                        AppendTo[tmpRes, head[Edge[Sequence[a], i, n-j], Edge[Sequence[b], i+1, j],
+                                                              Edge[Sequence[b], i+1, j+1], Edge[Sequence[a], i+1, n-j]]]]]],
+                         (* ### vv And now we transform crossings according to orientation mask ### *)
+                         tmpRes = TransmuteCrossings[mask, tmpRes];
+                         res = Join[res, tmpRes]],
                 List @@ pd];
            PDConvenient @@ res];
+TheOtherHead[head_] :=
+    If[Yp === head,
+       Ym,
+       If[Ym === head,
+          Yp,
+          Message[TheOtherHead::unknownhead]]];
+TransmuteCrossings[mask_, crossings_] :=
+    (crossings /. {whole : head_[a : Edge[aRest__, i1_, j1_], Edge[b : bRest__, i2_, j2_], d_, c_] :>
+                   If[-1 === mask[[j1]],
+                      If[-1 === mask[[i1]],
+                         (* ### vv We change both orientations ### *)
+                         head[c, d, b, a],
+                         (* ### vv We change only left strand orientation ### *)
+                         TheOtherHead[head][b, c, a, d]],
+                      If[-1 === mask[[i1]],
+                         (* ### vv We change only right strand orientation ### *)
+                         TheOtherHead[head][d, a, c, b],
+                         (* ### vv We do not change orientation at all ### *)
+                         whole]]});
 (* ### vv Convert an extended representation of a planar diagram into the terse one, that is understood by KnotTheory ### *)
 (* ###    If necessary, adds dummy crossings so that connected components are convenient to cut at.                   ### *)
 ExtendedPDToUsual[PDExtended[nextEdge_, prevEdge_, edgeCrossingsIn_, edgeCrossingsOut_, connectedComponents_]] :=
@@ -1132,5 +1156,19 @@ LoadAllPrecomps[genus_] :=
             Get[CCCWorkDir <> "/data/pretzel-khovanovs-" <> ToString[genus + 1]
                 <> "-" <> StringRiffle[Map[ToString, signs], "-"]
                 <> ".m"]];
+(* ### vv Make a planar diagram of a (non-closed) 2-strand braid, oriented antiparalelly ### *)
+(* ###    in a "convenient" notation. Assumes bottom right leg is incoming               ### *)
+AntiParallelConvenientTwoStrandBraidBottomInc[n_] :=
+    (* ### vv Make a planar diagram of a whitehead satellite of a given knot ### *)
+    Pass;
+WhiteheadSatellite[k_, knot_] :=
+    (* ### vv First we define elementary constituents ... ### *)
+    Module[{pdOfKnot = HeadShift["a", Cable[2, {-1, 1},
+                                            UnlinkPDAtEdge[Edge[1],
+                                                           MakePlanarDiagramConvenient[PD[knot]]]]],
+            pdOfBraid = HeadShift["b", AntiParallelConvenientTwoStrandBraidBottomInc[k]],
+            whiteHeadBraid = HeadShift["c", AntiParallelConvenientTwoStrandBraidTopInc[2]]},
+           (* ### vv ... and then we glue them in some (very particular) way ### *)
+           Pass];
 (* ### ^^ ENDLIB ### *)
 

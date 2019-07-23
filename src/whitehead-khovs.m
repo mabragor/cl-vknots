@@ -24,7 +24,20 @@ PyGetWhiteheadizedPD[knot_, aWind_, bWind_] :=
            WriteString[fdWrite, ToString[ReplacePart[pd, FirstPosition[pd, 1] -> 0], InputForm]];
            Close[fdWrite];
            (* ### vv Call a python part of the rig ### *)
-           code = Run["python2 " <> CCCPythonDir <> CCCScriptFname <> " " <> ToString[aWind] <> " " <> ToString[bWind]
+           code = Run["python2 " <> CCCPythonDir <> CCCScriptFname <> " whiteheadize " <> ToString[aWind] <> " " <> ToString[bWind]
+                      <> " > /dev/null"];
+           If[0 =!= code,
+              Message[PyGetWhiteheadizedPD::someThingWrongPython],
+              (* ### vv Read the whiteheadized diagram from the file ### *)
+              Get[CCCPythonDir <> CCCOutputFname]]];
+PyGetTwistWhiteheadizedPD[parentWind_, childWind_] :=
+    (* ### ^^ Get a twist satellite of a twist knot. Diagram is completely constructed on the Python side. ### *)
+    (* ###    `parentWind` -- number of windings in the parent twist knot's 2-strand braid ### *)
+    (* ###    `childWind`  -- number of windings in the child twist knot's 2-strand braid  ### *)
+    Module[{code, fdWrite},
+           (* ### vv Call a python part of the rig ### *)
+           code = Run["python2 " <> CCCPythonDir <> CCCScriptFname <> " twist "
+                      <> ToString[parentWind] <> " " <> ToString[childWind]
                       <> " > /dev/null"];
            If[0 =!= code,
               Message[PyGetWhiteheadizedPD::someThingWrongPython],
@@ -42,18 +55,46 @@ PrecalculateKhRedWhiteheadizedPDs[knot_, squareSize_] :=
                           WriteString[fd, "PrecompKhRed[" <> ToString[knot, InputForm] <> ", " <> ToString[i] <> ", " <> ToString[j]
                                       <> "] := " <> ToString[polly, InputForm] <> ";\n"]]]];
            Close[fd]];
+PrecalculateKhRedWhiteheadizedPDsLine[knot_, from_, to_] :=
+    (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials specifically for a twisted line. ### *)
+    (* ###    `from` and `to`-- winding iteration bounds ### *)
+    (* ###    `knot`       -- a knot spec from a Rolfsen table ### *)
+    Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-precomp-whiteheadized-" <> KnotToFname[knot] <> ".m"],
+            i},
+           For[i = from, i <= to, i ++,
+               Module[{polly = KhReduced[PyGetWhiteheadizedPD[knot, i, 2] /. {ii_Integer :> ii + 1}][q, t]},
+                      WriteString[fd, "PrecompKhRed[" <> ToString[knot, InputForm] <> ", " <> ToString[i] <> ", " <> ToString[2]
+                                  <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
+           Close[fd]];
+PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
+    (* ### ^^ Precalculate reduced Khovanov polynomials for twisted-twisted knots. ### *)
+    (* ###    `from` and `to`-- winding iteration bounds for a child braid. ### *)
+    (* ###    `twist`        -- winding of a parent braid. ### *)
+    Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-precomp-twisted-twisted-" <> ToString[twist] <> ".m"],
+            i},
+           For[i = from, i <= to, i = i + 2,
+               Module[{polly = KhReduced[PyGetTwistWhiteheadizedPD[twist, i] /. {ii_Integer :> ii + 1}][q, t]},
+                      WriteString[fd, "PrecompKhRed[Twisted[" <> ToString[twist] <> "], " <> ToString[i]
+                                  <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
+           Close[fd]];
 KnotToFname[Knot[a_, b_]] :=
     ("rolfsen-knot-" <> ToString[a] <> "-" <> ToString[b]);
 (* ### ^^ ENDLIB ### *)
 
-PrecalculateKhRedWhiteheadizedPDs[Knot[3,1], 0]
+PyGetTwistWhiteheadizedPD[4, 2]
 
-KnotTheory::loading: Loading precomputed data in PD4Knots`.
+Module[{j},
+       For[j = 8, j <= 16, j = j + 2,
+           PrecalculateKhRedTwistedPDsLine[j, -12 - 2 (j - 8), -10 - 2 (j - 8)]]]
 
-Out[3]= /home/popolit/quicklisp/local-projects/cl-vknots/datakh-red-precomp-w\
- 
->    hiteheadized-rolfsen-knot-3-1.m
+[Calculating...]
 
+
+Module[{pp},
+       For[p = 3, p <= 4, p ++,
+           PrecalculateKhRedWhiteheadizedPDsLine[Knot[2 p + 1,1], -6 - 2 (p-2) , 6 - 2 (p-2)]]]
+
+KhReduced[PyGetWhiteheadizedPD[Knot[9,1], 0, 2] /. {ii_Integer :> ii + 1}][q,t] // InputForm
 
 Kh[PyGetWhiteheadizedPD[Knot[3,1], 0, 4] /. {i_Integer :> i + 1}][q, t]
 
