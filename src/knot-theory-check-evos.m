@@ -617,6 +617,8 @@ SmallGSpecFun[index_] :=
     ((1/(q^2 t) - 1 + q^2 t) NN[index] SmallFSpecFun[index]);
 (* ### ^^ ENDLIB ### *)
 
+LoadWhiteheadizedPrecomps[Knot[3,1]]
+
 LoadAllPrecomps[2]
 
    
