@@ -12,6 +12,7 @@ CCCPythonDir = "/home/popolit/code/planar-diagrams-py/";
 CCCInputFname = "whiteheadize-pd-input.txt";
 CCCOutputFname = "whiteheadize-pd-output.txt";
 CCCScriptFname = "whiteheadize-pd.py";
+CCCRolfsenMults = {1, 1, 2, 3, 7, 21, 49, 165};
 PyGetWhiteheadizedPD[knot_, aWind_, bWind_] :=
     (* ### ^^ Get a double-braid satellite of the given knot ### *)
     (* ###    `knot`  -- a knot in any form that can be fed into `PD` of the knot theory ### *)
@@ -55,13 +56,13 @@ PrecalculateKhRedWhiteheadizedPDs[knot_, squareSize_] :=
                           WriteString[fd, "PrecompKhRed[" <> ToString[knot, InputForm] <> ", " <> ToString[i] <> ", " <> ToString[j]
                                       <> "] := " <> ToString[polly, InputForm] <> ";\n"]]]];
            Close[fd]];
-PrecalculateKhRedWhiteheadizedPDsLine[knot_, from_, to_] :=
+PrecalculateKhRedWhiteheadizedPDsLine[knot_, from_, to_, step_] :=
     (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials specifically for a twisted line. ### *)
     (* ###    `from` and `to`-- winding iteration bounds ### *)
     (* ###    `knot`       -- a knot spec from a Rolfsen table ### *)
-    Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-precomp-whiteheadized-" <> KnotToFname[knot] <> ".m"],
+    Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-whiteheadized-" <> KnotToFname[knot] <> ".m"],
             i},
-           For[i = from, i <= to, i ++,
+           For[i = from, i <= to, i = i + step,
                Module[{polly = KhReduced[PyGetWhiteheadizedPD[knot, i, 2] /. {ii_Integer :> ii + 1}][q, t]},
                       WriteString[fd, "PrecompKhRed[" <> ToString[knot, InputForm] <> ", " <> ToString[i] <> ", " <> ToString[2]
                                   <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
@@ -82,11 +83,13 @@ KnotToFname[Knot[a_, b_]] :=
 (* ### ^^ ENDLIB ### *)
 
 (* ### vv CURWORK ### *)
-CCCRolfsenMults = {1, 1, 2, 3, 7, 21, 49, 165};
 Module[{i, j},
-       For[i = 5, i <= 10, i ++,
+       For[i = 7, i <= 10, i ++,
            For[j = 1, j <= CCCRolfsenMults[[i - 2]], j ++,
-               PrecalculateKhRedWhiteheadizedPDs[Knot[i, j], 10]]]];
+               PrecalculateKhRedWhiteheadizedPDsLine[Knot[i, j], -10, 10, 2]]]];
+
+
+PrecalculateKhRedWhiteheadizedPDsLine[Knot[7,3], -10, 6, 2]
 
 
 
