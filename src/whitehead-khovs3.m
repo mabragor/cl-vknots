@@ -5,6 +5,7 @@
 
 (* ### vv BEGINIMPORTS ### *)
 << "knot-theory-knovanov-ev-utils.m";
+<< "file-locks.m";
 (* ### ^^ ENDIMPORTS ### *)
 
 (* ### vv BEGINLIB ### *)
@@ -15,37 +16,44 @@ CCCScriptFname = "whiteheadize-pd.py";
 CCCRolfsenMults = {1, 1, 2, 3, 7, 21, 49, 165};
 CCCFoamhoPath = "/home/popolit/code/foamho-bin/foamho/foamho";
 CCCFoamhoOutputFname = "/tmp/foamho-output.txt";
+PyCallWhiteheadizer[command_, pd_, args_] :=
+    (* ### ^^ A general "RPC" interface to the python part of the planar diagram rig. ### *)
+    (* ###    `command` -- a command to be executed ### *)
+    (* ###    `pd`      -- a planar diagram (maybe cut), to be placed into a special input file. ### *)
+    (* ###                 Set to None, if no input knot is needed (as for the twist-knots. ### *)
+    (* ###    `args`    -- command-line arguments to the script ### *)
+    WithALock["whiteheadize-pd", (* ### << Surely we need some synchronization as we run several things using this ### *)
+              (* ###                       functionality in parallel. ### *)
+              Module[{code, fdWrite, pd},
+                     If[None =!= pd,
+                        (* ### vv dump planar diagram into a file ### *)
+                        fdWrite = OpenWrite[CCCPythonDir <> CCCInputFname];
+                        WriteString[fdWrite, ToString[pd, InputForm]];
+                        Close[fdWrite]];
+                     (* ### vv Call a python part of the rig ### *)
+                     code = Run[StringTemplate["python2 `pyDir``scriptName` `cmd` `args` > /dev/null"]
+                                [<|"pyDir" -> CCCPythonDir, "scriptName" -> CCCScriptFname,
+                                 "cmd" -> command, "args" -> StringJoin[StringRiffle[Map[ToString, args]]]
+                                 |>]];
+                     If[0 =!= code,
+                        Message[PyCallWhiteheadizer::someThingWrongPython],
+                        (* ### vv Read the whiteheadized diagram from the file ### *)
+                        Get[CCCPythonDir <> CCCOutputFname]]]];
+CutPD[knot_] :=
+    (* ### ^^ Cut planar diagram of a knot at the origin ### *)
+    Module[{pd = PD[knot]},
+           ReplacePart[pd, FirstPosition[pd, 1] -> 0]];
 PyGetWhiteheadizedPD[knot_, aWind_, bWind_] :=
     (* ### ^^ Get a double-braid satellite of the given knot ### *)
     (* ###    `knot`  -- a knot in any form that can be fed into `PD` of the knot theory ### *)
     (* ###    `aWind` -- number of windings of the a-braid of the double-braid duo ### *)
     (* ###    `bWind` -- number of windings of the b-braid of the double-braid duo ### *)
-    Module[{code, fdWrite, pd},
-           (* ### vv dump planar diagram into a file ### *)
-           fdWrite = OpenWrite[CCCPythonDir <> CCCInputFname];
-           pd = PD[knot];
-           WriteString[fdWrite, ToString[ReplacePart[pd, FirstPosition[pd, 1] -> 0], InputForm]];
-           Close[fdWrite];
-           (* ### vv Call a python part of the rig ### *)
-           code = Run["python2 " <> CCCPythonDir <> CCCScriptFname <> " whiteheadize " <> ToString[aWind] <> " " <> ToString[bWind]
-                      <> " > /dev/null"];
-           If[0 =!= code,
-              Message[PyGetWhiteheadizedPD::someThingWrongPython],
-              (* ### vv Read the whiteheadized diagram from the file ### *)
-              Get[CCCPythonDir <> CCCOutputFname]]];
+    PyCallWhiteheadizer["whiteheadize", CutPD[knot], {aWind, bWind}];
 PyGetTwistWhiteheadizedPD[parentWind_, childWind_] :=
     (* ### ^^ Get a twist satellite of a twist knot. Diagram is completely constructed on the Python side. ### *)
     (* ###    `parentWind` -- number of windings in the parent twist knot's 2-strand braid ### *)
     (* ###    `childWind`  -- number of windings in the child twist knot's 2-strand braid  ### *)
-    Module[{code, fdWrite},
-           (* ### vv Call a python part of the rig ### *)
-           code = Run["python2 " <> CCCPythonDir <> CCCScriptFname <> " twist "
-                      <> ToString[parentWind] <> " " <> ToString[childWind]
-                      <> " > /dev/null"];
-           If[0 =!= code,
-              Message[PyGetWhiteheadizedPD::someThingWrongPython],
-              (* ### vv Read the whiteheadized diagram from the file ### *)
-              Get[CCCPythonDir <> CCCOutputFname]]];
+    PyCallWhiteheadizer["twist", None, {parentWind, childWind}];
 PrecalculateKhRedWhiteheadizedPDs[knot_, squareSize_] :=
     (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials in some square of the double-braid space. ### *)
     (* ###    `squareSize` -- (roughly) half the length of the side of the square ### *)
@@ -115,6 +123,8 @@ PrecalculateKhRedSL3TwistedPDsLine[twist_, from_, to_] :=
                                   <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
            Close[fd]];
 (* ### ^^ ENDLIB ### *)
+
+PyGetWhiteheadizedPD[PD[Knot[3,1]], 4, 6]
 
 (* ### vv CURWORK ### *)
 Module[{i, j},

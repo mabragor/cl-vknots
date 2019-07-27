@@ -292,7 +292,64 @@ SimpleSuperTestRig[knot_, min_, max_] :=
                   {neg, pos}]];
 (* ### ^^ ENDLIB ### *)
 
+(* ### vv Load the precomputed reduced Khovanov's for twist knots ### *)
+Module[{j},
+       For[j = 2, j <= 16, j = j + 2,
+           LoadTwistedPrecomps[j]]];
+
+
 pos = UniformTwistedFitPositive[];
+
+(* ### vv Get the apart expression for coeff of {1} ### *)
+Simplify[(1 + t)/(2*t*(1 + q^2*t))
+         + (-1 + 2*t + 5*t^2 + 2*t^3)/(2*(-1 + t)*t*(-1 + q^2*t))]
+Simplify[(-1 - 3*t - 3*q*t - q*t^2 - 4*q^2*t^2)/ (2*(-1 + t)*t*(-1 + q^3*t^2))
+         + (1 + 3*t - 3*q*t - q*t^2 + 4*q^2*t^2)/ (2*(-1 + t)*t*(1 + q^3*t^2))]
+Simplify[Apart[(Apart[Lookup[pos, Key[{1}]], q]
+                       - (1 + t)/(2*t*(1 + q^2*t))
+                       - (-1 + 2*t + 5*t^2 + 2*t^3)/(2*(-1 + t)*t*(-1 + q^2*t))
+                       - (-1 - 3*t - 3*q*t - q*t^2 - 4*q^2*t^2)/ (2*(-1 + t)*t*(-1 + q^3*t^2))
+                       - (1 + 3*t - 3*q*t - q*t^2 + 4*q^2*t^2)/ (2*(-1 + t)*t*(1 + q^3*t^2))
+                      ),
+               q]]
+
+Factor[Simplify[
+    (-1 - t)/(2*t*(1 + q^2*t))
+    - ((1 + t)*(-1 + 3*t + 2*t^2))/(2*(-1 + t)*t*(-1 + q^2*t))]]
+
+                         2          2      2  2
+           (1 + t) (1 - q  + t + 2 q  t + q  t )
+Out[35]= -(-------------------------------------)
+                              2          2
+              (-1 + t) (-1 + q  t) (1 + q  t)
+
+Factor[Simplify[
+    (1 + t - q^2*t^2 - q^2*t^3)/ (2*t^2*(1 + q^4*t^3))
+    + (1 + 4*t + 3*t^2 + 3*q^2*t^2 + 4*q^2*t^3 + q^2*t^4)/ (2*(-1 + t)*t^2*(-1 + q^4*t^3))]]
+
+Simplify[Apart[(Apart[Lookup[pos, Key[{q^(-4) t^(-2)}]], q]
+                - (-1 - t)/(2*t*(1 + q^2*t))
+                + ((1 + t)*(-1 + 3*t + 2*t^2))/(2*(-1 + t)*t*(-1 + q^2*t))
+                - (1 + t - q^2*t^2 - q^2*t^3)/ (2*t^2*(1 + q^4*t^3))
+                - (1 + 4*t + 3*t^2 + 3*q^2*t^2 + 4*q^2*t^3 + q^2*t^4)/ (2*(-1 + t)*t^2*(-1 + q^4*t^3))
+               ),
+               q]]
+
+       - (1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t*(-1 + q^3*t^2))
+       - (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t*(1 + q^3*t^2))
+
+
+Apart[(Apart[Lookup[pos, Key[{q^(-12) t^(-8)}]], q]
+       - (1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t*(-1 + q^3*t^2))
+       - (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t*(1 + q^3*t^2))
+       - (-1 - t + q^2*t^2 + q^2*t^3)/(2*t^2*(1 + q^4*t^3))
+       - (-1 - 4*t - 3*t^2 - 3*q^2*t^2 - 4*q^2*t^3 - q^2*t^4)/(2*(-1 + t)*t^2*(-1 + q^4*t^3))
+      ),
+      q] // InputForm
+
+Out[41]//InputForm= q^2 + q^6*t^3 + q^8*t^4 + (1 + 2*t)/t^2
+
+
 
 evoPos = MkEvoFunction[Factor[pos]];
 
@@ -301,9 +358,6 @@ evoPos = MkEvoFunction[Factor[pos]];
        , q])
     /. {(1 + q^2 t) -> 1/aaa}
 
-Module[{j},
-       For[j = 2, j <= 16, j = j + 2,
-           LoadTwistedPrecomps[j]]];
 
 Factor[TwistedMassagedPositive[10, -7]]
 
