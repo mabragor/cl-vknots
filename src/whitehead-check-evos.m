@@ -214,18 +214,42 @@ TwistedMassagedNegative[n_, k_] :=
            Simplify[((PrecompKhRed[Twisted[n], 2 k] /. {q -> 1/q, t -> 1/t})
                      - TwistedKhovanov[k + weight]/ (q^2 t ))
                     /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 (q^4 t^2)^(k + weight))]];
+TwistedMassagedPositiveNegP[n_, k_] :=
+    Module[{weight = n - 2},
+           Simplify[((PrecompKhRed[Twisted[n], 2 k] /. {q -> 1/q, t -> 1/t})
+                     - TwistedKhovanov[k + weight + 3]/ (q^2 t^2 (-1)))
+                    /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 (q^4 t^2)^(k + weight))]];
+TwistedMassagedNegativeNegP[n_, k_] :=
+    Module[{weight = n - 2},
+           Simplify[((PrecompKhRed[Twisted[n], 2 k] /. {q -> 1/q, t -> 1/t})
+                     - TwistedKhovanov[k + weight + 3]/ (q^2 t ))
+                    /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 (q^4 t^2)^(k + weight))]];
 UniformTwistedFitPositive[] :=
     Block[{CCCEigenvaluesCritLength = Null,
-           extraPoints = 2},
+           extraPoints = 3},
           FitFamilyWithEigenvaluesGradual[Function[{k1},
                                                    TwistedMassagedPositive[2 k1 + 2, 1 - 2 k1]],
                                           Prepend[{1, t^(-2) q^(-4), t^(-8) q^(-12)}, k + 1]]];
 UniformTwistedFitNegative[] :=
     Block[{CCCEigenvaluesCritLength = Null,
-           extraPoints = 2},
+           extraPoints = 3},
           FitFamilyWithEigenvaluesGradual[Function[{k1},
                                                    TwistedMassagedNegative[2 k1 + 2, 0 - 2 k1]],
                                           Prepend[{1, t^(-2) q^(-4), t^(-8) q^(-12)}, k + 1]]];
+UniformTwistedFitPositiveNegP[] :=
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3,
+           shiftP = -8},
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   TwistedMassagedPositiveNegP[2 (k1 + shiftP), - 2 (k1 + shiftP)]],
+                                          Prepend[{1, t^(-2) q^(-4), t^(-8) q^(-12)}, k + shiftP]]];
+UniformTwistedFitNegativeNegP[] :=
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3,
+           shiftP = -8},
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   TwistedMassagedNegativeNegP[2 (k1 + shiftP), -1 - 2 (k1 + shiftP)]],
+                                          Prepend[{1, t^(-2) q^(-4), t^(-8) q^(-12)}, k + shiftP]]];
 MassagedSuperPositive[knot_, k_] :=
     (* ### ^^ Extract a constant term in the evolution of the twist satellite in the rightmost region. ### *)
     Simplify[((PrecompKhRed[knot, 2 k, 2] /. {q -> 1/q, t -> 1/t})
@@ -292,18 +316,59 @@ SimpleSuperTestRig[knot_, min_, max_] :=
                   {neg, pos}]];
 (* ### ^^ ENDLIB ### *)
 
-pos = UniformTwistedFitPositive[];
+Module[{j},
+       For[j = 2, j <= 16, j = j + 2,
+           LoadTwistedPrecomps[j];
+           LoadTwistedPrecomps[-j]]];
 
-evoPos = MkEvoFunction[Factor[pos]];
+positivePpositiveK = UniformTwistedFitPositive[];
+positivePpositiveKevoFun = MkEvoFunction[Factor[positivePpositiveK]];
+
+positivePnegativeK = UniformTwistedFitNegative[];
+positivePnegativeKevoFun = MkEvoFunction[Factor[positivePnegativeK]];
+
+negativePpositiveK = UniformTwistedFitPositiveNegP[];
+negativePpositiveKevoFun = MkEvoFunction[Factor[negativePpositiveK]];
+
+negativePnegativeK = UniformTwistedFitNegativeNegP[];
+negativePnegativeKevoFun = MkEvoFunction[Factor[negativePnegativeK]];
+
+TwistedMassagedNegative[-4, 2]
+
+(* TwistedMassagedPositive[-6,6] *)
+
+Simplify[positivePpositiveK/ positivePnegativeK]
+
+Factor[FullSimplify[negativePpositiveK - negativePnegativeK]]
+
+Factor[Simplify[positivePpositiveK / negativePpositiveK]]
+
+
+Factor[Simplify[positivePpositiveK - negativePpositiveK /. {t -> -1}]]
+
+Factor[Simplify[positivePnegativeK - negativePnegativeK /. {t -> -1}]]
+
+
+TwistedMassagedPositive[-2, 2]
+
+          2    12  5    18  9    20  10    6              10  3
+Out[29]= q  + q   t  + q   t  + q   t   + q  t (1 + t) + q   t  (1 + t)
+
+
+
+          2    12  5    18  9    20  10    6              10  3
+Out[25]= q  + q   t  + q   t  + q   t   + q  t (1 + t) + q   t  (1 + t)
+
+
+Collect[Simplify[evoPos[3]], q]
 
 (Apart[Factor[Simplify[evoPos[p]]]
        - (1 - (q^4 t^2)^(-p)) (1 + t)/2/t/(1 + q^2 t)
        , q])
     /. {(1 + q^2 t) -> 1/aaa}
 
-Module[{j},
-       For[j = 2, j <= 16, j = j + 2,
-           LoadTwistedPrecomps[j]]];
+
+
 
 Factor[TwistedMassagedPositive[10, -7]]
 
