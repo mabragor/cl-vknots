@@ -324,6 +324,8 @@ Module[{j},
 positivePpositiveK = UniformTwistedFitPositive[];
 positivePpositiveKevoFun = MkEvoFunction[Factor[positivePpositiveK]];
 
+Expand[FullSimplify[positivePpositiveKevoFun[4]]]
+
 positivePnegativeK = UniformTwistedFitNegative[];
 positivePnegativeKevoFun = MkEvoFunction[Factor[positivePnegativeK]];
 
@@ -349,16 +351,12 @@ Factor[Simplify[positivePpositiveK - negativePpositiveK /. {t -> -1}]]
 Factor[Simplify[positivePnegativeK - negativePnegativeK /. {t -> -1}]]
 
 
-TwistedMassagedPositive[-2, 2]
+(* ### Alright, let's figure out, how to write a formula for the twisted Eigenvalue piece in a way ### *)
+(* ### that makes p -> -p transition easy. ### *)
 
-          2    12  5    18  9    20  10    6              10  3
-Out[29]= q  + q   t  + q   t  + q   t   + q  t (1 + t) + q   t  (1 + t)
+Lookup[positivePpositiveK, Key[{q^(-12) t^(-8)}]]
 
-
-
-          2    12  5    18  9    20  10    6              10  3
-Out[25]= q  + q   t  + q   t  + q   t   + q  t (1 + t) + q   t  (1 + t)
-
+positivePpositiveK
 
 Collect[Simplify[evoPos[3]], q]
 
@@ -373,9 +371,12 @@ pos = UniformTwistedFitPositive[];
 (* ### vv Get the apart expression for coeff of {1} ### *)
 Simplify[(1 + t)/(2*t*(1 + q^2*t))
          + (-1 + 2*t + 5*t^2 + 2*t^3)/(2*(-1 + t)*t*(-1 + q^2*t))]
+    
 Simplify[(-1 - 3*t - 3*q*t - q*t^2 - 4*q^2*t^2)/ (2*(-1 + t)*t*(-1 + q^3*t^2))
          + (1 + 3*t - 3*q*t - q*t^2 + 4*q^2*t^2)/ (2*(-1 + t)*t*(1 + q^3*t^2))]
-Simplify[Apart[(Apart[Lookup[pos, Key[{1}]], q]
+
+
+Simplify[Apart[(Apart[Lookup[positivePpositiveK, Key[{1}]], q]
                        - (1 + t)/(2*t*(1 + q^2*t))
                        - (-1 + 2*t + 5*t^2 + 2*t^3)/(2*(-1 + t)*t*(-1 + q^2*t))
                        - (-1 - 3*t - 3*q*t - q*t^2 - 4*q^2*t^2)/ (2*(-1 + t)*t*(-1 + q^3*t^2))
@@ -383,15 +384,11 @@ Simplify[Apart[(Apart[Lookup[pos, Key[{1}]], q]
                       ),
                q]]
 
+
 Factor[Simplify[
     (-1 - t)/(2*t*(1 + q^2*t))
     - ((1 + t)*(-1 + 3*t + 2*t^2))/(2*(-1 + t)*t*(-1 + q^2*t))]]
 
-                         2          2      2  2
-           (1 + t) (1 - q  + t + 2 q  t + q  t )
-Out[35]= -(-------------------------------------)
-                              2          2
-              (-1 + t) (-1 + q  t) (1 + q  t)
 
 Factor[Simplify[
     (1 + t - q^2*t^2 - q^2*t^3)/ (2*t^2*(1 + q^4*t^3))
@@ -405,11 +402,18 @@ Simplify[Apart[(Apart[Lookup[pos, Key[{q^(-4) t^(-2)}]], q]
                ),
                q]]
 
-       - (1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t*(-1 + q^3*t^2))
-       - (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t*(1 + q^3*t^2))
+Factor[Simplify[((1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t*(-1 + q^3*t^2))
+                 + (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t*(1 + q^3*t^2)))
+                (q^6 t^4 - 1)]]
+
+                  
+                      2  2      4  3    4  4
+         1 + 3 t + 4 q  t  + 3 q  t  + q  t
+Out[52]= -----------------------------------
+                     (-1 + t) t
 
 
-Apart[(Apart[Lookup[pos, Key[{q^(-12) t^(-8)}]], q]
+Apart[(Apart[Lookup[positivePpositiveK, Key[{q^(-12) t^(-8)}]], q]
        - (1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t*(-1 + q^3*t^2))
        - (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t*(1 + q^3*t^2))
        - (-1 - t + q^2*t^2 + q^2*t^3)/(2*t^2*(1 + q^4*t^3))
@@ -417,7 +421,115 @@ Apart[(Apart[Lookup[pos, Key[{q^(-12) t^(-8)}]], q]
       ),
       q] // InputForm
 
-Out[41]//InputForm= q^2 + q^6*t^3 + q^8*t^4 + (1 + 2*t)/t^2
+                                                      
+Out[51]//InputForm= q^2 + q^6*t^3 + q^8*t^4 + (1 + 2*t)/t^2
+
+
+
+Simplify[(- (1 + t)/(2*t^2*(1 + q^2*t))
+          - (3 + 4*t + t^2)/(2*(1 - t)*t^2*(-1 + q^2*t)))
+         (q^4 t^2 - 1)]
+
+Factor[Simplify[((-1 - 3*t - 3*q*t - q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t^3*(-1 + q^3*t^2))
+                 +  (1 + 3*t - 3*q*t - q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t^3*(1 + q^3*t^2)))
+                (q^6 t^4 - 1)]]
+
+
+Apart[Simplify[Apart[Lookup[negativePpositiveK, Key[{1}]], q]
+               + (1 + t)/(2*t^2*(1 + q^2*t))
+               + (3 + 4*t + t^2)/(2*(1 - t)*t^2*(-1 + q^2*t))
+               - (-1 - 3*t - 3*q*t - q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t^3*(-1 + q^3*t^2))
+               - (1 + 3*t - 3*q*t - q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t^3*(1 + q^3*t^2))
+              ],
+      q]
+
+Apart[Simplify[(- ((1 + t)*(3 + t))/ (2*(-1 + t)*t^2*(-1 + q^2*t))
+                + (1 + t)/(2*t^2*(1 + q^2*t))) (q^4 t^2 - 1)], t]
+
+         
+                  2                 2
+         -4 (1 + q )    -2   3 + 2 q
+Out[57]= ----------- + t   + --------
+           -1 + t               t
+
+
+Factor[Simplify[(- ((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
+                 + (1 + 4*t + 3*t^2 + 3*q^2*t^2 + 4*q^2*t^3 + q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3)))
+                (q^8 t^6 - 1)]]
+
+                  
+                           2  2    2  3      4  4      6  5
+         (1 + t) (1 + t + q  t  + q  t  + 2 q  t  + 2 q  t )
+Out[44]= ---------------------------------------------------
+                                       4
+                             (-1 + t) t
+
+
+Apart[Simplify[Apart[Lookup[negativePpositiveK, Key[{q^(-4) t^(-2)}]], q]
+               + ((1 + t)*(3 + t))/ (2*(-1 + t)*t^2*(-1 + q^2*t))
+               - (1 + t)/(2*t^2*(1 + q^2*t))
+               + ((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
+               - (1 + 4*t + 3*t^2 + 3*q^2*t^2 + 4*q^2*t^3 + q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3))
+              ],
+      q]
+
+Factor[Simplify[((1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t^3*(-1 + q^3*t^2))
+                 + (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t^3*(1 + q^3*t^2)))
+                (q^6 t^4 - 1)
+               ]]
+
+                           
+                      2  2      4  3    4  4
+         1 + 3 t + 4 q  t  + 3 q  t  + q  t
+Out[55]= -----------------------------------
+                               3
+                     (-1 + t) t
+
+                           
+
+
+
+Factor[Simplify[(((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
+                 + (-1 - 4*t - 3*t^2 - 3*q^2*t^2 - 4*q^2*t^3 - q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3)))
+                (q^8 t^6 - 1)]]
+
+    
+
+
+Simplify[negativePpositiveK / positivePpositiveK]
+
+
+Apart[Simplify[Apart[Lookup[negativePpositiveK, Key[{q^(-12) t^(-8)}]], q]
+               - (1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t^3*(-1 + q^3*t^2))
+               - (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t^3*(1 + q^3*t^2))
+               - ((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
+               - (-1 - 4*t - 3*t^2 - 3*q^2*t^2 - 4*q^2*t^3 - q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3))
+              ],
+      q]
+
+                                                      
+          2
+         q     6      8  2   1 + 2 t
+Out[48]= -- + q  t + q  t  + -------
+          2                     4
+         t                     t
+
+
+
+
+Simplify[(Lookup[positivePpositiveK, Key[{1}]]
+          + Lookup[positivePpositiveK, Key[{q^(-4) t^(-2)}]]
+          + Lookup[positivePpositiveK, Key[{q^(-12) t^(-8)}]])]
+
+Simplify[(Lookup[negativePpositiveK, Key[{1}]]
+          + Lookup[negativePpositiveK, Key[{q^(-4) t^(-2)}]]
+          + Lookup[negativePpositiveK, Key[{q^(-12) t^(-8)}]])]
+
+                  
+            2        4  3    8  5
+           q  (-1 + q  t  + q  t )
+Out[36]= -(-----------------------)
+                      t
 
 
 
