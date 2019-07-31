@@ -16,6 +16,11 @@ LoadTwistedPrecomps[n_] :=
     Module[{fname = (CCCDataDir <> "/kh-red-precomp-twisted-twisted-"
                      <> ToString[n] <> ".m")},
            Get[fname]];
+LoadTwTwoStrandPrecomps[n_] :=
+    (* ### ^^ Load the precomputed before 2-cables of twist knots, with a simple 2-strand braid inserted into the cable. ### *)
+    Module[{fname = (CCCDataDir <> "/kh-red-precomp-twisted-two-strand-"
+                     <> ToString[n] <> ".m")},
+           Get[fname]];
 KnotToFname[Knot[a_, b_]] :=
     ("knot-" <> ToString[a] <> "-" <> ToString[b]);
 FitUR[knot_, a_] :=
@@ -224,6 +229,77 @@ TwistedMassagedNegativeNegP[n_, k_] :=
            Simplify[((PrecompKhRed[Twisted[n], 2 k] /. {q -> 1/q, t -> 1/t})
                      - TwistedKhovanov[k + weight + 3]/ (q^2 t ))
                     /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 (q^4 t^2)^(k + weight))]];
+TwTwoCableMassagedPositive[twist_, ncrossings_] :=
+    (* ### ^^ Remove the constant eigenvalue contribution from twisted 2-cable (in the posK-posP region) ### *)
+    Module[{},
+           Simplify[((PrecompKhRed[TwistedTwoSt[twist], ncrossings] /. {q -> 1/q, t -> 1/t})
+                     (q^3 t)^(ncrossings + 2 twist - 4)
+                     - q^2(1/(1 - q^2 t) + (q^2 t)^(ncrossings + 2 twist - 4) /(q^4 t^2 - 1) (q^6 t^3 + 1) /q^2 /t
+                          ))
+                    /(q^2 t)^(ncrossings + 2 twist - 4) /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2)
+                    /(q^2 t) (1 + q^2 t)]];
+TwTwoCableMassagedNegative[twist_, ncrossings_] :=
+    (* ### ^^ Remove the constant eigenvalue contribution from twisted 2-cable (in the negK-posP region) ### *)
+    Module[{},
+           Simplify[((PrecompKhRed[TwistedTwoSt[twist], ncrossings] /. {q -> 1/q, t -> 1/t})
+                     (q^3 t)^(ncrossings + 2 twist - 4)
+                     - q^2 (-t) (1 /(1 - q^2 t) + (q^2 t)^(ncrossings + 2 twist - 4) /(q^4 t^2 - 1) (q^6 t^3 + 1) /q^2 /t))
+                    /(q^2 t)^(ncrossings + 2 twist - 4) /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2)
+                    /(q^2 t) (1 + q^2 t)]];
+TwTwoCableMassagedPositiveNegP[twist_, ncrossings_] :=
+    (* ### ^^ Remove the constant eigenvalue contribution from twisted 2-cable (in the posK-negP region) ### *)
+    Module[{},
+           Simplify[((PrecompKhRed[TwistedTwoSt[twist], ncrossings] /. {q -> 1/q, t -> 1/t})
+                     (q^3 t)^(ncrossings + 2 twist - 4)
+                     - q^2(1/(1 - q^2 t)
+                           + q^12 t^6 (q^2 t)^(ncrossings + 2 twist - 4) /(q^4 t^2 - 1) (q^6 t^3 + 1) /q^2 /t
+                          ))
+                    /(q^2 t)^(ncrossings + 2 twist - 4) /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2)
+                    /(q^2 t) (1 + q^2 t)]];
+TwTwoCableMassagedNegativeNegP[twist_, ncrossings_] :=
+    (* ### ^^ Remove the constant eigenvalue contribution from twisted 2-cable (in the negK-negP region) ### *)
+    Module[{},
+           Simplify[((PrecompKhRed[TwistedTwoSt[twist], ncrossings] /. {q -> 1/q, t -> 1/t})
+                     (q^3 t)^(ncrossings + 2 twist - 4)
+                     - q^2 (-t) (1 /(1 - q^2 t)
+                                 + q^12 t^6 (q^2 t)^(ncrossings + 2 twist - 4) /(q^4 t^2 - 1) (q^6 t^3 + 1) /q^2 /t
+                                ))
+                    /(q^2 t)^(ncrossings + 2 twist - 4) /((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2)
+                    /(q^2 t) (1 + q^2 t)]];
+UniformTwTwoCableFitPositive[] :=
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3
+           , CCCExtraAllowedVars = {aa, bb}
+          },
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   TwTwoCableMassagedPositive[2 k1 + 2, 5 - 2 2 (k1 + 1)]],
+                                          Prepend[{1, t^(-1) q^(-2), t^(-4) q^(-6)}, 2 k + 2]]];
+UniformTwTwoCableFitNegative[] :=
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3
+           , CCCExtraAllowedVars = {aa, bb}
+          },
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   TwTwoCableMassagedNegative[2 k1 + 2, 5 - 2 2 (k1 + 1) - 2]],
+                                          Prepend[{1, t^(-1) q^(-2), t^(-4) q^(-6)}, 2 k + 2]]];
+UniformTwTwoCableFitPositiveNegP[] :=
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3
+           , CCCExtraAllowedVars = {aa, bb}
+           , shiftP = -8
+          },
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   TwTwoCableMassagedPositiveNegP[2 (k1 + shiftP), -1 - 2 2 (k1 + shiftP)]],
+                                          Prepend[{1, t^(-1) q^(-2), t^(-4) q^(-6)}, 2 (k + shiftP)]]];
+UniformTwTwoCableFitNegativeNegP[] :=
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3
+           , CCCExtraAllowedVars = {aa, bb}
+           , shiftP = -8
+          },
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   TwTwoCableMassagedNegativeNegP[2 (k1 + shiftP), -1 - 2 2 (k1 + shiftP) - 2]],
+                                          Prepend[{1, t^(-1) q^(-2), t^(-4) q^(-6)}, 2 (k + shiftP)]]];
 UniformTwistedFitPositive[] :=
     Block[{CCCEigenvaluesCritLength = Null,
            extraPoints = 3},
@@ -316,10 +392,219 @@ SimpleSuperTestRig[knot_, min_, max_] :=
                   {neg, pos}]];
 (* ### ^^ ENDLIB ### *)
 
+Block[{k = 0, twist = 4},
+      Simplify[TwTwoCableMassagedPositive[twist, 2(k + 1) + 1] - TwTwoCableMassagedPositive[twist, 2 k + 1]]]
+
 Module[{j},
        For[j = 2, j <= 16, j = j + 2,
            LoadTwistedPrecomps[j];
            LoadTwistedPrecomps[-j]]];
+Module[{j},
+       For[j = 2, j <= 16, j = j + 2,
+           LoadTwTwoStrandPrecomps[j];
+           LoadTwTwoStrandPrecomps[-j]]];
+
+Block[{twist = 4, ncrossings = 5},
+      Factor[TwTwoCableMassagedPositive[twist, ncrossings]]]
+
+(* ### vv Determine p-eigenvalues of twisted 2-strand knots, positive k, positive p ### *)
+Block[{k = 2},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[Factor[Simplify[(q^6 t^3 + 1) TwTwoCableMassagedPositive[2 (k + 1), 5 - 2 2 k]]]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - q^(-12) t^(-8) fun1[k]]]];
+             fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - (t^2 q^4)^(-1) fun2[k]]]];
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun3[k]
+            ]]
+
+(* ### vv Determine p-eigenvalues of twisted 2-strand knots, negative k, positive p ### *)
+Block[{k = 3},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[TwTwoCableMassagedNegative[2 (k + 1), 5 - 2 2 k - 2]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - q^(-12) t^(-8) fun1[k]]]];
+             fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - (t^2 q^4)^(-1) fun2[k]]]];
+             fun3[k]
+            ]]
+
+(* ### CURWORK ### *)
+
+posKposPtwisted = UniformTwistedFitPositive[];
+
+posKposPtwTwoCable = UniformTwTwoCableFitPositive[];
+
+negKposPtwTwoCable = UniformTwTwoCableFitNegative[];
+
+posKnegPtwisted = UniformTwistedFitPositiveNegP[];
+
+posKnegPtwTwoCable = UniformTwTwoCableFitPositiveNegP[];
+
+negKnegPtwTwoCable = UniformTwTwoCableFitNegativeNegP[];
+
+
+(* ### vv The posK and negK evolutions coincide (we've successfully isolated the "jump") ### *)
+Factor[Simplify[posKposPtwTwoCable - negKposPtwTwoCable]]
+
+Factor[Simplify[posKnegPtwTwoCable - negKnegPtwTwoCable]]
+
+
+(* ### vv How do 2-cable evolutions relate to the twisted evolution ### *)
+
+(* ### vv ... for positive P region ### *)
+Simplify[Lookup[posKposPtwisted, Key[{q^(-12) t^(-8)}]]
+         - Lookup[posKposPtwTwoCable, Key[{q^(-6) t^(-4)}]]]
+
+Simplify[Lookup[posKposPtwisted, Key[{q^(-4) t^(-2)}]]
+         - Lookup[posKposPtwTwoCable, Key[{q^(-2) t^(-1)}]]]
+
+Simplify[Lookup[posKposPtwisted, Key[{q^(0) t^(0)}]]
+         - Lookup[posKposPtwTwoCable, Key[{1}]]]
+
+
+(* ### vv ... and for negative P region ### *)
+
+Simplify[Lookup[posKnegPtwisted, Key[{q^(-12) t^(-8)}]]
+         - Lookup[posKnegPtwTwoCable, Key[{q^(-6) t^(-4)}]]]
+
+Simplify[Lookup[posKnegPtwisted, Key[{q^(-4) t^(-2)}]]
+         - Lookup[posKnegPtwTwoCable, Key[{q^(-2) t^(-1)}]]]
+
+Simplify[Lookup[posKnegPtwisted, Key[{q^(0) t^(0)}]]
+         - Lookup[posKnegPtwTwoCable, Key[{1}]]]
+
+
+Keys[posKposPtwisted]
+
+Keys[posKposPtwTwoCable]
+
+             1       2       4  2
+Out[16]= {{-----}, {q  t}, {q  t }}
+            2  2
+           q  t
+
+
+Simplify[(q^12 t^6 - 1) /(q^6 t^3 - 1) /(q^4 t^2 - 1)]
+
+
+Factor[Simplify[Plus @@ negKposPtwTwoCable]]
+
+
+
+
+
+Factor[Simplify[((2*t + q*t + q*t^2 + 2*q^2*t^2)/ (2*(-1 + t)*(-1 + q^3*t^2))
+                 + (-2*t + q*t + q*t^2 - 2*q^2*t^2)/ (2*(-1 + t)*(1 + q^3*t^2)))
+                (q^6 t^4 - 1)]]
+         
+
+Factor[Simplify[((3 + 4*t + q^2*t + t^2 + 4*q^2*t^2 + 3*q^2*t^3)/(2*(-1 + q^4*t^3))
+                 - ((1 + t)^2*(1 + q^2*t))/(2*(1 + q^4*t^3)))
+                (q^8 t^6 - 1)]]
+
+
+(* ### vv Bring the p-dependence in posP region of 2-cabled twist knots to the human-readable form ### *)
+Apart[Simplify[(Apart[Lookup[posKposPtwTwoCable, Key[{q^(-2) t^(-2)}]], q]
+                - (2*t + q*t + q*t^2 + 2*q^2*t^2)/ (2*(-1 + t)*(-1 + q^3*t^2))
+                - (-2*t + q*t + q*t^2 - 2*q^2*t^2)/ (2*(-1 + t)*(1 + q^3*t^2))
+                - (-1 - 2*t - t^2 - 2*q^2*t^2 - 2*q^2*t^3)/  (2*(-1 + t)*(-1 + q^4*t^3))
+                - (-1 - t)/(2*(1 + q^4*t^3))
+               )],
+      q] // InputForm
+
+Out[42]//InputForm= 1 + 1/(q^4*t^2)
+
+Out[41]//InputForm= 
+    1 + 1/(q^4*t^2) + (2*t + q*t + q*t^2 + 2*q^2*t^2)/ (2*(-1 + t)*(-1 + q^3*t^2))
+    + (-2*t + q*t + q*t^2 - 2*q^2*t^2)/ (2*(-1 + t)*(1 + q^3*t^2))
+    + (-1 - 2*t - t^2 - 2*q^2*t^2 - 2*q^2*t^3)/  (2*(-1 + t)*(-1 + q^4*t^3))
+    + (-1 - t)/(2*(1 + q^4*t^3))
+
+Factor[Simplify[((-3 - 4*t - q^2*t - t^2 - 4*q^2*t^2 - 3*q^2*t^3)/(2*(-1 + q^4*t^3))
+                 + (1 + 2*t + q^2*t + t^2 + 2*q^2*t^2 + q^2*t^3)/(2*(1 + q^4*t^3)))
+                (q^8 t^6 - 1)]]
+
+
+Factor[Apart[Simplify[(Apart[Lookup[posKposPtwTwoCable, Key[{q^2 t}]], q]
+                       - (-3 - 4*t - q^2*t - t^2 - 4*q^2*t^2 - 3*q^2*t^3)/(2*(-1 + q^4*t^3))
+                       - (1 + 2*t + q^2*t + t^2 + 2*q^2*t^2 + q^2*t^3)/(2*(1 + q^4*t^3))
+                      )],
+             q]] // InputForm
+
+Apart[Simplify[(Apart[Lookup[posKposPtwTwoCable, Key[{q^4 t^2}]], q]
+                      )],
+      q] // InputForm
+
+Out[35]//InputForm= 
+-(1/(q^12*t^7)) - 1/(q^10*t^6) + 1/(q^6*t^4) + 2/(q^4*t^3) - 1/(q^2*t) + 
+ q^2*t^2 + q^4*t^3 + (1 + t)/(q^8*t^5) + (1 + t + 3*q*t + 3*q^2*t^2)/
+  (2*(-1 + q^3*t^2)) + (-1 - t + 3*q*t - 3*q^2*t^2)/(2*(1 + q^3*t^2)) - 
+ 1/(t*(1 - q^2*t + q^4*t^2))
+
+
+Keys[posKposPtwTwoCable]
+
+             1       2       4  2
+Out[28]= {{-----}, {q  t}, {q  t }}
+            2  2
+           q  t
+
+(* ### vv Determine k-eigenvalues of twisted 2-strand knots, positive k ### *)
+Block[{k = 6, twist = 8},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[PrecompKhRed[TwistedTwoSt[twist], 3 + 2 k - 2 twist]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - q^2 fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - q^6 t^2 fun1[k]]]];
+             (* fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - (t^4 q^4)^(-1) (t^2 q^4)^a fun2[k]]]]; *)
+             (* {Length[fun1[k]], fun1[k]} *)
+             fun2[k]
+            ]]
+
+(* ### vv Determine k-eigenvalues of twisted 2-strand knots, negative k ### *)
+Block[{k = -3, twist = -10},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, Expand[PrecompKhRed[TwistedTwoSt[twist], 3 + 2 k - 2 twist]]];
+             fun1 = Function[{k}, Expand[Simplify[fun[k+1] - q^2 fun[k]]]];
+             fun2 = Function[{k}, Expand[Simplify[fun1[k+1] - q^6 t^2 fun1[k]]]];
+             (* fun3 = Function[{k}, Expand[Simplify[fun2[k+1] - (t^4 q^4)^(-1) (t^2 q^4)^a fun2[k]]]]; *)
+             (* {Length[fun1[k]], fun1[k]} *)
+             Print[3 + 2 k - 2 twist];
+             fun2[k]
+            ]]
+
+
+FitTwistTwoStrandPositiveInK[twist_] :=
+    (* ### ^^ Fit the dependence on k for 2-strand cabled twist knot ### *)
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3},
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   Expand[(PrecompKhRed[TwistedTwoSt[twist], 2 k1 + 5 - 2 twist] /. {q -> 1/q, t -> 1/t})
+                                                          q^(2 k1 + 1) (q^2 t)^(2 k1 + 1) (* ### << The framing convention ### *)
+                                                         ]],
+                                          Prepend[{1, (t q^2)(* ^(-1) *)}, 2 k + 5 - 2 twist]]]
+
+FitTwistTwoStrandNegativeInK[twist_] :=
+    (* ### ^^ Fit the dependence on k for 2-strand cabled twist knot ### *)
+    Block[{CCCEigenvaluesCritLength = Null,
+           extraPoints = 3},
+          FitFamilyWithEigenvaluesGradual[Function[{k1},
+                                                   Expand[(PrecompKhRed[TwistedTwoSt[twist], 2 k1 + 5 - 2 twist - 10] /. {q -> 1/q, t -> 1/t})
+                                                          q^(2 k1 + 1 - 10) (q^2 t)^(2 k1 + 1 - 10) (* ### << The framing convention ### *)
+                                                         ]],
+                                          Prepend[{1, (t q^2)(* ^(-1) *)}, 2 k + 5 - 2 twist - 10]]]
+
+
+Lookup[FitTwistTwoStrandNegativeInK[4], Key[{1}]]
+
+
+
+
+
+
+
+
+
+
 
 positivePpositiveK = UniformTwistedFitPositive[];
 positivePpositiveKevoFun = MkEvoFunction[Factor[positivePpositiveK]];
@@ -904,7 +1189,6 @@ Expand[q^2/t Simplify[PrecompKhRed[Knot[3,1], 0, 2] /. {q -> 1/q, t -> 1/t}]]
 
 
 
-(* ### vv CURWORK ### *)
 Block[{k = 3},
       Module[{fun, fun1, fun2, fun3, fun4, fun5},
              fun = Function[{k}, Expand[Simplify[PrecompKhRed[Knot[3, 1], 2, 2 k + 2]]]];

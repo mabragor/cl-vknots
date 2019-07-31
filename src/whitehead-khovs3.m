@@ -20,7 +20,7 @@ PyCallWhiteheadizer[command_, pd_, args_] :=
     (* ### ^^ A general "RPC" interface to the python part of the planar diagram rig. ### *)
     (* ###    `command` -- a command to be executed ### *)
     (* ###    `pd`      -- a planar diagram (maybe cut), to be placed into a special input file. ### *)
-    (* ###                 Set to None, if no input knot is needed (as for the twist-knots. ### *)
+    (* ###                 Set to None, if no input knot is needed (as for the twist-knots.) ### *)
     (* ###    `args`    -- command-line arguments to the script ### *)
     WithALock["whiteheadize-pd", (* ### << Surely we need some synchronization as we run several things using this ### *)
               (* ###                       functionality in parallel. ### *)
@@ -49,11 +49,21 @@ PyGetWhiteheadizedPD[knot_, aWind_, bWind_] :=
     (* ###    `aWind` -- number of windings of the a-braid of the double-braid duo ### *)
     (* ###    `bWind` -- number of windings of the b-braid of the double-braid duo ### *)
     PyCallWhiteheadizer["whiteheadize", CutPD[knot], {aWind, bWind}];
+PyGetTwostrandedPD[knot_, wind_] :=
+    (* ### ^^ Get a result of insertion of 2-strand braid into a 2-cable of a given knot. ### *)
+    (* ###    `knot`  -- a knot in any form that can be fed into `PD` of the knot theory ### *)
+    (* ###    `wind` -- number of windings of the 2-strand braid. ### *)
+    PyCallWhiteheadizer["two-cable", CutPD[knot], {wind}];
 PyGetTwistWhiteheadizedPD[parentWind_, childWind_] :=
     (* ### ^^ Get a twist satellite of a twist knot. Diagram is completely constructed on the Python side. ### *)
     (* ###    `parentWind` -- number of windings in the parent twist knot's 2-strand braid ### *)
     (* ###    `childWind`  -- number of windings in the child twist knot's 2-strand braid  ### *)
     PyCallWhiteheadizer["twist", None, {parentWind, childWind}];
+PyGetTwistTwostrandedPD[twistWind_, wind_] :=
+    (* ### ^^ Get a result of insertion of 2-strand braid into a 2-cable of a twist knot. ### *)
+    (* ###    `twistWind` -- number of windings of the 2-strand braid of the twist knot. ### *)
+    (* ###    `wind` -- number of windings of the 2-strand braid. ### *)
+    PyCallWhiteheadizer["twist-two-cable", None, {twistWind, wind}];
 PrecalculateKhRedWhiteheadizedPDs[knot_, squareSize_] :=
     (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials in some square of the double-braid space. ### *)
     (* ###    `squareSize` -- (roughly) half the length of the side of the square ### *)
@@ -86,6 +96,17 @@ PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
            For[i = from, i <= to, i = i + 2,
                Module[{polly = KhReduced[PyGetTwistWhiteheadizedPD[twist, i] /. {ii_Integer :> ii + 1}][q, t]},
                       WriteString[fd, "PrecompKhRed[Twisted[" <> ToString[twist] <> "], " <> ToString[i]
+                                  <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
+           Close[fd]];
+PrecalculateKhRedTwistedTwoStrandPDsLine[twist_, from_, to_] :=
+    (* ### ^^ Precalculate reduced Khovanov polynomials for twisted knots with two-strand insertion. ### *)
+    (* ###    `from` and `to`-- winding iteration bounds for a child braid. ### *)
+    (* ###    `twist`        -- winding of a parent braid. ### *)
+    Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-precomp-twisted-two-strand-" <> ToString[twist] <> ".m"],
+            i},
+           For[i = from, i <= to, i = i + 2,
+               Module[{polly = KhReduced[PyGetTwistTwostrandedPD[twist, i] /. {ii_Integer :> ii + 1}][q, t]},
+                      WriteString[fd, "PrecompKhRed[TwistedTwoSt[" <> ToString[twist] <> "], " <> ToString[i]
                                   <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
            Close[fd]];
 KnotToFname[Knot[a_, b_]] :=
@@ -132,6 +153,11 @@ Module[{i, j},
            For[j = 1, j <= CCCRolfsenMults[[i - 2]], j ++,
                PrecalculateKhRedWhiteheadizedPDsLine[Knot[i, j], -10, 10, 2]]]];
 
+
+Module[{i},
+       For[i = 1, i <= 8, i ++,
+           PrecalculateKhRedTwistedTwoStrandPDsLine[2 i, -10 - 4 (i - 1) + 1, 12 - 4 (i - 1) + 1];
+           PrecalculateKhRedTwistedTwoStrandPDsLine[-2 i, -10 + 4 (i - 1) + 1, 12 + 4 (i - 1) + 1]]];
 
 (* PrecalculateKhRedWhiteheadizedPDsLine[Knot[8,7], -10, 10, 2] *)
 (* str = KhReducedSL3[PD[BR[3,{1,2,1,2,2,2,2,2,2,2,2,2,2,2}]]]; *)

@@ -126,6 +126,28 @@ Module[{i, j},
 (* PrecalculateKhRedWhiteheadizedPDsLine[Knot[8,7], -10, 10, 2] *)
 (* str = KhReducedSL3[PD[BR[3,{1,2,1,2,2,2,2,2,2,2,2,2,2,2}]]]; *)
 
-PrecalculateKhRedSL3TwistedPDsLine[2, -10, 12];
+Module[{i},
+       For[i = 1, i <= 8, i ++,
+           PrecalculateKhRedSL3TwistedPDsLine[2 i, -6 - 4 i, 16 - 4 i]]];
 
-KhReducedSL3[PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}]
+
+KhReducedSL3[PD[Knot[4,1]]]
+
+PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}
+
+
+PDToFoamhoString[PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}] // InputForm
+
+Out[4]//InputForm= 
+"[[16,29,17,30],[15,7,16,6],[19,31,20,30],[20,5,21,6],[28,13,29,14],[27,23,28\
+,22],[7,15,8,14],[8,21,9,22],[11,35,12,34],[24,33,25,34],[12,1,13,2],[23,3,24\
+,2],[31,11,32,10],[4,9,5,10],[32,25,33,26],[3,27,4,26],[18,35,19,36],[1,18,36\
+,17]]"
+
+Out[3]= [[16,29,17,30],[15,7,16,6],[19,31,20,30],[20,5,21,6],[28,13,29,14],[2\
+ 
+>    7,23,28,22],[7,15,8,14],[8,21,9,22],[11,35,12,34],[24,33,25,34],[12,1,13\
+ 
+>    ,2],[23,3,24,2],[31,11,32,10],[4,9,5,10],[32,25,33,26],[3,27,4,26],[18,3\
+ 
+>    5,19,36],[1,18,36,17]]

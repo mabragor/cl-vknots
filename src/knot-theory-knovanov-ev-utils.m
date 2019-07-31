@@ -1117,10 +1117,11 @@ FitFamilyWithEigenvaluesGradualII[family_, alreadyTransformedEigenvalues_, eigen
                                 (FFWERes[Append[alreadyTransformedEigenvalues, curEigSpec[[1 + i]]]]
                                  = AA[i] /. anAns)]]];
               Debugg[fdlog, " done!"]]];
+CCCExtraAllowedVars = {}; (* ### << A constant that determines variables, besides q and t, that are allowed ### *)
 FitFamilyWithEigenvaluesGradual[family_, eigenvaluesSpecs__] :=
     (* ### vv The {q,t}-specification is needed to check, whether we have all the polynomials precomputed ### *)
     FitFamilyWithEigenvaluesGradualInternal[family,
-                                            {q, t},
+                                            Union[{q, t}, CCCExtraAllowedVars],
                                             List[eigenvaluesSpecs]];
 EvoFname["red", signs_List] :=
     EvoFname["red", signs, Null];
