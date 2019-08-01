@@ -69,6 +69,23 @@ PrecalculateKhRedWhiteheadizedPDsLine[knot_, from_, to_, step_] :=
                       WriteString[fd, "PrecompKhRed[" <> ToString[knot, InputForm] <> ", " <> ToString[i] <> ", " <> ToString[2]
                                   <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
            Close[fd]];
+ConstLst[elt_, length_] :=
+    (* ### ^^ Create a list of length `length` where every element is a constant `elt` ### *)
+    Module[{i}, Table[elt, {i, 1, length}]];
+PrecalculateKhRedWhdTorusKnotPDsLine[2, p_, from_, to_, step_] :=
+    (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials specifically for a twisted line, ### *)
+    (* ###    for a 2-strand torus knot. ### *)
+    (* ###    `from` and `to`-- winding iteration bounds ### *)
+    (* ###    `p`            -- the number of windings of a torus knot. ### *)
+    (* ###                      Convention is p --> BR[2, {-1}^p] (so that it matches with Rolfsen) ### *)
+    Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-whiteheadized-torus-2-" <> ToString[p] <> ".m"],
+            br = BR[2, ConstLst[If[p > 0, -1, 1], Abs[p]]],
+            i},
+           For[i = from, i <= to, i = i + step,
+               Module[{polly = KhReduced[PyGetWhiteheadizedPD[PD[br], i, 2] /. {ii_Integer :> ii + 1}][q, t]},
+                      WriteString[fd, StringTemplate["PrecompKhRed[TorusKnot[2, `p`], `i`] := `expr`;\n"]
+                                  [<|"p" -> p, "i" -> i, "expr" -> ToString[polly, InputForm]]]]];
+           Close[fd]];
 PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
     (* ### ^^ Precalculate reduced Khovanov polynomials for twisted-twisted knots. ### *)
     (* ###    `from` and `to`-- winding iteration bounds for a child braid. ### *)
@@ -116,6 +133,7 @@ PrecalculateKhRedSL3TwistedPDsLine[twist_, from_, to_] :=
            Close[fd]];
 (* ### ^^ ENDLIB ### *)
 
+
 (* ### vv CURWORK ### *)
 Module[{i, j},
        For[i = 7, i <= 10, i ++,
@@ -133,7 +151,11 @@ Module[{i},
 
 KhReducedSL3[PD[Knot[4,1]]]
 
-PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}
+aaa = KhReducedSL3[PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}];
+
+Error 34 occurred. Either your input is not a link diagram, or this is a bug.
+
+KhReducedSL3::foamhoFailed: -- Message text not found --
 
 
 PDToFoamhoString[PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}] // InputForm

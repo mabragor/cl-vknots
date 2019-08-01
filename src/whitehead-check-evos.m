@@ -390,19 +390,152 @@ SimpleSuperTestRig[knot_, min_, max_] :=
            Module[{pos = DetermineSuperPositiveArea[knot, max],
                    neg = DetermineSuperNegativeArea[knot, min]},
                   {neg, pos}]];
+(* ### vv I need to have a theoretical formula for my reduced Khovanov polynomials of ### *)
+(* ###    whitehead satellites of twist knots ### *)
+(* ###    ... and for simple 2-strand cables as well ### *)
+KhRedTheor[Twisted[twist_], ncrossings_] :=
+    (* ### `twist`      -- is even, equal to 2 p for some p. ### *)
+    (* ### `ncrossings` -- is also even, equal to 2 k for some k. ### *)
+    Block[{epPiece = If[twist > 0, EigenvaluePiecePlus[twist], EigenvaluePieceMinus[twist]],
+           thetaFact = If[twist > 0,
+                          ThetaPiecePlus[Twisted, twist, ncrossings],
+                          ThetaPieceMinus[Twisted, twist, ncrossings]],
+           pecPower = If[twist > 0, ncrossings + 2 twist - 4, ncrossings + 2 twist + 2]},
+          KhRedTheorInternal[Twisted[twist], ncrossings]];
+KhRedTheor[TwistedTwoSt[twist_], ncrossings_] :=
+    (* ### `twist`      -- is even, equal to 2 p for some p.    ### *)
+    (* ### `ncrossings` -- is odd, equal to 2 k + 1 for some k. ### *)
+    Block[{epPiece = If[twist > 0, EigenvaluePiecePlus[twist], EigenvaluePieceMinus[twist]],
+           thetaFact = If[twist > 0,
+                          ThetaPiecePlus[TwistedTwSt, twist, ncrossings],
+                          ThetaPieceMinus[TwistedTwSt, twist, ncrossings]],
+           pecPower = If[twist > 0, ncrossings + 2 twist - 4, ncrossings + 2 twist + 2]},
+          KhRedTheorInternal[TwistedTwoSt[twist], ncrossings]];
+KhRedTheorInternal[TwistedTwoSt[twist_], ncrossings_] :=
+    (epPiece (q^2 t) /(1 + q^2 t) (q^2 t)^(ncrossings + 2 twist - 4) ((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2)
+     + thetaFact (q^2/(1 - q^2 t) + (q^2 t)^pecPower /(q^4 t^2 - 1) (q^6 t^3 + 1) /t))
+    /(q^3 t)^(ncrossings + 2 twist - 4);
+KhRedTheorInternal[Twisted[twist_], ncrossings_] :=
+    (epPiece (q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 (q^2 t)^(ncrossings + 2 twist - 4)
+     + thetaFact ((1 + (q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 q^4 t^2 /(q^4 t^2 - 1) (1 - (q^2 t)^pecPower))
+                  / (q^2 t^2 (-1))));
+KhRedTheorPosK[TwistedTwoSt[twist_], ncrossings_] :=
+    (EigenvaluePiecePlus[twist] (q^2 t) /(1 + q^2 t) (q^2 t)^(ncrossings + 2 twist - 4) ((q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2)
+     + (q^2/(1 - q^2 t) + (q^2 t)^(ncrossings + 2 twist - 4) /(q^4 t^2 - 1) (q^6 t^3 + 1) /t))
+    /(q^3 t)^(ncrossings + 2 twist - 4);
+ThetaPiecePlus[TwistedTwSt, twist_, ncrossings_] :=
+    If[ncrossings > 4 - 2 twist,
+       1,
+       -t];
+ThetaPieceMinus[TwistedTwSt, twist_, ncrossings_] :=
+    If[ncrossings > -2 - 2 twist,
+       1,
+       -t];
+ThetaPiecePlus[Twisted, twist_, ncrossings_] :=
+    If[ncrossings > 4 - 2 twist,
+       1,
+       -t];
+ThetaPieceMinus[Twisted, twist_, ncrossings_] :=
+    If[ncrossings > -2 - 2 twist,
+       1,
+       -t];
+EigenvaluePiecePlus[twist_] :=
+    (((q^2 t)^(-twist) - 1)/(q^4 t^2 - 1) (1 + t) (1 + t + q^2 (-1 + 2 t + t^2))/(1 - t)
+     - ((q^6 t^4)^(-twist) - 1)/(q^6 t^4 - 1) (1 + 3 t + 4 q^2 t^2 + 3 q^4 t^3 + q^4 t^4)/(1 - t)/t
+     + ((q^6 t^4)^(-twist) - (q^2 t)^(-twist))/(q^8 t^6 - 1) (1 + t) (1 + t + q^2 t^2 + q^2 t^3 + 2 q^4 t^4 + 2 q^6 t^5) /(1 - t) /t^2
+     + t^(-1) (1 + 3 t + t^2) + q^2 (1 + 3 t + t^2) + q^4 t^2 (2 + t) + q^6 t^4 + q^8 t^5 + q^10 t^6
+     + (q^2 t)^(-twist) (- q^10 t^6 - q^6 t^3 (1 + t) - q^8 t^4 (1 + t) - (1 + t)^3/t^2 - q^4 t^2 (2 + t) - q^2 (1 + t)(2 + t))
+     + (q^6 t^4)^(-twist) (q^2 + q^6 t^3 + q^8 t^4 + t^(-2) + 2 t^(-1)));
+EigenvaluePieceMinus[twist_] :=
+    (((q^2 t)^(-twist) - 1)/(q^4 t^2 - 1) (1 + t) (1 + t + q^2 t 2)/(1 - t)/t^2
+     - ((q^6 t^4)^(-twist) - 1)/(q^6 t^4 - 1) (1 + 3 t + 4 q^2 t^2 + 3 q^4 t^3 + q^4 t^4)/(1 - t)/t^3
+     + ((q^6 t^4)^(-twist) - (q^2 t)^(-twist))/(q^8 t^6 - 1) (1 + t) (1 + t + q^2 t^2 + q^2 t^3 + 2 q^4 t^4 + 2 q^6 t^5) /(1 - t) /t^4
+     + t^(-3) (1 + 3 t + t^2) + 2 q^2 t^(-1) + q^4 (2 + t) + q^8 t^3
+     + (q^2 t)^(-twist) (-(q^10*t^4) - (q^2*(1 + t))/t^2 - q^6*t*(1 + t) - q^8*t^2*(1 + t) - (1 + t)^3/t^4 - q^4*(2 + t))
+     + (q^6 t^4)^(-twist) (q^2/t^2 + q^6*t + q^8*t^2 + (1 + 2*t)/t^4));
+EnsureTwistedPrecompsLoaded[] :=
+    Module[{},
+           Module[{j},
+                  For[j = 2, j <= 16, j = j + 2,
+                      LoadTwistedPrecomps[j];
+                      LoadTwistedPrecomps[-j]]];
+           Module[{j},
+                  For[j = 2, j <= 16, j = j + 2,
+                      LoadTwTwoStrandPrecomps[j];
+                      LoadTwTwoStrandPrecomps[-j]]]];
+TestKhRedTwistedTwSt[] :=
+    Module[{twist, ncrossings, res = True},
+           EnsureTwistedPrecompsLoaded[];
+           For[twist = -16, twist <= 16, twist += 2,
+               If[0 === twist, Continue[]];
+               For[ncrossings = -4 - 1 - 2 twist, ncrossings <= 8 - 1 - 2 twist, ncrossings += 2,
+                   Module[{theor = KhRedTheor[TwistedTwoSt[twist], ncrossings],
+                           expr = (PrecompKhRed[TwistedTwoSt[twist], ncrossings] /. {q -> 1/q, t -> 1/t})},
+                          If[1 =!= Simplify[Simplify[expr]/Simplify[theor]],
+                             Print["Test failed for: ", twist, " ", ncrossings]; res = False]]]];
+           res];
+TestKhRedTwisted[] :=
+    Module[{twist, ncrossings, res = True},
+           EnsureTwistedPrecompsLoaded[];
+           For[twist = -16, twist <= 16, twist += 2,
+               If[0 === twist, Continue[]];
+               For[ncrossings = - 8 - 2 twist, ncrossings <= 8 - 2 twist, ncrossings += 2,
+                   Module[{theor = KhRedTheor[Twisted[twist], ncrossings],
+                           expr = (PrecompKhRed[Twisted[twist], ncrossings] /. {q -> 1/q, t -> 1/t})},
+                          If[1 =!= Simplify[Simplify[expr]/Simplify[theor]],
+                             If[PrecompKhRed === Head[expr],
+                                Print["Uncalculated: ", twist, " ", ncrossings]];
+                             Print["Test failed for: ", twist, " ", ncrossings]; res = False]]]];
+           res];
 (* ### ^^ ENDLIB ### *)
+
+Block[{twist = 6, ncrossings = 1},
+      Module[{expr = TwTwoCableMassagedPositive[twist, ncrossings],
+              theor = EigenvaluePiecePlus[twist]},
+             Simplify[expr - theor]]]
+
+
+EnsureTwistedPrecompsLoaded[]
+
+TestKhRedTwisted[]
+
+Factor[Simplify[(q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 q^4 t^2 /(q^4 t^2 - 1) q^2 t /(1 + q^2 t) /(- q^2 t^2)]]
+
+                2      4  2
+           1 - q  t + q  t
+Out[38]= -(----------------)
+                     2
+            t (-1 + q  t)
+
+              2      4  2
+         1 - q  t + q  t
+Out[37]= ----------------
+                 2  2
+            t - q  t
+
+Simplify[(1 + (q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 q^4 t^2 /(q^4 t^2 - 1)) q^2 t /(1 + q^2 t) /(- q^2 t^2)]
+
+Simplify[(1 + (q^6 t^3 + 1) (q^4 t + q^2)/q^6/t^2 q^4 t^2 /(q^4 t^2 - 1)) q^2 t /(1 + q^2 t) /(- q^2 t^2)]
+
+
+Block[{twist = -4, ncrossings = 11},
+      Module[{theor = KhRedTheor[TwistedTwoSt[twist], ncrossings],
+              expr = (PrecompKhRed[TwistedTwoSt[twist], ncrossings] /. {q -> 1/q, t -> 1/t})},
+             Simplify[Simplify[expr]/Simplify[theor]]]]
+
+Block[{twist = 4, ncrossings = },
+      Module[{theor = KhRedTheor[Twisted[twist], ncrossings],
+              expr = (PrecompKhRed[Twisted[twist], ncrossings] /. {q -> 1/q, t -> 1/t})},
+             Simplify[Simplify[expr]/Simplify[theor]]]]
+
+
 
 Block[{k = 0, twist = 4},
       Simplify[TwTwoCableMassagedPositive[twist, 2(k + 1) + 1] - TwTwoCableMassagedPositive[twist, 2 k + 1]]]
 
-Module[{j},
-       For[j = 2, j <= 16, j = j + 2,
-           LoadTwistedPrecomps[j];
-           LoadTwistedPrecomps[-j]]];
-Module[{j},
-       For[j = 2, j <= 16, j = j + 2,
-           LoadTwTwoStrandPrecomps[j];
-           LoadTwTwoStrandPrecomps[-j]]];
+(* ### vv LOADTWISTPRECOMPS Load all that we have precomputed about twist-knots ### *)
+EnsureTwistedPrecompsLoaded[];
+(* ### ^^ LOADTWISTPRECOMPS ### *)
 
 Block[{twist = 4, ncrossings = 5},
       Factor[TwTwoCableMassagedPositive[twist, ncrossings]]]
@@ -431,16 +564,22 @@ Block[{k = 3},
 (* ### CURWORK ### *)
 
 posKposPtwisted = UniformTwistedFitPositive[];
-
 posKposPtwTwoCable = UniformTwTwoCableFitPositive[];
-
+posKposPtwTwoevoFun = MkEvoFunction[Factor[posKposPtwTwoCable]];
 negKposPtwTwoCable = UniformTwTwoCableFitNegative[];
-
 posKnegPtwisted = UniformTwistedFitPositiveNegP[];
-
 posKnegPtwTwoCable = UniformTwTwoCableFitPositiveNegP[];
-
+posKnegPtwTwoevoFun = MkEvoFunction[Factor[posKnegPtwTwoCable]];
 negKnegPtwTwoCable = UniformTwTwoCableFitNegativeNegP[];
+
+
+Block[{twist = tw},
+      Simplify[posKposPtwTwoevoFun[twist]/EigenvaluePiecePlus[twist],
+               Assumptions -> q > 0 && t > 0]]
+
+Block[{twist = 14},
+      Simplify[posKnegPtwTwoevoFun[twist]/EigenvaluePieceMinus[twist],
+                   Assumptions -> q > 0 && t > 0]]
 
 
 (* ### vv The posK and negK evolutions coincide (we've successfully isolated the "jump") ### *)
@@ -726,29 +865,14 @@ Apart[Simplify[Apart[Lookup[negativePpositiveK, Key[{1}]], q]
                - (-1 - 3*t - 3*q*t - q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t^3*(-1 + q^3*t^2))
                - (1 + 3*t - 3*q*t - q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t^3*(1 + q^3*t^2))
               ],
-      q]
+      q] // InputForm
 
 Apart[Simplify[(- ((1 + t)*(3 + t))/ (2*(-1 + t)*t^2*(-1 + q^2*t))
                 + (1 + t)/(2*t^2*(1 + q^2*t))) (q^4 t^2 - 1)], t]
 
-         
-                  2                 2
-         -4 (1 + q )    -2   3 + 2 q
-Out[57]= ----------- + t   + --------
-           -1 + t               t
-
-
 Factor[Simplify[(- ((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
                  + (1 + 4*t + 3*t^2 + 3*q^2*t^2 + 4*q^2*t^3 + q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3)))
                 (q^8 t^6 - 1)]]
-
-                  
-                           2  2    2  3      4  4      6  5
-         (1 + t) (1 + t + q  t  + q  t  + 2 q  t  + 2 q  t )
-Out[44]= ---------------------------------------------------
-                                       4
-                             (-1 + t) t
-
 
 Apart[Simplify[Apart[Lookup[negativePpositiveK, Key[{q^(-4) t^(-2)}]], q]
                + ((1 + t)*(3 + t))/ (2*(-1 + t)*t^2*(-1 + q^2*t))
@@ -756,7 +880,7 @@ Apart[Simplify[Apart[Lookup[negativePpositiveK, Key[{q^(-4) t^(-2)}]], q]
                + ((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
                - (1 + 4*t + 3*t^2 + 3*q^2*t^2 + 4*q^2*t^3 + q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3))
               ],
-      q]
+      q] // InputForm
 
 Factor[Simplify[((1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t^3*(-1 + q^3*t^2))
                  + (-1 - 3*t + 3*q*t + q*t^2 - 4*q^2*t^2)/(2*(-1 + t)*t^3*(1 + q^3*t^2)))
@@ -764,21 +888,9 @@ Factor[Simplify[((1 + 3*t + 3*q*t + q*t^2 + 4*q^2*t^2)/(2*(-1 + t)*t^3*(-1 + q^3
                ]]
 
                            
-                      2  2      4  3    4  4
-         1 + 3 t + 4 q  t  + 3 q  t  + q  t
-Out[55]= -----------------------------------
-                               3
-                     (-1 + t) t
-
-                           
-
-
-
 Factor[Simplify[(((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
                  + (-1 - 4*t - 3*t^2 - 3*q^2*t^2 - 4*q^2*t^3 - q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3)))
                 (q^8 t^6 - 1)]]
-
-    
 
 
 Simplify[negativePpositiveK / positivePpositiveK]
@@ -790,14 +902,10 @@ Apart[Simplify[Apart[Lookup[negativePpositiveK, Key[{q^(-12) t^(-8)}]], q]
                - ((1 + t)*(-1 + q^2*t^2))/(2*t^4*(1 + q^4*t^3))
                - (-1 - 4*t - 3*t^2 - 3*q^2*t^2 - 4*q^2*t^3 - q^2*t^4)/ (2*(-1 + t)*t^4*(-1 + q^4*t^3))
               ],
-      q]
+      q] // InputForm
 
-                                                      
-          2
-         q     6      8  2   1 + 2 t
-Out[48]= -- + q  t + q  t  + -------
-          2                     4
-         t                     t
+Out[11]//InputForm= q^2/t^2 + q^6*t + q^8*t^2 + (1 + 2*t)/t^4
+
 
 
 
