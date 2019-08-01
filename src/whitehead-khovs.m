@@ -5,6 +5,7 @@
 
 (* ### vv BEGINIMPORTS ### *)
 << "knot-theory-knovanov-ev-utils.m";
+<< "file-locks.m";
 (* ### ^^ ENDIMPORTS ### *)
 
 (* ### vv BEGINLIB ### *)
@@ -15,37 +16,54 @@ CCCScriptFname = "whiteheadize-pd.py";
 CCCRolfsenMults = {1, 1, 2, 3, 7, 21, 49, 165};
 CCCFoamhoPath = "/home/popolit/code/foamho-bin/foamho/foamho";
 CCCFoamhoOutputFname = "/tmp/foamho-output.txt";
+PyCallWhiteheadizer[command_, pd_, args_] :=
+    (* ### ^^ A general "RPC" interface to the python part of the planar diagram rig. ### *)
+    (* ###    `command` -- a command to be executed ### *)
+    (* ###    `pd`      -- a planar diagram (maybe cut), to be placed into a special input file. ### *)
+    (* ###                 Set to None, if no input knot is needed (as for the twist-knots.) ### *)
+    (* ###    `args`    -- command-line arguments to the script ### *)
+    WithALock["whiteheadize-pd", (* ### << Surely we need some synchronization as we run several things using this ### *)
+              (* ###                       functionality in parallel. ### *)
+              Module[{code, fdWrite, pd},
+                     If[None =!= pd,
+                        (* ### vv dump planar diagram into a file ### *)
+                        fdWrite = OpenWrite[CCCPythonDir <> CCCInputFname];
+                        WriteString[fdWrite, ToString[pd, InputForm]];
+                        Close[fdWrite]];
+                     (* ### vv Call a python part of the rig ### *)
+                     code = Run[StringTemplate["python2 `pyDir``scriptName` `cmd` `args` > /dev/null"]
+                                [<|"pyDir" -> CCCPythonDir, "scriptName" -> CCCScriptFname,
+                                 "cmd" -> command, "args" -> StringJoin[StringRiffle[Map[ToString, args]]]
+                                 |>]];
+                     If[0 =!= code,
+                        Message[PyCallWhiteheadizer::someThingWrongPython],
+                        (* ### vv Read the whiteheadized diagram from the file ### *)
+                        Get[CCCPythonDir <> CCCOutputFname]]]];
+CutPD[knot_] :=
+    (* ### ^^ Cut planar diagram of a knot at the origin ### *)
+    Module[{pd = PD[knot]},
+           ReplacePart[pd, FirstPosition[pd, 1] -> 0]];
 PyGetWhiteheadizedPD[knot_, aWind_, bWind_] :=
     (* ### ^^ Get a double-braid satellite of the given knot ### *)
     (* ###    `knot`  -- a knot in any form that can be fed into `PD` of the knot theory ### *)
     (* ###    `aWind` -- number of windings of the a-braid of the double-braid duo ### *)
     (* ###    `bWind` -- number of windings of the b-braid of the double-braid duo ### *)
-    Module[{code, fdWrite, pd},
-           (* ### vv dump planar diagram into a file ### *)
-           fdWrite = OpenWrite[CCCPythonDir <> CCCInputFname];
-           pd = PD[knot];
-           WriteString[fdWrite, ToString[ReplacePart[pd, FirstPosition[pd, 1] -> 0], InputForm]];
-           Close[fdWrite];
-           (* ### vv Call a python part of the rig ### *)
-           code = Run["python2 " <> CCCPythonDir <> CCCScriptFname <> " whiteheadize " <> ToString[aWind] <> " " <> ToString[bWind]
-                      <> " > /dev/null"];
-           If[0 =!= code,
-              Message[PyGetWhiteheadizedPD::someThingWrongPython],
-              (* ### vv Read the whiteheadized diagram from the file ### *)
-              Get[CCCPythonDir <> CCCOutputFname]]];
+    PyCallWhiteheadizer["whiteheadize", CutPD[knot], {aWind, bWind}];
+PyGetTwostrandedPD[knot_, wind_] :=
+    (* ### ^^ Get a result of insertion of 2-strand braid into a 2-cable of a given knot. ### *)
+    (* ###    `knot`  -- a knot in any form that can be fed into `PD` of the knot theory ### *)
+    (* ###    `wind` -- number of windings of the 2-strand braid. ### *)
+    PyCallWhiteheadizer["two-cable", CutPD[knot], {wind}];
 PyGetTwistWhiteheadizedPD[parentWind_, childWind_] :=
     (* ### ^^ Get a twist satellite of a twist knot. Diagram is completely constructed on the Python side. ### *)
     (* ###    `parentWind` -- number of windings in the parent twist knot's 2-strand braid ### *)
     (* ###    `childWind`  -- number of windings in the child twist knot's 2-strand braid  ### *)
-    Module[{code, fdWrite},
-           (* ### vv Call a python part of the rig ### *)
-           code = Run["python2 " <> CCCPythonDir <> CCCScriptFname <> " twist "
-                      <> ToString[parentWind] <> " " <> ToString[childWind]
-                      <> " > /dev/null"];
-           If[0 =!= code,
-              Message[PyGetWhiteheadizedPD::someThingWrongPython],
-              (* ### vv Read the whiteheadized diagram from the file ### *)
-              Get[CCCPythonDir <> CCCOutputFname]]];
+    PyCallWhiteheadizer["twist", None, {parentWind, childWind}];
+PyGetTwistTwostrandedPD[twistWind_, wind_] :=
+    (* ### ^^ Get a result of insertion of 2-strand braid into a 2-cable of a twist knot. ### *)
+    (* ###    `twistWind` -- number of windings of the 2-strand braid of the twist knot. ### *)
+    (* ###    `wind` -- number of windings of the 2-strand braid. ### *)
+    PyCallWhiteheadizer["twist-two-cable", None, {twistWind, wind}];
 PrecalculateKhRedWhiteheadizedPDs[knot_, squareSize_] :=
     (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials in some square of the double-braid space. ### *)
     (* ###    `squareSize` -- (roughly) half the length of the side of the square ### *)
@@ -97,6 +115,17 @@ PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
                       WriteString[fd, "PrecompKhRed[Twisted[" <> ToString[twist] <> "], " <> ToString[i]
                                   <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
            Close[fd]];
+PrecalculateKhRedTwistedTwoStrandPDsLine[twist_, from_, to_] :=
+    (* ### ^^ Precalculate reduced Khovanov polynomials for twisted knots with two-strand insertion. ### *)
+    (* ###    `from` and `to`-- winding iteration bounds for a child braid. ### *)
+    (* ###    `twist`        -- winding of a parent braid. ### *)
+    Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-precomp-twisted-two-strand-" <> ToString[twist] <> ".m"],
+            i},
+           For[i = from, i <= to, i = i + 2,
+               Module[{polly = KhReduced[PyGetTwistTwostrandedPD[twist, i] /. {ii_Integer :> ii + 1}][q, t]},
+                      WriteString[fd, "PrecompKhRed[TwistedTwoSt[" <> ToString[twist] <> "], " <> ToString[i]
+                                  <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
+           Close[fd]];
 KnotToFname[Knot[a_, b_]] :=
     ("rolfsen-knot-" <> ToString[a] <> "-" <> ToString[b]);
 PDToFoamhoString[pd_PD] :=
@@ -133,6 +162,7 @@ PrecalculateKhRedSL3TwistedPDsLine[twist_, from_, to_] :=
            Close[fd]];
 (* ### ^^ ENDLIB ### *)
 
+PyGetWhiteheadizedPD[PD[Knot[3,1]], 4, 6]
 
 (* ### vv CURWORK ### *)
 Module[{i, j},
@@ -141,35 +171,14 @@ Module[{i, j},
                PrecalculateKhRedWhiteheadizedPDsLine[Knot[i, j], -10, 10, 2]]]];
 
 
+Module[{i},
+       For[i = 1, i <= 8, i ++,
+           PrecalculateKhRedTwistedTwoStrandPDsLine[2 i, -10 - 4 (i - 1) + 1, 12 - 4 (i - 1) + 1];
+           PrecalculateKhRedTwistedTwoStrandPDsLine[-2 i, -10 + 4 (i - 1) + 1, 12 + 4 (i - 1) + 1]]];
+
 (* PrecalculateKhRedWhiteheadizedPDsLine[Knot[8,7], -10, 10, 2] *)
 (* str = KhReducedSL3[PD[BR[3,{1,2,1,2,2,2,2,2,2,2,2,2,2,2}]]]; *)
 
-Module[{i},
-       For[i = 1, i <= 8, i ++,
-           PrecalculateKhRedSL3TwistedPDsLine[2 i, -6 - 4 i, 16 - 4 i]]];
+PrecalculateKhRedSL3TwistedPDsLine[2, -10, 12];
 
-
-KhReducedSL3[PD[Knot[4,1]]]
-
-aaa = KhReducedSL3[PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}];
-
-Error 34 occurred. Either your input is not a link diagram, or this is a bug.
-
-KhReducedSL3::foamhoFailed: -- Message text not found --
-
-
-PDToFoamhoString[PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}] // InputForm
-
-Out[4]//InputForm= 
-"[[16,29,17,30],[15,7,16,6],[19,31,20,30],[20,5,21,6],[28,13,29,14],[27,23,28\
-,22],[7,15,8,14],[8,21,9,22],[11,35,12,34],[24,33,25,34],[12,1,13,2],[23,3,24\
-,2],[31,11,32,10],[4,9,5,10],[32,25,33,26],[3,27,4,26],[18,35,19,36],[1,18,36\
-,17]]"
-
-Out[3]= [[16,29,17,30],[15,7,16,6],[19,31,20,30],[20,5,21,6],[28,13,29,14],[2\
- 
->    7,23,28,22],[7,15,8,14],[8,21,9,22],[11,35,12,34],[24,33,25,34],[12,1,13\
- 
->    ,2],[23,3,24,2],[31,11,32,10],[4,9,5,10],[32,25,33,26],[3,27,4,26],[18,3\
- 
->    5,19,36],[1,18,36,17]]
+KhReducedSL3[PyGetTwistWhiteheadizedPD[2, 0] /. {ii_Integer :> ii + 1}]
