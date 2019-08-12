@@ -114,7 +114,7 @@ PrecalculateKhRedTwStTorusKnotPDsLine[2, p_, from_, to_, step_] :=
             br = BR[2, ConstLst[If[p > 0, -1, 1], Abs[p]]],
             i},
            For[i = from, i <= to, i = i + step,
-               Module[{polly = KhReduced[PyGetTwostrandedPD[PD[br], i, 2] /. {ii_Integer :> ii + 1}][q, t]},
+               Module[{polly = KhReduced[PyGetTwostrandedPD[PD[br], i] /. {ii_Integer :> ii + 1}][q, t]},
                       WriteString[fd, StringTemplate["PrecompKhRed[TorusKnotTwSt[2, `p`], `i`] := `expr`;\n"]
                                   [<|"p" -> p, "i" -> i, "expr" -> ToString[polly, InputForm]|>]]]];
            Close[fd]];
@@ -191,9 +191,13 @@ Module[{i},
            PrecalculateKhRedTwistedTwoStrandPDsLine[2 i, -10 - 4 (i - 1) + 1, 12 - 4 (i - 1) + 1];
            PrecalculateKhRedTwistedTwoStrandPDsLine[-2 i, -10 + 4 (i - 1) + 1, 12 + 4 (i - 1) + 1]]];
 
+
 Module[{i},
-       For[i = 1, i <= 6, i ++,
-           PrecalculateKhRedWhdTorusKnotPDsLine[2, - 2 i - 1, 4 + (2 i + 1) - 10, 4 + (2 i + 1) + 10, 2]]];
+       For[i = 2, i <= 6, i ++,
+           Block[{p = 2 i + 1},
+                 PrecalculateKhRedTwStTorusKnotPDsLine[2, p, 4 - p - 10, 4 - p + 10, 2]];
+           Block[{p = - 2 i - 1},
+                 PrecalculateKhRedTwStTorusKnotPDsLine[2, p, 4 - p - 10, 4 - p + 10, 2]]]];
 
 
 
