@@ -24,7 +24,7 @@ PyCallWhiteheadizer[command_, pd_, args_] :=
     (* ###    `args`    -- command-line arguments to the script ### *)
     WithALock["whiteheadize-pd", (* ### << Surely we need some synchronization as we run several things using this ### *)
               (* ###                       functionality in parallel. ### *)
-              Module[{code, fdWrite, pd},
+              Module[{code, fdWrite},
                      If[None =!= pd,
                         (* ### vv dump planar diagram into a file ### *)
                         fdWrite = OpenWrite[CCCPythonDir <> CCCInputFname];
@@ -91,7 +91,7 @@ ConstLst[elt_, length_] :=
     (* ### ^^ Create a list of length `length` where every element is a constant `elt` ### *)
     Module[{i}, Table[elt, {i, 1, length}]];
 PrecalculateKhRedWhdTorusKnotPDsLine[2, p_, from_, to_, step_] :=
-    (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials specifically for a twisted line, ### *)
+    (* ### ^^ Precalculate whiteheadized reduced Khovanov polynomials ### *)
     (* ###    for a 2-strand torus knot. ### *)
     (* ###    `from` and `to`-- winding iteration bounds ### *)
     (* ###    `p`            -- the number of windings of a torus knot. ### *)
@@ -102,7 +102,21 @@ PrecalculateKhRedWhdTorusKnotPDsLine[2, p_, from_, to_, step_] :=
            For[i = from, i <= to, i = i + step,
                Module[{polly = KhReduced[PyGetWhiteheadizedPD[PD[br], i, 2] /. {ii_Integer :> ii + 1}][q, t]},
                       WriteString[fd, StringTemplate["PrecompKhRed[TorusKnot[2, `p`], `i`] := `expr`;\n"]
-                                  [<|"p" -> p, "i" -> i, "expr" -> ToString[polly, InputForm]]]]];
+                                  [<|"p" -> p, "i" -> i, "expr" -> ToString[polly, InputForm]|>]]]];
+           Close[fd]];
+PrecalculateKhRedTwStTorusKnotPDsLine[2, p_, from_, to_, step_] :=
+    (* ### ^^ Precalculate two-cabled reduced Khovanov polynomials ### *)
+    (* ###    for a 2-strand torus knot. ### *)
+    (* ###    `from` and `to`-- winding iteration bounds ### *)
+    (* ###    `p`            -- the number of windings of a torus knot. ### *)
+    (* ###                      Convention is p --> BR[2, {-1}^p] (so that it matches with Rolfsen) ### *)
+    Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-twst-torus-2-" <> ToString[p] <> ".m"],
+            br = BR[2, ConstLst[If[p > 0, -1, 1], Abs[p]]],
+            i},
+           For[i = from, i <= to, i = i + step,
+               Module[{polly = KhReduced[PyGetTwostrandedPD[PD[br], i, 2] /. {ii_Integer :> ii + 1}][q, t]},
+                      WriteString[fd, StringTemplate["PrecompKhRed[TorusKnotTwSt[2, `p`], `i`] := `expr`;\n"]
+                                  [<|"p" -> p, "i" -> i, "expr" -> ToString[polly, InputForm]|>]]]];
            Close[fd]];
 PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
     (* ### ^^ Precalculate reduced Khovanov polynomials for twisted-twisted knots. ### *)
@@ -162,6 +176,7 @@ PrecalculateKhRedSL3TwistedPDsLine[twist_, from_, to_] :=
            Close[fd]];
 (* ### ^^ ENDLIB ### *)
 
+
 PyGetWhiteheadizedPD[PD[Knot[3,1]], 4, 6]
 
 (* ### vv CURWORK ### *)
@@ -175,6 +190,13 @@ Module[{i},
        For[i = 1, i <= 8, i ++,
            PrecalculateKhRedTwistedTwoStrandPDsLine[2 i, -10 - 4 (i - 1) + 1, 12 - 4 (i - 1) + 1];
            PrecalculateKhRedTwistedTwoStrandPDsLine[-2 i, -10 + 4 (i - 1) + 1, 12 + 4 (i - 1) + 1]]];
+
+Module[{i},
+       For[i = 1, i <= 6, i ++,
+           PrecalculateKhRedWhdTorusKnotPDsLine[2, - 2 i - 1, 4 + (2 i + 1) - 10, 4 + (2 i + 1) + 10, 2]]];
+
+
+
 
 (* PrecalculateKhRedWhiteheadizedPDsLine[Knot[8,7], -10, 10, 2] *)
 (* str = KhReducedSL3[PD[BR[3,{1,2,1,2,2,2,2,2,2,2,2,2,2,2}]]]; *)
