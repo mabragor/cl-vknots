@@ -487,7 +487,51 @@ TestKhRedTwisted[] :=
                                 Print["Uncalculated: ", twist, " ", ncrossings]];
                              Print["Test failed for: ", twist, " ", ncrossings]; res = False]]]];
            res];
+Araces[x_] :=
+    (* ### ^^ The anticommutator braces ### *)
+    (x + x^(-1));
+UniformAdjoint[TwistKnot[twist_]] :=
+    (1 + Braces[A]^2 A^4/Araces[q]^2 (-2 Araces[q] Araces[q^3] (A^twist - 1)/(A^2 - 1)
+                                      + Braces[A q^3] Araces[A/q] ((q^2 A^2)^twist - 1)/((q^2 A^2) - 1)
+                                      + Braces[A/q^3] Araces[A q] ((q^(-2) A^2)^twist - 1)/((q^(-2) A^2) - 1)
+                                      - 2 Braces[A q^2] Braces[A q^(-2)] (A^(2 twist) - 1)/(A^2 - 1)));
+TwSatHOMFLY[TwistKnot[twist_], numcr_] :=
+    (A^2 - A Braces[q]^2/Braces[A] - A Braces[A q] Braces[A/q] /Braces[A] A^(numcr + 2 w) UniformAdjoint[TwistKnot[twist]]);
+TwTwoHOMFLY[TwistKnot[twist_], numcr_] :=
+    (1 + Braces[A q] Braces[A/q] A^(numcr + 2 w) UniformAdjoint[TwistKnot[twist]]);
 (* ### ^^ ENDLIB ### *)
+
+Block[{w = -2},
+      Expand[Simplify[TwSatHOMFLY[TwistKnot[2], 2] /. {A -> q^2}]]]
+
+         
+              6    8    14    16    18      20    22
+Out[22]= 1 + q  - q  - q   + q   - q   + 2 q   - q
+
+         
+(* ### vv Figure out how exactly is our Khovanov polynomial related to previously computed Twist HOMFLY ### *)
+Block[{twist = -4, numcr = -4},
+      Factor[((-q^2) (PrecompKhRed[Twisted[twist], numcr] /. {q -> 1/q, t -> -1})
+              - (A^2 - A Braces[q]^2/Braces[A]) /. {A -> q^2})
+             /(UniformAdjoint[TwistKnot[-twist]] /. {A -> q^2})
+             /((-1) A Braces[A q] Braces[A/q] /Braces[A] A^numcr /. {A -> q^2})
+             / q^(4 (twist - 2))
+            ]]
+
+(* ### vv Figure out how exactly is our Khovanov polynomial related to previously computed HOMFLY ### *)
+(* ###    for 2-cable of a twist knot ### *)
+(* ###    Not sure that I've correctly interpreted all A-factors ### *)
+Block[{twist = -4, numcr = 9},
+      Factor[((PrecompKhRed[TwistedTwoSt[twist], numcr] /. {q -> 1/q, t -> -1}) (- q^3)^(numcr + 2 twist - 4)
+              - q^2/(1 + q^2))
+             /(UniformAdjoint[TwistKnot[-twist]]
+               Braces[A q]/Braces[A/q] /Araces[q] q (-1) A^numcr
+               /. {A -> q^2})
+             / q^(4 (twist - 2))
+            ]]
+
+
+
 
 Block[{twist = 6, ncrossings = 1},
       Module[{expr = TwTwoCableMassagedPositive[twist, ncrossings],
