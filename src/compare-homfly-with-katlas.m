@@ -20,5 +20,7 @@ fd = OpenRead[DirectoryName[$InputFileName] <> "/lisp-out.txt"];
 For[it = Module[{}, Read[fd]; Read[fd]], it =!= EndOfFile, it = Module[{}, Read[fd]; Read[fd]],
     WriteString["stdout", Quiet[CompareWithEtalon[expr1,expr2]]//InputForm, "\n"]];
 
+WriteString["stdout", "TheRealEnd\n"];
+
 Close[fd];
 (* (\* Close[fdout]; *\) *)

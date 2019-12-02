@@ -482,11 +482,12 @@
     (mapcar #'parse-integer lst)))
 
 (defun get-braid-reps (lst)
-  (mapcar (lambda (x)
-	    ;; (format t "~a~%" x)
-	    ;; (parse 'wm-braid x))
-	    (lame-parse-braid x))
-	  (mathematica-bulk-exec expr #?"$(*fname-prefix*)get-knots-braid.m" lst)))
+  (let ((it (mathematica-bulk-exec expr #?"$(*fname-prefix*)get-knots-braid.m" lst)))
+    (iter (for output in it)
+          (if (string= "TheRealEnd" output)
+              (terminate))
+          (collect (lame-parse-braid output)))))
+	  
 (defun get-braid-rep1 (expr)
   (car (get-braid-reps (list expr))))
 
@@ -506,22 +507,30 @@
 	    (for elt in-vector cur-arcs)
 	    (push `(:d ,elt ,i) res))
       res)))
-			 
+
+(defun truncate-real-eof (lst)
+  (iter (for elt in lst)
+        (if (string= "TheRealEnd" elt)
+            (terminate))
+        (collect elt)))
+
 (defun compare-homfly-with-katlas (lst)
   (let ((braids (get-braid-reps lst)))
-    (mathematica-bulk-exec (expr1 expr2) #?"$(*fname-prefix*)compare-homfly-with-katlas.m"
-			   (mapcar (lambda (x y)
-				     (list (homfly-serial-toolchain (planar->seifert (braid->planar x)))
+    (truncate-real-eof
+     (mathematica-bulk-exec (expr1 expr2) #?"$(*fname-prefix*)compare-homfly-with-katlas.m"
+                            (mapcar (lambda (x y)
+                                      (list (homfly-serial-toolchain (planar->seifert (braid->planar x)))
 					    y))
-				   braids lst))))
+                                    braids lst)))))
 
 (defun compare-actual-homfly-with-katlas (lst)
   (let ((braids (get-braid-reps lst)))
-    (mathematica-bulk-exec (expr1 expr2) #?"$(*fname-prefix*)compare-actual-homfly-with-katlas.m"
-			   (mapcar (lambda (x y)
-				     (list (homfly-actual-serial-toolchain (planar->seifert (braid->planar x)))
+    (truncate-real-eof
+     (mathematica-bulk-exec (expr1 expr2) #?"$(*fname-prefix*)compare-actual-homfly-with-katlas.m"
+                            (mapcar (lambda (x y)
+                                      (list (homfly-actual-serial-toolchain (planar->seifert (braid->planar x)))
 					    y))
-				   braids lst))))
+                                    braids lst)))))
 
 
 (defun compare-homfly-with-katlas1 (knot)

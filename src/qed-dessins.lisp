@@ -1328,7 +1328,7 @@ if cells QD-loop has E-loops"
 (defparameter *perm-dessins-hash* (make-hash-table :test #'equal))
 
 (defun load-perm-dessins-from-file (n-edges)
-  (iter (for elt in-file #?"~/quicklisp/local-projects/cl-vknots/permanent-dessins-$(n-edges).txt"
+  (iter (for elt in-file #?"~/quicklisp/local-projects/cl-vknots/data/permanent-dessins-$(n-edges).txt"
 	     using #'read)
 	(collect elt)))
 				    
