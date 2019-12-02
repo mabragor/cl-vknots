@@ -21,6 +21,16 @@ LoadTwTwoStrandPrecomps[n_] :=
     Module[{fname = (CCCDataDir <> "/kh-red-precomp-twisted-two-strand-"
                      <> ToString[n] <> ".m")},
            Get[fname]];
+LoadTorusPrecomps[n_] :=
+    (* ### ^^ Load the precomputed twist-satellites of 2-strand torus knots. ### *)
+    Module[{fname = (CCCDataDir <> "/kh-red-precomp-whiteheadized-torus-2-"
+                     <> ToString[n] <> ".m")},
+           Get[fname]];
+LoadTorusTwoStrandPrecomps[n_] :=
+    (* ### ^^ Load the precomputed 2-strand insertion of 2-strand torus knots. ### *)
+    Module[{fname = (CCCDataDir <> "/kh-red-precomp-twst-torus-2-"
+                     <> ToString[n] <> ".m")},
+           Get[fname]];
 KnotToFname[Knot[a_, b_]] :=
     ("knot-" <> ToString[a] <> "-" <> ToString[b]);
 FitUR[knot_, a_] :=
@@ -463,6 +473,18 @@ EnsureTwistedPrecompsLoaded[] :=
                   For[j = 2, j <= 16, j = j + 2,
                       LoadTwTwoStrandPrecomps[j];
                       LoadTwTwoStrandPrecomps[-j]]]];
+EnsureTorusPrecompsLoaded[] :=
+    Module[{},
+           Module[{j},
+                  For[j = 3, j <= 9, j = j + 2,
+                      LoadTorusPrecomps[j]];
+                  (* ### vv KLUDGE, since I just didn't calculate enough positive torus polynomials ### *)
+                  LoadTorusPrecomps[-11];
+                  LoadTorusPrecomps[-13]];
+           Module[{j},
+                  For[j = 3, j <= 13, j = j + 2,
+                      LoadTorusTwoStrandPrecomps[j];
+                      LoadTorusTwoStrandPrecomps[-j]]]];
 TestKhRedTwistedTwSt[] :=
     Module[{twist, ncrossings, res = True},
            EnsureTwistedPrecompsLoaded[];
@@ -496,6 +518,8 @@ Block[{twist = 6, ncrossings = 1},
 
 
 EnsureTwistedPrecompsLoaded[]
+
+EnsureTorusPrecompsLoaded[]
 
 TestKhRedTwisted[]
 
