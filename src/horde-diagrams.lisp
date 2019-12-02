@@ -262,6 +262,28 @@
   (mathematica-serialize x))
   
 
+(defmacro mathematica-bulk-send (pattern o!-lst)
+  (let ((g!-lst (gensym "LST")))
+    `(let ((,g!-lst ,o!-lst))
+       (with-open-file (stream #?"$(*fname-prefix*)lisp-out.txt"
+			       :direction :output :if-exists :supersede)
+	 (iter (for ,pattern in ,g!-lst)
+	       ,@(if (atom pattern)
+		     `((format stream ,#?"$((stringify-symbol pattern)) = ~a;~%" ,pattern))
+		     (mapcar (lambda (x)
+			       `(format stream ,#?"$((stringify-symbol x)) = ~a;~%" ,x))
+			     pattern)))))))
+
+(defun mathematica-bulk-run (script-name)
+  (multiple-value-bind (out err errno)
+      (script #?"math -script $(script-name) > $(*fname-prefix*)lisp-in.txt")
+    ;; (declare (ignore out))
+    (if (not (zerop errno))
+	(error err)
+	out)))
+
+
+
 (defun script1 (str)
   (multiple-value-bind (out err errno) (script str)
     (if (not (zerop errno))
@@ -280,6 +302,11 @@
 (defun mathematica-q-poly-canonicalize (lst)
   (mathematica-bulk-send expr lst)
   (mathematica-bulk-run #?"$(*fname-prefix*)q-poly-canonicalize.m"))
+
+(defmacro mathematica-bulk-exec (pattern script lst)
+  `(progn (mathematica-bulk-send ,pattern ,lst)
+	  (mathematica-bulk-run ,script)
+	  (mathematica-bulk-receive)))
 
 ;; (defun mathe
 
