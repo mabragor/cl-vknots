@@ -99,6 +99,7 @@ PrecalculateKhRedWhdTorusKnotPDsLine[2, p_, midPt_, delta_, step_] :=
     (* ###               `delta` is supposed to be multiple to `step` ### *)
     (* ###    `p`            -- the number of windings of a torus knot. ### *)
     (* ###                      Convention is p --> BR[2, {-1}^p] (so that it matches with Rolfsen) ### *)
+    (* ###    26.03.2021 -- redone the calculation ### *)
     Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-whiteheadized-torus-2-" <> ToString[p] <> ".m"],
             br = BR[2, Join[ConstLst[If[p > 0, -1, 1], Abs[p]],
                             If[MemberQ[{1,3}, Abs[p]],
@@ -124,6 +125,7 @@ PrecalculateKhRedTwStTorusKnotPDsLine[2, p_, from_, to_, step_] :=
     (* ###    `from` and `to`-- winding iteration bounds ### *)
     (* ###    `p`            -- the number of windings of a torus knot. ### *)
     (* ###                      Convention is p --> BR[2, {-1}^p] (so that it matches with Rolfsen) ### *)
+    (* ###    26.03.2021 -- redone the calculation ### *)
     Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-twst-torus-2-" <> ToString[p] <> ".m"],
             br = BR[2, Join[ConstLst[If[p > 0, -1, 1], Abs[p]],
                             If[1 === Abs[p],
@@ -139,7 +141,7 @@ PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
     (* ### ^^ Precalculate reduced Khovanov polynomials for twisted-twisted knots. ### *)
     (* ###    `from` and `to`-- winding iteration bounds for a child braid. ### *)
     (* ###    `twist`        -- winding of a parent braid. ### *)
-    Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-twisted-twisted-" <> ToString[twist] <> ".m"],
+    Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-whiteheadized-twist-" <> ToString[twist] <> ".m"],
             i},
            For[i = from, i <= to, i = i + 2,
                Module[{polly = KhReduced[PyGetTwistWhiteheadizedPD[twist, i] /. {ii_Integer :> ii + 1}][q, t]},
@@ -309,11 +311,14 @@ Frob[] :=
 
 Frob[]
 
+(* KhReduced[PyGetWhiteheadizedPD[TorusKnot[2,3], 3, 4] /. {ii_Integer :> ii + 1}][q, t] *)
+
+
 DumpSecondTwostrandTorusEvolution[] :=
     (* ### ^^ Write previous found two-parametric evolution  ### *)
     (* ###    for two-strand torus knot satellites into file ### *)
     Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-2evo-torus-2.m"]},
-           
+           ...
            Close[fd]];
 
            
@@ -424,6 +429,53 @@ Module[{fd = OpenWrite["/tmp/precalculation.log"]},
            WriteString[fd, StringTemplate["Calculating ``\n"][p]];
            PrecalculateKhRedTwStTorusKnotPDsLine[2, p, -4 - p - 10, -4 - p + 10, 2]];
        Close[fd]];
+
+(* ### ### vv Calculating reduced Khovanovs for twist knots with whitehead block ### ### *)
+(* ### vv This interval of shifts is for positive `p` ### *)
+Module[{fd = OpenWrite["/tmp/precalculation.log"]},
+       For[p = 1, p <= 5, p = p + 2,
+           WriteString[fd, StringTemplate["Calculating ``\n"][p]];
+           PrecalculateKhRedTwistedPDsLine[p, 4 - p - 6, 4 - p + 6]];
+       Close[fd]];
+
+(* ### vv Now we load the raw precalculated data ### *)
+Module[{i},
+       For[i = 1, i <= 5, i = i + 2,
+           Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-twist-``.m"][i]]]];
+
+(* ### vv Find eigenvalues and position of a jump ### *)
+Block[{k = 1, p = 1, delta = -3},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, PrecompKhRed[Twisted[p], delta + 2 k]];
+             fun1 = Function[{k}, Expand[FS[fun[k+1] - t^(-2) q^(-4) fun[k]]]];
+             fun2 = Function[{k}, Expand[FS[fun1[k+1] - fun1[k]]]];
+             (* fun3 = Function[{k}, Expand[FS[fun2[k+1] - q^6 fun2[k]]]]; *)
+             (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - q^10 fun3[k]]]]; *)
+             fun[k]
+            ]]
+
+                                                                                 
+              2     1       1       1       2     1    2      2      4
+Out[15]= 1 + q  + ----- + ----- + ----- + ----- + - + ---- + q  t + q  t + 
+                   8  5    6  4    4  3    2  2   t    2
+                  q  t    q  t    q  t    q  t        q  t
+ 
+        4  2    4  3    6  3      6  4    8  5    10  6      12  7    14  8
+>    2 q  t  + q  t  + q  t  + 2 q  t  + q  t  + q   t  + 2 q   t  + q   t
+
+                                                                                 
+                2     1       1     1    1        2      4        4  2
+Out[14]= 1 + 2 q  + ----- + ----- + - + ---- + 3 q  t + q  t + 2 q  t  + 
+                     4  3    2  2   t    2
+                    q  t    q  t        q  t
+ 
+      6  2    6  3    8  3      8  4    8  5    10  5      10  6    12  7
+>    q  t  + q  t  + q  t  + 2 q  t  + q  t  + q   t  + 2 q   t  + q   t  + 
+ 
+      14  8      16  9    18  10
+>    q   t  + 2 q   t  + q   t
+
+
 
 (* ### ### vv Calculating reduced Khovanovs for 2-strand torus knots with whitehead block ### ### *)
 (* ### vv This interval of shifts is for positive `p` ### *)
