@@ -433,47 +433,34 @@ Module[{fd = OpenWrite["/tmp/precalculation.log"]},
 (* ### ### vv Calculating reduced Khovanovs for twist knots with whitehead block ### ### *)
 (* ### vv This interval of shifts is for positive `p` ### *)
 Module[{fd = OpenWrite["/tmp/precalculation.log"]},
-       For[p = 1, p <= 5, p = p + 2,
+       For[p = 1, p <= 3, p = p + 2,
            WriteString[fd, StringTemplate["Calculating ``\n"][p]];
-           PrecalculateKhRedTwistedPDsLine[p, 4 - p - 6, 4 - p + 6]];
+           PrecalculateKhRedTwistedPDsLine[p, 4 - p - 12, 4 - p + 12]];
        Close[fd]];
+
+(* ### vv This interval of shifts is for negative `p` ### *)
+Module[{fd = OpenWrite["/tmp/precalculation.log"]},
+       For[p = 1, p <= 3, p = p + 2,
+           WriteString[fd, StringTemplate["Calculating ``\n"][p]];
+           PrecalculateKhRedTwistedPDsLine[p, 4 - p - 12, 4 - p + 12]];
+       Close[fd]];
+
 
 (* ### vv Now we load the raw precalculated data ### *)
 Module[{i},
-       For[i = 1, i <= 5, i = i + 2,
+       For[i = -1, i <= -1, i = i + 2,
            Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-twist-``.m"][i]]]];
 
 (* ### vv Find eigenvalues and position of a jump ### *)
-Block[{k = 1, p = 1, delta = -3},
+Block[{k = -4, p = 7, delta = -3},
       Module[{fun, fun1, fun2, fun3, fun4, fun5},
              fun = Function[{k}, PrecompKhRed[Twisted[p], delta + 2 k]];
              fun1 = Function[{k}, Expand[FS[fun[k+1] - t^(-2) q^(-4) fun[k]]]];
              fun2 = Function[{k}, Expand[FS[fun1[k+1] - fun1[k]]]];
              (* fun3 = Function[{k}, Expand[FS[fun2[k+1] - q^6 fun2[k]]]]; *)
              (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - q^10 fun3[k]]]]; *)
-             fun[k]
+             fun2[k]
             ]]
-
-                                                                                 
-              2     1       1       1       2     1    2      2      4
-Out[15]= 1 + q  + ----- + ----- + ----- + ----- + - + ---- + q  t + q  t + 
-                   8  5    6  4    4  3    2  2   t    2
-                  q  t    q  t    q  t    q  t        q  t
- 
-        4  2    4  3    6  3      6  4    8  5    10  6      12  7    14  8
->    2 q  t  + q  t  + q  t  + 2 q  t  + q  t  + q   t  + 2 q   t  + q   t
-
-                                                                                 
-                2     1       1     1    1        2      4        4  2
-Out[14]= 1 + 2 q  + ----- + ----- + - + ---- + 3 q  t + q  t + 2 q  t  + 
-                     4  3    2  2   t    2
-                    q  t    q  t        q  t
- 
-      6  2    6  3    8  3      8  4    8  5    10  5      10  6    12  7
->    q  t  + q  t  + q  t  + 2 q  t  + q  t  + q   t  + 2 q   t  + q   t  + 
- 
-      14  8      16  9    18  10
->    q   t  + 2 q   t  + q   t
 
 
 
