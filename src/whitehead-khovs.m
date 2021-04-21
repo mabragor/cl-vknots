@@ -17,6 +17,7 @@ CCCRolfsenMults = {1, 1, 2, 3, 7, 21, 49, 165};
 CCCFoamhoPath = "/home/popolit/code/foamho-bin/foamho/foamho";
 CCCFoamhoOutputFname = "/tmp/foamho-output.txt";
 FS[x_] := Factor[Simplify[x]];
+EFS[x_] := Expand[FS[x]];
 PyCallWhiteheadizer[command_, pd_, args_] :=
     (* ### ^^ A general "RPC" interface to the python part of the planar diagram rig. ### *)
     (* ###    `command` -- a command to be executed ### *)
@@ -107,16 +108,16 @@ PrecalculateKhRedWhdTorusKnotPDsLine[2, p_, midPt_, delta_, step_] :=
                                {}]]],
             i, sgn},
            Module[{polly = KhReduced[PyGetWhiteheadizedPD[PD[br], midPt, 2] /. {ii_Integer :> ii + 1}][q, t]},
-                  WriteString[fd, StringTemplate["PrecompKhRed[TorusKnot[2, `p`], `midPt`] := `expr`;\n"]
+                  WriteString[fd, StringTemplate["PrecompKhRed[\"w\", TorusKnot[2, `p`], `i`] := `expr`;\n"]
                               [<|"p" -> p, "i" -> midPt, "expr" -> ToString[polly, InputForm]|>]]];
            For[shift = step, shift <= delta, shift += step,
-               Module[{pollyPlus = KhReduced[PyGetWhiteheadizedPD[PD[br], midPt + step, 2]
+               Module[{pollyPlus = KhReduced[PyGetWhiteheadizedPD[PD[br], midPt + shift, 2]
                                              /. {ii_Integer :> ii + 1}][q, t],
-                       pollyMinus = KhReduced[PyGetWhiteheadizedPD[PD[br], midPt - step, 2]
+                       pollyMinus = KhReduced[PyGetWhiteheadizedPD[PD[br], midPt - shift, 2]
                                              /. {ii_Integer :> ii + 1}][q, t]},
-                      WriteString[fd, StringTemplate["PrecompKhRed[TorusKnot[2, `p`], `i`] := `expr`;\n"]
+                      WriteString[fd, StringTemplate["PrecompKhRed[\"w\", TorusKnot[2, `p`], `i`] := `expr`;\n"]
                                   [<|"p" -> p, "i" -> midPt + shift, "expr" -> ToString[pollyPlus, InputForm]|>]];
-                      WriteString[fd, StringTemplate["PrecompKhRed[TorusKnot[2, `p`], `i`] := `expr`;\n"]
+                      WriteString[fd, StringTemplate["PrecompKhRed[\"w\", TorusKnot[2, `p`], `i`] := `expr`;\n"]
                                   [<|"p" -> p, "i" -> midPt - shift, "expr" -> ToString[pollyMinus, InputForm]|>]]]];
            Close[fd]];
 PrecalculateKhRedTwStTorusKnotPDsLine[2, p_, from_, to_, step_] :=
@@ -148,15 +149,15 @@ PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
                       WriteString[fd, "PrecompKhRed[Twisted[" <> ToString[twist] <> "], " <> ToString[i]
                                   <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
            Close[fd]];
-PrecalculateKhRedTwistedTwoStrandPDsLine[twist_, from_, to_] :=
+PrecalculateKhRedTwStTwistedPDsLine[twist_, from_, to_] :=
     (* ### ^^ Precalculate reduced Khovanov polynomials for twisted knots with two-strand insertion. ### *)
     (* ###    `from` and `to`-- winding iteration bounds for a child braid. ### *)
     (* ###    `twist`        -- winding of a parent braid. ### *)
-    Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-twisted-two-strand-" <> ToString[twist] <> ".m"],
+    Module[{fd = OpenAppend[CCCDataDir <> "/kh-red-precomp-twst-twist-" <> ToString[twist] <> ".m"],
             i},
            For[i = from, i <= to, i = i + 2,
                Module[{polly = KhReduced[PyGetTwistTwostrandedPD[twist, i] /. {ii_Integer :> ii + 1}][q, t]},
-                      WriteString[fd, "PrecompKhRed[TwistedTwoSt[" <> ToString[twist] <> "], " <> ToString[i]
+                      WriteString[fd, "PrecompKhRed[TWSTTwisted[" <> ToString[twist] <> "], " <> ToString[i]
                                   <> "] := " <> ToString[polly, InputForm] <> ";\n"]]];
            Close[fd]];
 KnotToFname[Knot[a_, b_]] :=
@@ -307,21 +308,362 @@ Frob[] :=
            FindSecondTwostrandTorusEvolutionsTQ3[];
            FindSecondTwostrandTorusEvolutionsQ[];
           ];
-(* ### ^^ ENDLIB ### *)
-
-Frob[]
-
-(* KhReduced[PyGetWhiteheadizedPD[TorusKnot[2,3], 3, 4] /. {ii_Integer :> ii + 1}][q, t] *)
-
-
 DumpSecondTwostrandTorusEvolution[] :=
     (* ### ^^ Write previous found two-parametric evolution  ### *)
     (* ###    for two-strand torus knot satellites into file ### *)
     Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-2evo-torus-2.m"]},
-           ...
-           Close[fd]];
+           WriteString[fd, "(* ### This is two-parametric evolution of two-strand torus knots ### *)\n"];
+           WriteString[fd, "(* ### that are 'satellitted' with two-strand braid. ###*)\n"];
+           WriteString[fd, "(* ### In `p` evolution is divided into 'plus' for p > 0 ### *)\n"];
+           WriteString[fd, "(* ### and 'minus' for p < 0 ### *)\n"];
+           WriteString[fd, "(* ### In `n` evolution is divided into: ### *)\n"];
+           WriteString[fd, "(* ###     for p-plus: 'plus' is n > 3 - p, 'minus' is n < 3 - p ### *)\n"];
+           WriteString[fd, "(* ###     for p-minus: 'plus' is n > -3 - p, 'minus' is n < -3 - p ### *)\n"];
+           WriteString[fd, StringTemplate["Kh2EvoRed[Torus[2], \"torus\", \"plus\", \"plus\"] := ``;\n"]
+                       [ToString[1/(1 - q^2 t) (1 - q^2 t + q^4 t^2)
+                                 q^n ((AA[1] (q^(-4))^p + AA[2] (t^(-3) q^(-8))^p + AA[3] (t^(-4) q^(-10))^p)
+                                      /. ansPlus["plus", q])
+                                 + (t q^3)^n ((AA[1] (t^(-2) q^(-6))^p)  /. ansPlus["plus", t q^3]),
+                                 InputForm]]];
+           WriteString[fd, StringTemplate["Kh2EvoRed[Torus[2], \"torus\", \"plus\", \"minus\"] := ``;\n"]
+                       [ToString[1/(1 - q^2 t) (1 - q^2 t + q^4 t^2)
+                                 q^n ((AA[1] (q^(-4))^p + AA[2] (t^(-3) q^(-8))^p + AA[3] (t^(-4) q^(-10))^p)
+                                      /. ansPlus["minus", q])
+                                 + (t q^3)^n ((AA[1] (t^(-2) q^(-6))^p)  /. ansPlus["minus", t q^3]),
+                                 InputForm]]];
+           WriteString[fd, StringTemplate["Kh2EvoRed[Torus[2], \"torus\", \"minus\", \"plus\"] := ``;\n"]
+                       [ToString[1/(1 - q^2 t) (1 - q^2 t + q^4 t^2)
+                                 q^n ((AA[1] (q^(-4))^p + AA[2] (t^(-3) q^(-8))^p + AA[3] (t^(-4) q^(-10))^p)
+                                      /. ansMinus["plus", q])
+                                 + (t q^3)^n ((AA[1] (t^(-2) q^(-6))^p)  /. ansMinus["plus", t q^3]),
+                                 InputForm]]];
+           WriteString[fd, StringTemplate["Kh2EvoRed[Torus[2], \"torus\", \"minus\", \"minus\"] := ``;\n"]
+                       [ToString[1/(1 - q^2 t) (1 - q^2 t + q^4 t^2)
+                                 q^n ((AA[1] (q^(-4))^p + AA[2] (t^(-3) q^(-8))^p + AA[3] (t^(-4) q^(-10))^p)
+                                      /. ansMinus["minus", q])
+                                 + (t q^3)^n ((AA[1] (t^(-2) q^(-6))^p)  /. ansMinus["minus", t q^3]),
+                                 InputForm]]];
+           Close[fd];
+          ];
+LoadSecondTwostrandTorusEvolution[] :=
+    Get[CCCDataDir <> "/kh-red-2evo-torus-2.m"];
+LoadFirstWhiteheadizedTwostrandTorusEvolutions[] :=
+    (* ### ^^ Load all the relevant evolution formulas for whiteheadized ### *)
+    (* ###    (satellite) 2-strand torus knots.                          ### *)
+    Module[{i},
+           For[i = -15, i <= 15, i = i + 2,
+               Get[CCCDataDir <> StringTemplate["/kh-red-1evo-wh-torus-2-``.m"][i]]];
+           For[i = -15, i <= 15, i = i + 2,
+               Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-torus-2-``.m"][i]]]];
+FrobWhiteheadizedTorus[] :=
+    Module[{},
+           LoadFirstWhiteheadizedTwostrandTorusEvolutions[];
+           ClearAll[ansMinus, ansPlus]; (* ### << Clear the registers for the answers ### *)
+           FindSecondWhiteheadizedTwostrandTorusEvolutions1[];
+           FindSecondWhiteheadizedTwostrandTorusEvolutionsTm1Qm2[];
+          ];
+FindSecondWhiteheadizedTwostrandTorusEvolutionsTm1Qm2[] :=
+    (* ### ^^ Find actual evolutions, corresponding to "first" eigenvalue 1/(t q^2)     ### *)
+    (* ###    The function operates by side-effect, a bunch of `ansMinus` and `ansPlus` ### *)
+    (* ###    get assigned as a result of the call                                      ### *)
+    Block[{delta = aa, delta1 = bb, theExtraPts = 3},
+          delta = -15;
+          delta1 = 1;
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Torus[2, k], "plus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 1] /(1 + q^2 t) /(1 - q^2 t + q^4 t^2) (1 - q^2 t)];
+          ansMinus["plus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {q^(-1), t^(-2) q^(-4), t^(-1) q^(-2), t^2 q^4, t^2 q^2}
+                                                           (* {q^(-2), t^(-4) q^(-8), t^(-2) q^(-4), t^4 q^8, t^4 q^4} *)
+                                                          ]]]];
+          ansPlus["plus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {q^(-1), t^(-2) q^(-4), t^(-1) q^(-2), t^2 q^4, t^2 q^2}
+                                                           (* {q^(-2), t^(-4) q^(-8), t^(-2) q^(-4), t^4 q^8, t^4 q^4} *)
+                                                          ]]]];
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Torus[2, k], "minus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 1] /(1 + q^2 t) /(1 - q^2 t + q^4 t^2) (1 - q^2 t)];
+          ansMinus["minus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {q^(-1), t^(-2) q^(-4), t^(-1) q^(-2), t^2 q^4, t^2 q^2}
+                                                           (* {q^(-2), t^(-4) q^(-8), t^(-2) q^(-4), t^4 q^8, t^4 q^4} *)
+                                                          ]]]];
+          ansPlus["minus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {q^(-1), t^(-2) q^(-4), t^(-1) q^(-2), t^2 q^4, t^2 q^2}
+                                                           (* {q^(-2), t^(-4) q^(-8), t^(-2) q^(-4), t^4 q^8, t^4 q^4} *)
+                                                          ]]]];
+         ];
+FindSecondWhiteheadizedTwostrandTorusEvolutions1[] :=
+    (* ### ^^ Find actual evolutions, corresponding to "first" eigenvalue 1             ### *)
+    (* ###    The function operates by side-effect, a bunch of `ansMinus` and `ansPlus` ### *)
+    (* ###    get assigned as a result of the call                                      ### *)
+    Block[{delta = aa, delta1 = bb, theExtraPts = 7},
+          delta = -15;
+          delta1 = 1;
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Torus[2, k], "plus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 0]];
+          ansMinus["plus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+          ansPlus["plus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Torus[2, k], "minus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 0]];
+          ansMinus["minus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+          ansPlus["minus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+         ];
+DumpSecondWhiteheadizedTorusEvolution[] :=
+    (* ### ^^ Write previous found two-parametric evolution  ### *)
+    (* ###    for whiteheadized torus knot satellites into file ### *)
+    Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-2evo-wh-torus-2.m"],
+            ansLabel},
+           ansLabel["plus"] = ansPlus; ansLabel["minus"] = ansMinus;
+           WriteString[fd, "(* ### This is two-parametric evolution for two-strand torus knots ### *)\n"];
+           WriteString[fd, "(* ### that are 'satellitted' with whitehead braid. ###*)\n"];
+           WriteString[fd, "(* ### In `p` evolution is divided into 'plus' for p > 0 ### *)\n"];
+           WriteString[fd, "(* ### and 'minus' for p < 0 ### *)\n"];
+           WriteString[fd, "(* ### In `n` evolution is divided into: ### *)\n"];
+           WriteString[fd, "(* ###     for p-plus: 'plus' is n > 3 - p, 'minus' is n < 3 - p ### *)\n"];
+           WriteString[fd, "(* ###     for p-minus: 'plus' is n > -3 - p, 'minus' is n < -3 - p ### *)\n"];
+           Scan[Function[
+               {regOne},
+               Scan[Function[
+                   {regTwo},
+                   rules = ansLabel[regOne];
+                   WriteString[fd, StringTemplate["Kh2EvoRed[Torus[2], \"wh\", \"``\", \"``\"] := ``;\n"]
+                               [regOne, regTwo,
+                                ToString[(1 + q^2 t) (1 - q^2 t + q^4 t^2) /(1 - q^2 t)
+                                         (t^(-1) q^(-2))^n ((AA[1] (q^(-1))^p + AA[2] (t^(-2) q^(-4))^p
+                                                             + AA[3] (t^(-1) q^(-2))^p + AA[4] (t^2 q^4)^p
+                                                             + AA[5] (t^2 q^2)^p)
+                                                            /. rules[regTwo, t^(-1) q^(-2)])
+                                         + (1)^n ((AA[1] (1)^p)  /. rules[regTwo, 1]),
+                                         InputForm]]];
+                            ],
+                    {"plus", "minus"}]],
+                {"plus", "minus"}];
+           Close[fd];
+          ];
+LoadSecondWhiteheadizedTorusEvolution[] :=
+    Get[CCCDataDir <> "/kh-red-2evo-wh-torus-2.m"];
+(* ### ^^ ENDLIB ### *)
 
-           
+FrobWhiteheadizedTorus[]
+
+LoadFirstWhiteheadizedTwostrandTorusEvolutions[];
+LoadSecondWhiteheadizedTorusEvolution[];
+
+(* ### ### vv BEGINCHECK Whiteheadized two-strand torus (2-parametric) evolution. ### ### *)
+(* ### vv Alright, now we need to check the obtained evolution ### *)
+Block[{delN = 20},
+      Map[Function[{pp},
+                   Join[Map[Function[{nn},
+                                     FS[(Kh2EvoRed[Torus[2], "wh", "minus", "minus"] /. {p -> pp, n -> nn})
+                                        - PrecompKhRed["w", TorusKnot[2, pp], nn]]],
+                            Range[-2 - pp - delN, -2 - pp - 2, 2]],
+                        Map[Function[{nn},
+                                     FS[(Kh2EvoRed[Torus[2], "wh", "minus", "plus"] /. {p -> pp, n -> nn})
+                                        - PrecompKhRed["w", TorusKnot[2, pp], nn]]],
+                            Range[-2 - pp + 0, -2 - pp + delN, 2]]]],
+          Range[-15, -1, 2]]]
+    
+Block[{delN = 20},
+      Map[Function[{pp},
+                   Join[Map[Function[{nn},
+                                     FS[(Kh2EvoRed[Torus[2], "wh", "plus", "minus"] /. {p -> pp, n -> nn})
+                                        - PrecompKhRed["w", TorusKnot[2, pp], nn]]],
+                            Range[4 - pp - delN, 4 - pp - 2, 2]],
+                        Map[Function[{nn},
+                                     FS[(Kh2EvoRed[Torus[2], "wh", "plus", "plus"] /. {p -> pp, n -> nn})
+                                        - PrecompKhRed["w", TorusKnot[2, pp], nn]]],
+                            Range[4 - pp + 0, 4 - pp + delN, 2]]]],
+          Range[1, 15, 2]]]
+
+(* ### ### ^^ ENDCHECK Whiteheadized two-strand torus (2-parametric) evolution. ### ### *)
+
+LoadFirstWhiteheadizedTwostrandTorusEvolutions[]
+
+(* ### vv Establish eigenvalues ### *)
+Block[{k = 8, delta = -15},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, EFS[Coefficient[Kh1EvoRed["w", Torus[2,delta + 2 k], "plus"]
+                                                 /. {(1/(q^2*t))^n :> AA},
+                                                 AA, 1] /(1 + q^2 t) /(1 - q^2 t + q^4 t^2) (1 - q^2 t)]];
+             fun1 = Function[{k}, Expand[FS[fun[k+1] - q^(-2) fun[k]]]];
+             fun2 = Function[{k}, Expand[FS[fun1[k+1] - (t^(-4) q^(-8)) fun1[k]]]];
+             fun3 = Function[{k}, Expand[FS[fun2[k+1] - (t^(-2) q^(-4)) fun2[k]]]];
+             fun4 = Function[{k}, Expand[FS[fun3[k+1] - (t^(4) q^(8)) fun3[k]]]];
+             fun5 = Function[{k}, Expand[FS[fun4[k+1] - (t^(4) q^(4)) fun4[k]]]];
+             fun5[k]
+            ]]
+
+(* ### vv Establish eigenvalues ### *)
+Block[{k = 14, delta = -15},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, EFS[Coefficient[Kh1EvoRed["w", Torus[2,delta + 2 k], "plus"]
+                                                 /. {(1/(q^2*t))^n :> AA},
+                                                 AA, 0]]];
+             fun1 = Function[{k}, Expand[FS[fun[k+1] - 1 fun[k]]]];
+             (* fun2 = Function[{k}, Expand[FS[fun1[k+1] - (t^(-4) q^(-8)) fun1[k]]]]; *)
+             (* fun3 = Function[{k}, Expand[FS[fun2[k+1] - (t^(-2) q^(-4)) fun2[k]]]]; *)
+             (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - (t^(4) q^(8)) fun3[k]]]]; *)
+             (* fun5 = Function[{k}, Expand[FS[fun4[k+1] - (t^(4) q^(4)) fun4[k]]]]; *)
+             fun1[k]
+            ]]
+
+(* ### vv Establish eigenvalues ### *)
+Block[{k = 14, delta = -15},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, EFS[Coefficient[Kh1EvoRed["w", Torus[2,delta + 2 k], "minus"]
+                                                 /. {(1/(q^2*t))^n :> AA},
+                                                 AA, 0]]];
+             fun1 = Function[{k}, Expand[FS[fun[k+1] - 1 fun[k]]]];
+             (* fun2 = Function[{k}, Expand[FS[fun1[k+1] - (t^(-4) q^(-8)) fun1[k]]]]; *)
+             (* fun3 = Function[{k}, Expand[FS[fun2[k+1] - (t^(-2) q^(-4)) fun2[k]]]]; *)
+             (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - (t^(4) q^(8)) fun3[k]]]]; *)
+             (* fun5 = Function[{k}, Expand[FS[fun4[k+1] - (t^(4) q^(4)) fun4[k]]]]; *)
+             fun1[k]
+            ]]
+
+(* ### vv Establish eigenvalues ### *)
+Block[{k = 8, delta = -15},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, EFS[Coefficient[Kh1EvoRed["w", Torus[2,delta + 2 k], "minus"]
+                                                 /. {(1/(q^2*t))^n :> AA},
+                                                 AA, 1] /(1 + q^2 t) /(1 - q^2 t + q^4 t^2) (1 - q^2 t)]];
+             fun1 = Function[{k}, Expand[FS[fun[k+1] - q^(-2) fun[k]]]];
+             fun2 = Function[{k}, Expand[FS[fun1[k+1] - (t^(-4) q^(-8)) fun1[k]]]];
+             fun3 = Function[{k}, Expand[FS[fun2[k+1] - (t^(-2) q^(-4)) fun2[k]]]];
+             fun4 = Function[{k}, Expand[FS[fun3[k+1] - (t^(4) q^(8)) fun3[k]]]];
+             fun5 = Function[{k}, Expand[FS[fun4[k+1] - (t^(4) q^(4)) fun4[k]]]];
+             fun5[k]
+            ]]
+
+                                                                                                            
+
+
+
+
+(* Frob[] *)
+(* DumpSecondTwostrandTorusEvolution[]; *)
+LoadSecondTwostrandTorusEvolution[]
+Module[{p},
+       For[p = -19, p <= 19, p = p + 2,
+           Get[CCCDataDir <> StringTemplate["/kh-red-precomp-twst-torus-2-``.m"][p]];
+          ]];
+
+Block[{p = -7, n = 3},
+      Module[{lst = {0 === Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                           - Kh2EvoRed[Torus[2], "torus", "plus", "plus"]]],
+                     0 === Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                           - Kh2EvoRed[Torus[2], "torus", "plus", "minus"]]],
+                     0 === Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                           - Kh2EvoRed[Torus[2], "torus", "minus", "plus"]]],
+                     0 === Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                           - Kh2EvoRed[Torus[2], "torus", "minus", "minus"]]]}},
+             Print[lst];
+             If[Not[MemberQ[lst, True]],
+                Print["p: ", p, " n: ", n],
+                (* Print["OK"] *)]]]
+
+Factor[Simplify[(Kh2EvoRed[Torus[2], "torus", "plus", "plus"]
+                 - Kh2EvoRed[Torus[2], "torus", "minus", "plus"]) /. {q -> Pi, t -> E},
+                Assumptions -> And[Element[p, Integers],
+                                   Element[n, Integers],
+                                   p > 0,
+                                   n > 0]]]
+
+Factor[Simplify[(Kh2EvoRed[Torus[2], "torus", "plus", "plus"]
+                 - Kh2EvoRed[Torus[2], "torus", "plus", "minus"]) /. {q -> Pi, t -> E},
+                Assumptions -> And[Element[p, Integers],
+                                   Element[n, Integers],
+                                   p > 0,
+                                   n > 0]]]
+
+Factor[Simplify[(Kh2EvoRed[Torus[2], "torus", "minus", "minus"]
+                 - Kh2EvoRed[Torus[2], "torus", "plus", "minus"]) /. {q -> Pi, t -> E},
+                Assumptions -> And[Element[p, Integers],
+                                   Element[n, Integers],
+                                   p > 0,
+                                   n > 0]]]
+
+Factor[Simplify[(Kh2EvoRed[Torus[2], "torus", "minus", "minus"]
+                 - Kh2EvoRed[Torus[2], "torus", "minus", "plus"]) /. {q -> Pi, t -> E},
+                Assumptions -> And[Element[p, Integers],
+                                   Element[n, Integers],
+                                   p > 0,
+                                   n > 0]]]
+
+
+
+Module[{pp, nn, delta = 10, dd},
+       For[pp = -7, pp <= 7, pp = pp + 2,
+           If[pp > 0, dd = 3, dd = -3];
+           For[nn = dd + 1 - pp - delta, nn <= dd + 1 - pp + delta, nn = nn + 2,
+               Block[{p = pp, n = nn},
+                     Module[{lst, lst1},
+                            lst = {Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                                   - Kh2EvoRed[Torus[2], "torus", "plus", "plus"]]],
+                                   Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                                   - Kh2EvoRed[Torus[2], "torus", "plus", "minus"]]],
+                                   Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                                   - Kh2EvoRed[Torus[2], "torus", "minus", "plus"]]],
+                                   Factor[Simplify[PrecompKhRed[TorusKnotTwSt[2, p], n]
+                                                   - Kh2EvoRed[Torus[2], "torus", "minus", "minus"]]]};
+                            lst1 = Map[0 === # &, lst];
+                            If[Not[MemberQ[lst1, True]],
+                               Print["p: ", p, " n: ", n, " ", lst1, lst]
+                               (* , Print["ok"] *)]]]]]]
+
+Block[{p = 2, n = 3},
+      Kh2EvoRed[Torus[2], "torus", "plus", "plus"]]
+
 
 (* ### vv Alright, first evolution have been found correctly ### *)
 Block[{p = -1, n = -3},
@@ -387,15 +729,123 @@ PrecompKhRed[TorusKnotTwSt[2, -19], 5]
 Frob[]
 
 ansPlus["minus", q]
+    
+(* ### ### Alright, let's find first evolutions for insertion of whitehead block ### ### *)
+(* ### ### into torus 2-strand satellite                                         ### ### *)
+(* ### vv Get all the precomputed whiteheadized torus[2] ### *)
+Module[{i},
+       For[i = -15, i <= 15, i = i + 2,
+           Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-torus-2-``.m"][i]]]];
+
+(* Module[{p, *)
+(*         fd = OpenWrite["/tmp/precalculation.log"]}, *)
+(*        For[p = -3, p >= -15, p = p - 2, *)
+(*            WriteString[fd, StringTemplate["Calculating: ``"][p]]; *)
+(*            PrecalculateKhRedWhdTorusKnotPDsLine[2, p, -2 - p, 20, 2]]; *)
+(*        For[p = 1, p <= 15, p = p + 2, *)
+(*            PrecalculateKhRedWhdTorusKnotPDsLine[2, p, 4 - p, 20, 2]]; *)
+(*        Close[fd]; *)
+(*       ]; *)
+
+(* ### ### ### ### *)
+(* ### ### whiteheadized evolutions for 2-strand torus knots ### ### *)
+(* ### p = -1: n* = -1 ### *)
+(* ### p = -3: n* = 1 ### *)
+(* ### p = -5: n* = 3 ### *)
+(* ### p = -7: n* = 5 ### *)
+(* ### p = -9: n* = 7 ### *)
+(* ### p = -11: n* = 9 ### *)
+(* ### p = -13: n* = 11 ### *)
+(* ### p = -15: n* = 13 ### *)
+(* ### general formula: -2 - p ### *)
+
+(* ### p = 1: n* = 3 ### *)
+(* ### p = 3: n* = 1 ### *)
+(* ### p = 5: n* = -1 ### *)
+(* ### p = 7: n* = -3 ### *)
+(* ### p = 9: n* = -5 ### *)
+(* ### general formula: 4 - p ### *)
+
+(* ### I notice that values of jumps are *the same* for all p ### *)
+
+(* ### vv Find eigenvalues and position of jumps ### *)
+Module[{k},
+       Table[Block[{p = 15, delta},
+                   (* ### vv For negative `p` ### *)
+                   (* delta = -22 - p; *)
+                   (* ### vv For positive `p` ### *)
+                   delta = -16 - p;
+                   Module[{fun, fun1, fun2, fun3, fun4, fun5},
+                          fun = Function[{k}, PrecompKhRed["w", TorusKnot[2, p], delta + 2 k]];
+                          fun1 = Function[{k}, Expand[FS[fun[k+1] - fun[k]]]];
+                          fun2 = Function[{k}, Expand[FS[fun1[k+1] - t^(-2) q^(-4) fun1[k]]]];
+                          (* fun3 = Function[{k}, Expand[FS[fun2[k+1] - q^6 fun2[k]]]]; *)
+                          (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - q^10 fun3[k]]]]; *)
+                          fun2[k]
+                         ]],
+             {k, 0, 18}]]                                                                                                                                       
+theP = -15;
+(* ### vv Find evolution ### *)
+Block[{p = theP, delta = aa, delta1 = bb,
+       theExtraPts = 8},
+      (* ### vv These are for positive `p` ### *)
+      (* delta = -16 - p; *)
+      (* delta1 = 4 - p; *)
+      (* ### vv These are for negative `p` ### *)
+      delta = -22 - p;
+      delta1 = -2 - p;
+      TheFun[nCrosses_] :=
+      PrecompKhRed["w", TorusKnot[2, p], nCrosses];
+      ansMinus = Block[{extraPoints = theExtraPts},
+                       With[{aSeries = delta + 2 k},
+                            FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                                      Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                             Join[{aSeries}, {1, t^(-1) q^(-2)}]]]];
+      ansPlus = Block[{extraPoints = theExtraPts},
+                      With[{aSeries = delta1 + 2 k},
+                           FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                                     Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                            Join[{aSeries}, {1, t^(-1) q^(-2)}]]]]];
+(* ### vv Check plus ### *)
+Module[{n},
+       Block[{p = theP},
+             Table[FS[((AA[1] 1^n + AA[2] (t^(-1) q^(-2))^n) /. ansPlus)
+                      - PrecompKhRed["w", TorusKnot[2, p], n] /. {q -> Pi, t -> E}],
+                   {n, 4 - p, 4 - p + 10, 2}]]];
+(* ### vv Check minus ### *)
+Module[{n},
+       Block[{p = theP},
+             Table[FS[((AA[1] 1^n + AA[2] (t^(-1) q^(-2))^n) /. ansMinus)
+                      - PrecompKhRed["w", TorusKnot[2, p], n] /. {q -> Pi, t -> E}],
+                   {n, -2 - p, -2 - p - 10, -2}]]];
+(* ### vv Dump evolution formulas ### *)
+Block[{p = theP, posBound = aa},
+      (* ### vv This is for positive `p` ### *)
+      (* posBound = 4 - p; *)
+      (* ### vv This is for negative `p` ### *)
+      posBound = -2 - p;
+      Module[{fd = OpenWrite[CCCDataDir <> StringTemplate["/kh-red-1evo-wh-torus-2-``.m"][p]],
+              eigenValues = {1, t^(-1) q^(-2)}},
+             Module[{exprPlus = (Plus @@ Map[eigenValues[[#]]^n AA[#] &, Range[1, Length[eigenValues]]]
+                                 /. ansPlus),
+                     exprMinus = (Plus @@ Map[eigenValues[[#]]^n AA[#] &, Range[1, Length[eigenValues]]]
+                                  /. ansMinus)},
+                    WriteString[fd, StringTemplate["(* ### Positive starts at n = `` ### *)\n"][posBound]];
+                    WriteString[fd, StringTemplate["Kh1EvoRed[\"w\", Torus[``,``], \"plus\"] := ``;\n"]
+                                [2, p, ToString[exprPlus, InputForm]]];
+                    WriteString[fd, StringTemplate["Kh1EvoRed[\"w\", Torus[``,``], \"minus\"] := ``;\n"]
+                                [2, p, ToString[exprMinus, InputForm]]]];
+             Close[fd]]];
+
 
 
 PyGetWhiteheadizedPD[PD[Knot[3,1]], 4, 6]
 
 (* ### vv CURWORK ### *)
-Module[{i, j},
-       For[i = 7, i <= 10, i ++,
-           For[j = 1, j <= CCCRolfsenMults[[i - 2]], j ++,
-               PrecalculateKhRedWhiteheadizedPDsLine[Knot[i, j], -10, 10, 2]]]];
+(* Module[{i, j}, *)
+(*        For[i = 7, i <= 10, i ++, *)
+(*            For[j = 1, j <= CCCRolfsenMults[[i - 2]], j ++, *)
+(*                PrecalculateKhRedWhiteheadizedPDsLine[Knot[i, j], -10, 10, 2]]]]; *)
 
 
 Module[{i},
@@ -429,6 +879,46 @@ Module[{fd = OpenWrite["/tmp/precalculation.log"]},
            WriteString[fd, StringTemplate["Calculating ``\n"][p]];
            PrecalculateKhRedTwStTorusKnotPDsLine[2, p, -4 - p - 10, -4 - p + 10, 2]];
        Close[fd]];
+
+(* ### ### vv Calculating reduced Khovanovs for twist knots with torus cable block ### ### *)
+(* ### vv This interval of shifts is for positive `p` ### *)
+Module[{fd = OpenWrite["/tmp/precalculation.log"]},
+       For[p = 9, p <= 19, p = p + 2,
+           WriteString[fd, StringTemplate["Calculating ``\n"][p]];
+           PrecalculateKhRedTwistedTwoStrandPDsLine[p, 3 - 2 p - 8, 3 - 2 p + 8]];
+       Close[fd]];
+(* ### vv This interval of shifts is for negative `p` ### *)
+Module[{fd = OpenWrite["/tmp/precalculation.log"]},
+       For[p = -9, p >= -19, p = p - 2,
+           WriteString[fd, StringTemplate["Calculating ``\n"][p]];
+           PrecalculateKhRedTwistedTwoStrandPDsLine[p, -3 - 2 p - 8, -3 - 2 p + 8]];
+       Close[fd]];
+
+[Calculating...]
+
+
+(* ### vv Now we load the raw precalculated data ### *)
+Module[{i},
+       For[i = 3, i <= 7, i = i + 2,
+           Get[CCCDataDir <> StringTemplate["/kh-red-precomp-twst-twist-``.m"][i]]]];
+Module[{i},
+       For[i = -3, i >= -7, i = i - 2,
+           Get[CCCDataDir <> StringTemplate["/kh-red-precomp-twst-twist-``.m"][i]]]];
+
+
+(* ### vv Find eigenvalues and position of a jump ### *)
+Block[{k = 7, p = -7, delta = -3},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, PrecompKhRed[TWSTTwisted[p], delta + 2 k]];
+             fun1 = Function[{k}, Expand[FS[fun[k+1] - q^2 fun[k]]]];
+             fun2 = Function[{k}, Expand[FS[fun1[k+1] - t^2 q^6fun1[k]]]];
+             (* fun3 = Function[{k}, Expand[FS[fun2[k+1] - q^6 fun2[k]]]]; *)
+             (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - q^10 fun3[k]]]]; *)
+             fun2[k]
+            ]]
+
+
+
 
 (* ### ### vv Calculating reduced Khovanovs for twist knots with whitehead block ### ### *)
 (* ### vv This interval of shifts is for positive `p` ### *)
