@@ -355,12 +355,28 @@ LoadFirstWhiteheadizedTwostrandTorusEvolutions[] :=
                Get[CCCDataDir <> StringTemplate["/kh-red-1evo-wh-torus-2-``.m"][i]]];
            For[i = -15, i <= 15, i = i + 2,
                Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-torus-2-``.m"][i]]]];
+LoadFirstWhiteheadizedTwistEvolutions[] :=
+    (* ### ^^ Load all the relevant evolution formulas for whiteheadized ### *)
+    (* ###    (satellite) twist knots.                                   ### *)
+    Module[{i},
+           For[i = -15, i <= 15, i = i + 2,
+               Get[CCCDataDir <> StringTemplate["/kh-red-1evo-wh-twist-``.m"][i]]];
+           (* For[i = -15, i <= 15, i = i + 2, *)
+           (*     Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-torus-2-``.m"][i]]]; *)
+          ];
 FrobWhiteheadizedTorus[] :=
     Module[{},
            LoadFirstWhiteheadizedTwostrandTorusEvolutions[];
            ClearAll[ansMinus, ansPlus]; (* ### << Clear the registers for the answers ### *)
            FindSecondWhiteheadizedTwostrandTorusEvolutions1[];
            FindSecondWhiteheadizedTwostrandTorusEvolutionsTm1Qm2[];
+          ];
+FrobWhiteheadizedTwist[] :=
+    Module[{},
+           LoadFirstWhiteheadizedTwistEvolutions[];
+           ClearAll[ansMinus, ansPlus]; (* ### << Clear the registers for the answers ### *)
+           FindSecondWhiteheadizedTwistEvolutions1[];
+           FindSecondWhiteheadizedTwistEvolutionsTm1Qm2[];
           ];
 FindSecondWhiteheadizedTwostrandTorusEvolutionsTm1Qm2[] :=
     (* ### ^^ Find actual evolutions, corresponding to "first" eigenvalue 1/(t q^2)     ### *)
@@ -412,6 +428,52 @@ FindSecondWhiteheadizedTwostrandTorusEvolutionsTm1Qm2[] :=
                                                            (* {q^(-2), t^(-4) q^(-8), t^(-2) q^(-4), t^4 q^8, t^4 q^4} *)
                                                           ]]]];
          ];
+FindSecondWhiteheadizedTwistEvolutionsTm1Qm2[] :=
+    (* ### ^^ Find actual evolutions, corresponding to "first" eigenvalue 1/(t q^2)     ### *)
+    (* ###    The function operates by side-effect, a bunch of `ansMinus` and `ansPlus` ### *)
+    (* ###    get assigned as a result of the call                                      ### *)
+    Block[{delta = aa, delta1 = bb, theExtraPts = 5},
+          delta = -15;
+          delta1 = 1;
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Twist[k], "plus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 1] /(1 + q^2 t) /(1 - q^2 t + q^4 t^2) (1 - q^2 t)];
+          ansMinus["plus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {t^2 q^2, t^(-1) q^(-2), t^(-2) q^(-4)}
+                                                          ]]]];
+          ansPlus["plus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {t^2 q^2, t^(-1) q^(-2), t^(-2) q^(-4)}
+                                                          ]]]];
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Twist[k], "minus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 1] /(1 + q^2 t) /(1 - q^2 t + q^4 t^2) (1 - q^2 t)];
+          ansMinus["minus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {t^2 q^2, t^(-1) q^(-2), t^(-2) q^(-4)}
+                                                          ]]]];
+          ansPlus["minus", q^(-2) t^(-1)] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {t^2 q^2, t^(-1) q^(-2), t^(-2) q^(-4)}
+                                                          ]]]];
+         ];
 FindSecondWhiteheadizedTwostrandTorusEvolutions1[] :=
     (* ### ^^ Find actual evolutions, corresponding to "first" eigenvalue 1             ### *)
     (* ###    The function operates by side-effect, a bunch of `ansMinus` and `ansPlus` ### *)
@@ -439,6 +501,52 @@ FindSecondWhiteheadizedTwostrandTorusEvolutions1[] :=
                                                            {1}
                                                           ]]]];
           TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Torus[2, k], "minus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 0]];
+          ansMinus["minus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+          ansPlus["minus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+         ];
+FindSecondWhiteheadizedTwistEvolutions1[] :=
+    (* ### ^^ Find actual evolutions, corresponding to "first" eigenvalue 1             ### *)
+    (* ###    The function operates by side-effect, a bunch of `ansMinus` and `ansPlus` ### *)
+    (* ###    get assigned as a result of the call                                      ### *)
+    Block[{delta = aa, delta1 = bb, theExtraPts = 7},
+          delta = -15;
+          delta1 = 1;
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Twist[k], "plus"]
+                                        /. {(1/(q^2*t))^n :> AA},
+                                        AA, 0]];
+          ansMinus["plus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+          ansPlus["plus", 1] =
+          Block[{extraPoints = theExtraPts},
+                With[{aSeries = delta1 + 2 k},
+                     FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                               Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                      Join[{aSeries},
+                                                           {1}
+                                                          ]]]];
+          TheFun[k_] := EFS[Coefficient[Kh1EvoRed["w", Twist[k], "minus"]
                                         /. {(1/(q^2*t))^n :> AA},
                                         AA, 0]];
           ansMinus["minus", 1] =
@@ -490,11 +598,47 @@ DumpSecondWhiteheadizedTorusEvolution[] :=
                 {"plus", "minus"}];
            Close[fd];
           ];
+DumpSecondWhiteheadizedTwistEvolution[] :=
+    (* ### ^^ Write previous found two-parametric evolution  ### *)
+    (* ###    for whiteheadized twist knot satellites into file ### *)
+    Module[{fd = OpenWrite[CCCDataDir <> "/kh-red-2evo-wh-twist.m"],
+            ansLabel},
+           ansLabel["plus"] = ansPlus; ansLabel["minus"] = ansMinus;
+           WriteString[fd, "(* ### This is two-parametric evolution for twist knots ### *)\n"];
+           WriteString[fd, "(* ### that are 'satellitted' with whitehead braid. ###*)\n"];
+           WriteString[fd, "(* ### In `p` evolution is divided into 'plus' for p > 0 ### *)\n"];
+           WriteString[fd, "(* ### and 'minus' for p < 0 ### *)\n"];
+           WriteString[fd, "(* ### In `n` evolution is divided into: ### *)\n"];
+           WriteString[fd, "(* ###     for p-plus: 'plus' is n > 3 - 2 p, 'minus' is n < 3 - 2 p ### *)\n"];
+           WriteString[fd, "(* ###     for p-minus: 'plus' is n > -3 - 2 p, 'minus' is n < -3 - 2 p ### *)\n"];
+           Scan[Function[
+               {regOne},
+               Scan[Function[
+                   {regTwo},
+                   rules = ansLabel[regOne];
+                   WriteString[fd, StringTemplate["Kh2EvoRed[Twist, \"wh\", \"``\", \"``\"] := ``;\n"]
+                               [regOne, regTwo,
+                                ToString[(1 + q^2 t) (1 - q^2 t + q^4 t^2) /(1 - q^2 t)
+                                         (t^(-1) q^(-2))^n ((AA[1] (q^(-1))^p + AA[2] (t^(-2) q^(-4))^p
+                                                             + AA[3] (t^(-1) q^(-2))^p + AA[4] (t^2 q^4)^p
+                                                             + AA[5] (t^2 q^2)^p)
+                                                            /. rules[regTwo, t^(-1) q^(-2)])
+                                         + (1)^n ((AA[1] (1)^p)  /. rules[regTwo, 1]),
+                                         InputForm]]];
+                            ],
+                    {"plus", "minus"}]],
+                {"plus", "minus"}];
+           Close[fd];
+          ];
 LoadSecondWhiteheadizedTorusEvolution[] :=
     Get[CCCDataDir <> "/kh-red-2evo-wh-torus-2.m"];
+LoadSecondWhiteheadizedTwistEvolution[] :=
+    Get[CCCDataDir <> "/kh-red-2evo-wh-twist.m"];
 (* ### ^^ ENDLIB ### *)
 
-FrobWhiteheadizedTorus[]
+(* FrobWhiteheadizedTorus[] *)
+
+FrobWhiteheadizedTwist[]
 
 LoadFirstWhiteheadizedTwostrandTorusEvolutions[];
 LoadSecondWhiteheadizedTorusEvolution[];
@@ -526,6 +670,26 @@ Block[{delN = 20},
           Range[1, 15, 2]]]
 
 (* ### ### ^^ ENDCHECK Whiteheadized two-strand torus (2-parametric) evolution. ### ### *)
+
+LoadFirstWhiteheadizedTwistEvolutions[]
+
+(* ### vv Establish eigenvalues ### *)
+Block[{k = 5, delta = -15},
+      Module[{fun, fun1, fun2, fun3, fun4, fun5},
+             fun = Function[{k}, EFS[Coefficient[Kh1EvoRed["w", Twist[delta + 2 k], "plus"]
+                                                 /. {(1/(q^2*t))^n :> AA},
+                                                 AA, 1] /(1 + q^2 t) /(1 - q^2 t + q^4 t^2) (1 - q^2 t)]];
+             fun1 = Function[{k}, Expand[FS[fun[k+1] - (t^(4) q^(4)) fun[k]]]];
+             fun2 = Function[{k}, Expand[FS[fun1[k+1] - (t^(-2) q^(-4)) fun1[k]]]];
+             fun3 = Function[{k}, Expand[FS[fun2[k+1] - (t^(-4) q^(-8)) fun2[k]]]];
+             fun4 = Function[{k}, Expand[FS[fun3[k+1] - (t^(4) q^(8)) fun3[k]]]];
+             fun5 = Function[{k}, Expand[FS[fun4[k+1] - (t^(4) q^(4)) fun4[k]]]];
+             fun3[k]
+            ]]
+
+                                                                                                            
+
+
 
 LoadFirstWhiteheadizedTwostrandTorusEvolutions[]
 
