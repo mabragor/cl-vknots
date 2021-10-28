@@ -138,7 +138,7 @@ PrecalculateKhRedTwStTorusKnotPDsLine[2, p_, from_, to_, step_] :=
                       WriteString[fd, StringTemplate["PrecompKhRed[TorusKnotTwSt[2, `p`], `i`] := `expr`;\n"]
                                   [<|"p" -> p, "i" -> i, "expr" -> ToString[polly, InputForm]|>]]]];
            Close[fd]];
-PrecalculateKhRedTwistedPDsLine[twist_, from_, to_] :=
+PrecalculateKhRedWhdTwistedPDsLine[twist_, from_, to_] :=
     (* ### ^^ Precalculate reduced Khovanov polynomials for twisted-twisted knots. ### *)
     (* ###    `from` and `to`-- winding iteration bounds for a child braid. ### *)
     (* ###    `twist`        -- winding of a parent braid. ### *)
@@ -911,6 +911,97 @@ Module[{i},
 (*        Close[fd]; *)
 (*       ]; *)
 
+(* ### ### vvvv ### ### *)
+(* ### ### whiteheadized evolutions for twist knots ### ### *)
+
+
+(* ### vv Precalculate raw data for whiteheadized twist knots ### *)
+(* Module[{p}, *)
+(*        For[p = -15, p <= 15, p = p + 2, *)
+(*            PrecalculateKhRedWhdTwistedPDsLine[p, 4 - 2 p - 16, 4 - 2 p + 16]]] *)
+
+(* ### vv Load raw data ### *)
+Module[{i},
+       For[i = -15, i <= 15, i = i + 2,
+           Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-twist-``.m"][i]]]];
+
+(* ### vv Find eigenvalues and position of jumps ### *)
+(* ###    p > 0 : n* = 4 - 2 p  ### *)
+(* ###    p < 0 : n* = -2 - 2 p ### *)
+
+Module[{k},
+       Table[
+           Block[{p = -15, delta},
+                 (* ### vv For positive `p` ### *)
+                 (* delta = 4 - 2 p - 10; *)
+                 (* ### vv For negative `p` ### *)
+                 delta = -2 - 2 p - 10;
+                 Module[{fun, fun1, fun2, fun3, fun4, fun5},
+                        fun = Function[{k}, PrecompKhRed[Twisted[p], delta + 2 k]];
+                        fun1 = Function[{k}, Expand[FS[fun[k+1] - fun[k]]]];
+                        fun2 = Function[{k}, Expand[FS[fun1[k+1] - t^(-2) q^(-4) fun1[k]]]];
+                        (* fun3 = Function[{k}, Expand[FS[fun2[k+1] - q^6 fun2[k]]]]; *)
+                        (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - q^10 fun3[k]]]]; *)
+                        fun2[k]
+                       ]],
+           {k, 0, 10}]]
+
+theP = -15;
+(* ### vv Find evolution ### *)
+Block[{p = theP, delta = aa, delta1 = bb,
+       theExtraPts = 3},
+      (* ### vv These are for positive `p` ### *)
+      (* delta = 4 - 2 p - 16; *)
+      (* delta1 = 4 - 2 p; *)
+      (* ### vv These are for negative `p` ### *)
+      delta = -2 - 2 p - 10;
+      delta1 = -2 - 2 p;
+      TheFun[nCrosses_] :=
+      PrecompKhRed[Twisted[p], nCrosses];
+      ansMinus = Block[{extraPoints = theExtraPts},
+                       With[{aSeries = delta + 2 k},
+                            FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                                      Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                             Join[{aSeries}, {1, t^(-1) q^(-2)}]]]];
+      ansPlus = Block[{extraPoints = theExtraPts},
+                      With[{aSeries = delta1 + 2 k},
+                           FitFamilyWithEigenvaluesAdvanced[Function[{k1},
+                                                                     Expand[FS[TheFun[aSeries /. {k -> k1}]]]],
+                                                            Join[{aSeries}, {1, t^(-1) q^(-2)}]]]]];
+(* ### vv Check plus ### *)
+Module[{n},
+       Block[{p = theP},
+             Table[FS[((AA[1] 1^n + AA[2] (t^(-1) q^(-2))^n) /. ansPlus)
+                      - PrecompKhRed[Twisted[p], n] /. {q -> Pi, t -> E}],
+                   {n, -2 - 2 p, 4 - 2 p + 10, 2}]]];
+(* ### vv Check minus ### *)
+Module[{n},
+       Block[{p = theP},
+             Table[FS[((AA[1] 1^n + AA[2] (t^(-1) q^(-2))^n) /. ansMinus)
+                      - PrecompKhRed[Twisted[p], n] /. {q -> Pi, t -> E}],
+                   {n, -2 - 2 p - 2, -2 - 2 p - 12, -2}]]];
+(* ### vv Dump evolution formulas ### *)
+Block[{p = theP, posBound = aa},
+      (* ### vv This is for positive `p` ### *)
+      (* posBound = 4 - 2 p; *)
+      (* ### vv This is for negative `p` ### *)
+      posBound = -2 - 2 p;
+      Module[{fd = OpenWrite[CCCDataDir <> StringTemplate["/kh-red-1evo-wh-twist-``.m"][p]],
+              eigenValues = {1, t^(-1) q^(-2)}},
+             Module[{exprPlus = (Plus @@ Map[eigenValues[[#]]^n AA[#] &, Range[1, Length[eigenValues]]]
+                                 /. ansPlus),
+                     exprMinus = (Plus @@ Map[eigenValues[[#]]^n AA[#] &, Range[1, Length[eigenValues]]]
+                                  /. ansMinus)},
+                    WriteString[fd, StringTemplate["(* ### Positive starts at n = `` ### *)\n"][posBound]];
+                    WriteString[fd, StringTemplate["Kh1EvoRed[\"w\", Twist[``], \"plus\"] := ``;\n"]
+                                [p, ToString[exprPlus, InputForm]]];
+                    WriteString[fd, StringTemplate["Kh1EvoRed[\"w\", Twist[``], \"minus\"] := ``;\n"]
+                                [p, ToString[exprMinus, InputForm]]]];
+             Close[fd]]];
+
+
+(* ### ### ^^^^ ### ### *)
+
 (* ### ### ### ### *)
 (* ### ### whiteheadized evolutions for 2-strand torus knots ### ### *)
 (* ### p = -1: n* = -1 ### *)
@@ -1087,26 +1178,25 @@ Block[{k = 7, p = -7, delta = -3},
 (* ### ### vv Calculating reduced Khovanovs for twist knots with whitehead block ### ### *)
 (* ### vv This interval of shifts is for positive `p` ### *)
 Module[{fd = OpenWrite["/tmp/precalculation.log"]},
-       For[p = 1, p <= 3, p = p + 2,
+       For[p = 5, p <= 19, p = p + 2,
            WriteString[fd, StringTemplate["Calculating ``\n"][p]];
-           PrecalculateKhRedTwistedPDsLine[p, 4 - p - 12, 4 - p + 12]];
+           PrecalculateKhRedTwistedPDsLine[p, 3 - 2 p - 8, 3 - 2 p + 8]];
        Close[fd]];
-
 (* ### vv This interval of shifts is for negative `p` ### *)
 Module[{fd = OpenWrite["/tmp/precalculation.log"]},
-       For[p = 1, p <= 3, p = p + 2,
+       For[p = -5, p >= -19, p = p - 2,
            WriteString[fd, StringTemplate["Calculating ``\n"][p]];
-           PrecalculateKhRedTwistedPDsLine[p, 4 - p - 12, 4 - p + 12]];
+           PrecalculateKhRedTwistedPDsLine[p, -3 - 2 p - 8, -3 - 2 p + 8]];
        Close[fd]];
 
 
 (* ### vv Now we load the raw precalculated data ### *)
 Module[{i},
-       For[i = -1, i <= -1, i = i + 2,
+       For[i = -1, i >= -3, i = i - 2,
            Get[CCCDataDir <> StringTemplate["/kh-red-precomp-whiteheadized-twist-``.m"][i]]]];
 
 (* ### vv Find eigenvalues and position of a jump ### *)
-Block[{k = -4, p = 7, delta = -3},
+Block[{k = 3, p = -3, delta = -3},
       Module[{fun, fun1, fun2, fun3, fun4, fun5},
              fun = Function[{k}, PrecompKhRed[Twisted[p], delta + 2 k]];
              fun1 = Function[{k}, Expand[FS[fun[k+1] - t^(-2) q^(-4) fun[k]]]];
@@ -1115,6 +1205,9 @@ Block[{k = -4, p = 7, delta = -3},
              (* fun4 = Function[{k}, Expand[FS[fun3[k+1] - q^10 fun3[k]]]]; *)
              fun2[k]
             ]]
+
+                                                                                 
+Out[46]= 0
 
 
 
